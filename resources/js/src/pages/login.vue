@@ -1,164 +1,149 @@
 <script setup>
-import { useTheme } from 'vuetify'
-import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
-import logo from '@images/logo.svg?raw'
-import authV1MaskDark from '@images/pages/auth-v1-mask-dark.png'
-import authV1MaskLight from '@images/pages/auth-v1-mask-light.png'
-import authV1Tree2 from '@images/pages/auth-v1-tree-2.png'
-import authV1Tree from '@images/pages/auth-v1-tree.png'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const form = ref({
-  email: '',
+  username: '',
   password: '',
-  remember: false,
-})
-
-const vuetifyTheme = useTheme()
-
-const authThemeMask = computed(() => {
-  return vuetifyTheme.global.name.value === 'light' ? authV1MaskLight : authV1MaskDark
 })
 
 const isPasswordVisible = ref(false)
+const loading = ref(false)
+const errorMsg = ref('')
+
+async function handleLogin() {
+  errorMsg.value = ''
+  if (!form.value.username || !form.value.password) {
+    errorMsg.value = 'Username dan password wajib diisi.'
+    return
+  }
+
+  loading.value = true
+  const result = await authStore.login(form.value)
+  loading.value = false
+
+  if (result.success) {
+    router.push('/dashboard')
+  } else {
+    errorMsg.value = result.message ?? 'Login gagal. Periksa kembali username dan password.'
+  }
+}
 </script>
 
 <template>
-  <!-- eslint-disable vue/no-v-html -->
-
   <div class="auth-wrapper d-flex align-center justify-center pa-4">
     <VCard
-      class="auth-card pa-4 pt-7"
-      max-width="448"
+      class="auth-card pa-6 pt-8"
+      max-width="420"
+      width="100%"
+      elevation="8"
+      rounded="lg"
     >
-      <VCardItem class="justify-center">
-        <RouterLink
-          to="/"
-          class="d-flex align-center gap-3"
-        >
-          <!-- eslint-disable vue/no-v-html -->
-          <div
-            class="d-flex"
-            v-html="logo"
-          />
-          <h2 class="font-weight-medium text-2xl text-uppercase">
-            Materio
-          </h2>
-        </RouterLink>
+      <!-- Logo & Title -->
+      <VCardItem class="justify-center pb-2">
+        <div class="d-flex flex-column align-center gap-2">
+          <div class="auth-logo-wrapper mb-1">
+            <VIcon
+              icon="ri-shield-check-fill"
+              size="52"
+              color="primary"
+            />
+          </div>
+          <h1 class="text-h5 font-weight-bold text-uppercase tracking-wide">
+            QC Admission
+          </h1>
+          <p class="text-body-2 text-medium-emphasis text-center mb-0">
+            Quality Control Admisi Rumah Sakit
+          </p>
+        </div>
       </VCardItem>
 
-      <VCardText class="pt-2">
-        <h4 class="text-h4 mb-1">
-          Welcome to Materio! 👋🏻
-        </h4>
-        <p class="mb-0">
-          Please sign-in to your account and start the adventure
-        </p>
-      </VCardText>
+      <VDivider class="my-4" />
 
-      <VCardText>
-        <VForm @submit.prevent="() => {}">
+      <VCardText class="pt-2">
+        <!-- Error Alert -->
+        <VAlert
+          v-if="errorMsg"
+          type="error"
+          variant="tonal"
+          density="compact"
+          class="mb-4"
+          closable
+          @click:close="errorMsg = ''"
+        >
+          {{ errorMsg }}
+        </VAlert>
+
+        <VForm @submit.prevent="handleLogin">
           <VRow>
-            <!-- email -->
+            <!-- Username -->
             <VCol cols="12">
               <VTextField
-                v-model="form.email"
-                label="Email"
-                type="email"
+                v-model="form.username"
+                label="Username"
+                placeholder="Masukkan username"
+                prepend-inner-icon="ri-user-3-line"
+                variant="outlined"
+                autofocus
+                :disabled="loading"
               />
             </VCol>
 
-            <!-- password -->
+            <!-- Password -->
             <VCol cols="12">
               <VTextField
                 v-model="form.password"
                 label="Password"
                 placeholder="············"
+                prepend-inner-icon="ri-lock-2-line"
                 :type="isPasswordVisible ? 'text' : 'password'"
-                autocomplete="password"
                 :append-inner-icon="isPasswordVisible ? 'ri-eye-off-line' : 'ri-eye-line'"
+                variant="outlined"
+                :disabled="loading"
                 @click:append-inner="isPasswordVisible = !isPasswordVisible"
               />
+            </VCol>
 
-              <!-- remember me checkbox -->
-              <div class="d-flex align-center justify-space-between flex-wrap my-6">
-                <VCheckbox
-                  v-model="form.remember"
-                  label="Remember me"
-                />
-
-                <a
-                  class="text-primary"
-                  href="javascript:void(0)"
-                >
-                  Forgot Password?
-                </a>
-              </div>
-
-              <!-- login button -->
+            <!-- Login Button -->
+            <VCol cols="12">
               <VBtn
                 block
                 type="submit"
-                to="/"
+                size="large"
+                color="primary"
+                :loading="loading"
+                prepend-icon="ri-login-circle-line"
               >
-                Login
+                Login / Masuk
               </VBtn>
-            </VCol>
-
-            <!-- create account -->
-            <VCol
-              cols="12"
-              class="text-center text-base"
-            >
-              <span>New on our platform?</span>
-              <RouterLink
-                class="text-primary ms-2"
-                to="/register"
-              >
-                Create an account
-              </RouterLink>
-            </VCol>
-
-            <VCol
-              cols="12"
-              class="d-flex align-center"
-            >
-              <VDivider />
-              <span class="mx-4">or</span>
-              <VDivider />
-            </VCol>
-
-            <!-- auth providers -->
-            <VCol
-              cols="12"
-              class="text-center"
-            >
-              <AuthProvider />
             </VCol>
           </VRow>
         </VForm>
       </VCardText>
+
+      <VCardText class="text-center pt-0">
+        <p class="text-caption text-disabled mb-0">
+          &copy; {{ new Date().getFullYear() }} QC Admission &mdash; RSUD
+        </p>
+      </VCardText>
     </VCard>
-
-    <VImg
-      class="auth-footer-start-tree d-none d-md-block"
-      :src="authV1Tree"
-      :width="250"
-    />
-
-    <VImg
-      :src="authV1Tree2"
-      class="auth-footer-end-tree d-none d-md-block"
-      :width="350"
-    />
-
-    <!-- bg img -->
-    <VImg
-      class="auth-footer-mask d-none d-md-block"
-      :src="authThemeMask"
-    />
   </div>
 </template>
 
-<style lang="scss">
-@use "@core/scss/template/pages/page-auth";
+<style lang="scss" scoped>
+.auth-wrapper {
+  min-block-size: 100dvh;
+  background: rgb(var(--v-theme-background));
+}
+
+.auth-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+}
+
+.tracking-wide {
+  letter-spacing: 0.08em;
+}
 </style>

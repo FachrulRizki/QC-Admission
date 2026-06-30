@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class QualityControl extends Model
+{
+    use HasFactory;
+
+    protected $table = 'quality_controls';
+
+    protected $fillable = [
+        'tanggal',
+        'jam_input',
+        'tgl_daftar',
+        'jam_daftar',
+        'no_mr',
+        'no_reg',
+        'nama_pasien',
+        'jaminan',
+        'status_ket',
+        'edukasi_kamar',
+        'durasi_tunggu',
+        'note',
+        'petugas',
+        'status',
+        'keluarga_pasien',
+        'ttd_keluarga_pasien',
+    ];
+}

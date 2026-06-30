@@ -1,6 +1,4 @@
 <script setup>
-import VerticalNavSectionTitle from '@/@layouts/components/VerticalNavSectionTitle.vue'
-import VerticalNavGroup from '@layouts/components/VerticalNavGroup.vue'
 import VerticalNavLink from '@layouts/components/VerticalNavLink.vue'
 </script>
 
@@ -36,8 +34,17 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue'
   <VerticalNavLink
     :item="{
       title: 'Batal Ranap',
-      icon: 'ri-close-circle-line',
+      icon: 'ri-list-check-3',
       to: '/batal-ranap',
+    }"
+  />
+
+  <!-- 👉 View Data Input -->
+  <VerticalNavLink
+    :item="{
+      title: 'View Data Input',
+      icon: 'ri-contacts-book-2-line',
+      to: '/view-data-input',
     }"
   />
 
@@ -45,17 +52,8 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue'
   <VerticalNavLink
     :item="{
       title: 'Up Selling',
-      icon: 'ri-arrow-up-circle-line',
+      icon: 'ri-shopping-bag-3-line',
       to: '/up-selling',
-    }"
-  />
-
-  <!-- 👉 Report Data Input -->
-  <VerticalNavLink
-    :item="{
-      title: 'Report Data Input',
-      icon: 'ri-file-chart-line',
-      to: '/report-data-input',
     }"
   />
 </template>

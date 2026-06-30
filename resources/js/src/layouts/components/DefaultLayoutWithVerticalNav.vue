@@ -1,20 +1,24 @@
 <script setup>
 import NavItems from '@/layouts/components/NavItems.vue'
-import logo from '@images/logo.svg?raw'
 import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
-
-// Components
-import Footer from '@/layouts/components/Footer.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
+
+// Current date for navbar display
+const today = new Date().toLocaleDateString('id-ID', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
 </script>
 
 <template>
   <VerticalNavLayout>
-    <!-- 👉 navbar -->
+    <!-- 👉 Navbar -->
     <template #navbar="{ toggleVerticalOverlayNavActive }">
-      <div class="d-flex h-100 align-center">
-        <!-- 👉 Vertical nav toggle in overlay mode -->
+      <div class="d-flex h-100 align-center w-100">
+        <!-- Mobile menu toggle -->
         <IconBtn
           class="ms-n3 d-lg-none"
           @click="toggleVerticalOverlayNavActive(true)"
@@ -22,57 +26,45 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
           <VIcon icon="ri-menu-line" />
         </IconBtn>
 
-        <!-- 👉 Search -->
-        <div
-          class="d-flex align-center cursor-pointer"
-          style="user-select: none;"
-        >
-          <!-- 👉 Search Trigger button -->
-          <IconBtn>
-            <VIcon icon="ri-search-line" />
-          </IconBtn>
-
-          <span class="d-none d-md-flex align-center text-disabled">
-            <span class="me-3">Search</span>
-            <span class="meta-key">&#8984;K</span>
-          </span>
+        <!-- Page date info -->
+        <div class="d-none d-md-flex align-center gap-2">
+          <VIcon icon="ri-calendar-check-line" size="18" color="primary" />
+          <span class="text-body-2 text-medium-emphasis">{{ today }}</span>
         </div>
 
         <VSpacer />
 
-        <IconBtn
-          href="https://github.com/themeselection/materio-vuetify-vuejs-admin-template-free"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <VIcon icon="ri-github-fill" />
+        <!-- Notification -->
+        <IconBtn class="me-1">
+          <VIcon icon="ri-notification-3-line" />
+          <VBadge
+            color="error"
+            content="3"
+            floating
+          />
         </IconBtn>
 
-        <IconBtn>
-          <VIcon icon="ri-notification-line" />
-        </IconBtn>
-
+        <!-- Theme switcher -->
         <NavbarThemeSwitcher class="me-2" />
 
+        <!-- User profile -->
         <UserProfile />
       </div>
     </template>
 
+    <!-- 👉 Vertical nav header -->
     <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
       <RouterLink
         to="/"
         class="app-logo app-title-wrapper"
       >
-        <!-- eslint-disable vue/no-v-html -->
-        <div
-          class="d-flex"
-          v-html="logo"
-        />
-        <!-- eslint-enable -->
-
-        <h1 class="font-weight-medium leading-normal text-xl text-uppercase">
-          QC ADMISSION
-        </h1>
+        <div class="app-logo-icon d-flex align-center justify-center rounded-lg">
+          <VIcon icon="ri-shield-check-fill" size="22" color="white" />
+        </div>
+        <div class="ms-2">
+          <h1 class="app-logo-title">QC ADMISSION</h1>
+          <p class="app-logo-subtitle mb-0">Quality Control</p>
+        </div>
       </RouterLink>
 
       <IconBtn
@@ -83,40 +75,43 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
       </IconBtn>
     </template>
 
+    <!-- 👉 Nav items -->
     <template #vertical-nav-content>
       <NavItems />
     </template>
 
-    <!-- 👉 Pages -->
+    <!-- 👉 Page content -->
     <slot />
-
-    <!-- 👉 Footer -->
-    <template #footer>
-      <Footer />
-    </template>
   </VerticalNavLayout>
 </template>
 
 <style lang="scss" scoped>
-.meta-key {
-  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 6px;
-  block-size: 1.5625rem;
-  line-height: 1.3125rem;
-  padding-block: 0.125rem;
-  padding-inline: 0.25rem;
-}
-
 .app-logo {
   display: flex;
   align-items: center;
-  column-gap: 0.75rem;
+  text-decoration: none;
+  column-gap: 0.5rem;
+}
 
-  .app-logo-title {
-    font-size: 1.25rem;
-    font-weight: 500;
-    line-height: 1.75rem;
-    text-transform: uppercase;
-  }
+.app-logo-icon {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)), rgba(var(--v-theme-primary), 0.7));
+  inline-size: 34px;
+  block-size: 34px;
+  flex-shrink: 0;
+}
+
+.app-logo-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.app-logo-subtitle {
+  font-size: 0.6875rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  line-height: 1.2;
 }
 </style>
