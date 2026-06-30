@@ -53,11 +53,31 @@ const noRegOptions = ref([
 ])
 
 const noteOptions = [
-  'Sudah menjelaskan kelas',
-  'Pasien mengerti',
-  'Keluarga hadir',
-  'Dirujuk',
-  'Menunggu kamar',
+  'Kelas 1 Bedah Laki-laki',
+  'Kelas 2 Bedah Laki-laki',
+  'Kelas 3 Bedah Laki-laki',
+  'Kelas 1 Bedah Perempuan',
+  'Kelas 2 Bedah Perempuan',
+  'Kelas 3 Bedah Perempuan',
+  'Kelas 1 Internis Laki-laki',
+  'Kelas 2 Internis Laki-laki',
+  'Kelas 3 Internis Laki-laki',
+  'Kelas 1 Internis Perempuan',
+  'Kelas 2 Internis Perempuan',
+  'Kelas 3 Internis Perempuan',
+  'Kelas 1 Onkologi Laki-laki',
+  'Kelas 2 Onkologi Laki-laki',
+  'Kelas 3 Onkologi Laki-laki',
+  'Kelas 1 Onkologi Perempuan',
+  'Kelas 2 Onkologi Perempuan',
+  'Kelas 3 Onkologi Perempuan',
+  'Kelas 1 Kebidanan',
+  'Kelas 2 Kebidanan',
+  'Kelas 3 Kebidanan',
+  'Kelas 1 Anak',
+  'Kelas 2 Anak',
+  'Kelas 3 Anak',
+  'Kelas VIP',
 ]
 
 const petugasOptions = [
@@ -233,7 +253,6 @@ function close() {
               label="No. Registrasi *"
               variant="outlined"
               density="compact"
-              placeholder="Pilih atau ketik NoReg..."
               prepend-inner-icon="ri-search-line"
               clearable
             />
@@ -295,7 +314,6 @@ function close() {
               variant="outlined"
               density="compact"
               prepend-inner-icon="ri-hospital-line"
-              placeholder="contoh: Ruang Mawar, ICU..."
             />
           </div>
 
@@ -365,10 +383,6 @@ function close() {
                 <VIcon icon="ri-book-open-line" class="me-1" size="16" />
                 Edukasi Lanjutan
               </VBtn>
-              <VBtn value="Masuk" class="flex-grow-1" variant="outlined">
-                <VIcon icon="ri-hospital-line" class="me-1" size="16" />
-                Masuk
-              </VBtn>
             </VBtnToggle>
           </div>
 
@@ -382,7 +396,6 @@ function close() {
               variant="outlined"
               density="compact"
               prepend-inner-icon="ri-group-line"
-              placeholder="Nama penanggungjawab..."
             />
           </div>
 
