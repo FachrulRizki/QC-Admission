@@ -1,41 +1,15 @@
-// ─── QC Admission Global Style Overrides ───────────────────────────────────
+// ─── QC Admission Global Style Overrides ────────────────────────────────────
 
-// 1. Kill the dark overlay / shadow that appears between route changes.
-//    The layout's "overlay" scrim is only for mobile nav — not page transitions.
 .layout-overlay,
-.v-overlay__scrim {
-  transition: none !important;
-}
+.v-overlay__scrim { transition: none !important; }
+.layout-page-content, .layout-wrapper { box-shadow: none !important; }
 
-// Fix RouterView wrapper — no implicit shadow or background leak
-.layout-page-content,
-.layout-wrapper {
-  box-shadow: none !important;
-}
+.page-transition-enter-active, .page-transition-leave-active { transition: opacity 0.18s ease; }
+.page-transition-enter-from, .page-transition-leave-to { opacity: 0; }
 
-// 2. Smooth page transition (fade only, no slide-in artifacts)
-.page-transition-enter-active,
-.page-transition-leave-active {
-  transition: opacity 0.18s ease;
-}
-.page-transition-enter-from,
-.page-transition-leave-to {
-  opacity: 0;
-}
+.v-card:not(.v-card--elevated) { box-shadow: none !important; }
+.v-chip.v-chip--variant-tonal .v-chip__content { font-weight: 600; }
 
-// 3. Global card: no heavy elevation by default
-.v-card:not(.v-card--elevated) {
-  box-shadow: none !important;
-}
-
-// 4. Chip text contrast fix — ensure text is always readable
-.v-chip.v-chip--variant-tonal {
-  .v-chip__content {
-    font-weight: 600;
-  }
-}
-
-// 5. VDataTable header — more readable
 .v-data-table .v-data-table__thead th {
   font-weight: 700 !important;
   font-size: 0.75rem !important;
@@ -44,57 +18,131 @@
   white-space: nowrap;
 }
 
-// 6. Remove default v-navigation-drawer shadow when used inside a page
-.v-navigation-drawer--temporary .v-navigation-drawer__scrim {
-  background: rgba(var(--v-theme-overlay-scrim-background), var(--v-overlay-scrim-opacity)) !important;
-}
-
-// 7. Form field labels — readable in both light + dark
 .qc-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.8125rem; font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.85);
-  margin-bottom: 4px;
-  display: block;
+  margin-bottom: 4px; display: block;
 }
+.qc-label-required::after { content: " *"; color: rgb(var(--v-theme-error)); }
 
-.qc-label-required::after {
-  content: " *";
-  color: rgb(var(--v-theme-error));
-}
+.page-title    { font-size: 1.25rem; font-weight: 700; line-height: 1.3; color: rgb(var(--v-theme-on-surface)); }
+.page-subtitle { font-size: 0.875rem; color: rgba(var(--v-theme-on-surface), 0.6); }
 
-// 8. Status chip contrast helpers
-.chip-edukasi      { background-color: rgba(86, 202, 0, 0.15) !important; color: #3d8f00 !important; }
-.chip-edukasi-lanjutan { background-color: rgba(255, 180, 0, 0.15) !important; color: #b37d00 !important; }
-.chip-masuk        { background-color: rgba(22, 177, 255, 0.15) !important; color: #0078b3 !important; }
-.chip-batal        { background-color: rgba(255, 76, 81, 0.15) !important; color: #c4282d !important; }
+.v-card.qc-card { border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important; border-radius: 12px !important; }
 
-// 9. Page section title helper
-.page-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1.3;
-  color: rgb(var(--v-theme-on-surface));
-}
-.page-subtitle {
-  font-size: 0.875rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-// 10. VCard border — subtle but visible
-.v-card.qc-card {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
-  border-radius: 12px !important;
-}
-
-// 11. Signature canvas
 .signature-canvas-wrapper {
   border: 2px dashed rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 8px;
-  background: rgba(var(--v-theme-surface), 1);
-  cursor: crosshair;
+  border-radius: 8px; background: rgba(var(--v-theme-surface), 1);
+  cursor: crosshair; overflow: hidden;
+}
+.signature-canvas-wrapper:focus-within { border-color: rgb(var(--v-theme-primary)); }
+
+// ─── Hero Banner ─────────────────────────────────────────────────────────────
+.page-hero {
+  position: relative;
   overflow: hidden;
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgba(var(--v-theme-primary), 0.75) 100%);
+
+  &__content { position: relative; z-index: 2; flex: 1; }
+
+  &__title {
+    font-size: 1.6rem; font-weight: 800;
+    color: #fff; margin-bottom: 4px; line-height: 1.2;
+  }
+
+  &__subtitle {
+    font-size: 0.875rem;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 0;
+  }
+
+  &__icon {
+    position: absolute; right: 24px; top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.1; z-index: 1;
+    font-size: 8rem !important;
+    color: #fff;
+    pointer-events: none;
+  }
+
+  &__badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.22); border-radius: 20px;
+    padding: 4px 12px; font-size: 0.72rem; font-weight: 700;
+    color: #fff; margin-bottom: 8px; backdrop-filter: blur(4px);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+
+  // Variants per menu
+  &--dashboard { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); }
+  &--qc        { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+  &--edukasi   { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+  &--batal     { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+  &--upselling { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
+  &--view      { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+  &--kasir     { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
+
+  // Decorative circles
+  &::before {
+    content: '';
+    position: absolute; top: -40px; right: -40px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); z-index: 1;
+    pointer-events: none;
+  }
+  &::after {
+    content: '';
+    position: absolute; bottom: -60px; right: 80px;
+    width: 140px; height: 140px; border-radius: 50%;
+    background: rgba(255,255,255,0.05); z-index: 1;
+    pointer-events: none;
+  }
 }
-.signature-canvas-wrapper:focus-within {
-  border-color: rgb(var(--v-theme-primary));
+
+// ─── Stat Cards ──────────────────────────────────────────────────────────────
+.stat-card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  &:hover {
+    box-shadow: 0 6px 24px rgba(var(--v-shadow-key-umbra-color), 0.12) !important;
+    transform: translateY(-2px);
+  }
 }
+.stat-active         { border-color: rgb(var(--v-theme-primary)) !important; background: rgba(var(--v-theme-primary),0.05) !important; }
+.stat-active-warning { border-color: rgb(var(--v-theme-warning)) !important; background: rgba(var(--v-theme-warning),0.05) !important; }
+.stat-active-success { border-color: rgb(var(--v-theme-success)) !important; background: rgba(var(--v-theme-success),0.05) !important; }
+.stat-active-error   { border-color: rgb(var(--v-theme-error))   !important; background: rgba(var(--v-theme-error),0.05)   !important; }
+
+// ─── Filter Bar ──────────────────────────────────────────────────────────────
+.filter-bar {
+  background: rgba(var(--v-theme-surface), 1);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+// ─── Quick nav cards ─────────────────────────────────────────────────────────
+.quick-card {
+  transition: box-shadow 0.2s, transform 0.15s;
+  &:hover {
+    box-shadow: 0 4px 20px rgba(var(--v-shadow-key-umbra-color), 0.12) !important;
+    transform: translateY(-2px);
+  }
+}
+
+// ─── Durasi chip colors ───────────────────────────────────────────────────────
+.chip-durasi-ok     { background: rgba(86,202,0,0.12) !important;  color: #3d8f00 !important; }
+.chip-durasi-warn   { background: rgba(255,180,0,0.15) !important;  color: #b37d00 !important; }
+.chip-durasi-danger { background: rgba(255,76,81,0.15) !important;  color: #c4282d !important; }
+
+// ─── Status chip aliases ──────────────────────────────────────────────────────
+.chip-edukasi          { background-color: rgba(86,202,0,0.15) !important;   color: #3d8f00 !important; }
+.chip-edukasi-lanjutan { background-color: rgba(255,180,0,0.15) !important;  color: #b37d00 !important; }
+.chip-batal            { background-color: rgba(255,76,81,0.15) !important;  color: #c4282d !important; }

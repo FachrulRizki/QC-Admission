@@ -90,6 +90,17 @@ class EdukasiLanjutanController extends Controller
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }
 
+    /**
+     * Sync status Selesai dari DB RSUS.
+     * Endpoint: GET /api/edukasi-lanjutan/sync-rsus
+     * Dipanggil dari frontend secara periodik (setiap load halaman atau manual refresh).
+     */
+    public function syncRsus(): JsonResponse
+    {
+        $this->service->syncStatusFromRsus();
+        return response()->json(['message' => 'Sync status dari RSUS selesai.']);
+    }
+
     public function destroy(int $id): JsonResponse
     {
         $this->service->delete($id);

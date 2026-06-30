@@ -13,33 +13,51 @@ use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    // ── Master data ─────────────────────────────────────────────────────────
     private array $petugas = [
         'Nurul', 'AYU Putri Anisa', 'Reskim', 'Mulbagus Koyum', 'Abdul Hayyi',
     ];
 
     private array $patients = [
-        ['no_mr' => '813500', 'no_reg' => 'REG001', 'nama' => 'ELLY MAYA, NY',      'jaminan' => 'BPJS'],
-        ['no_mr' => '575360', 'no_reg' => 'REG002', 'nama' => 'IDH SUBINGSEN, NY',  'jaminan' => 'BPJS'],
-        ['no_mr' => '087220', 'no_reg' => 'REG003', 'nama' => 'RUSMINI, NY',        'jaminan' => 'Umum'],
-        ['no_mr' => '816302', 'no_reg' => 'REG004', 'nama' => 'PUSPA SARI, AN',     'jaminan' => 'BPJS'],
-        ['no_mr' => '712405', 'no_reg' => 'REG005', 'nama' => 'BUDI SANTOSO, TN',   'jaminan' => 'Asuransi'],
-        ['no_mr' => '654321', 'no_reg' => 'REG006', 'nama' => 'SRI WAHYUNI, NY',    'jaminan' => 'BPJS'],
-        ['no_mr' => '789012', 'no_reg' => 'REG007', 'nama' => 'AHMAD FAUZI, TN',    'jaminan' => 'Umum'],
-        ['no_mr' => '345678', 'no_reg' => 'REG008', 'nama' => 'DEWI RAHAYU, NY',    'jaminan' => 'BPJS'],
-        ['no_mr' => '901234', 'no_reg' => 'REG009', 'nama' => 'HENDRA WIJAYA, TN',  'jaminan' => 'Asuransi'],
-        ['no_mr' => '567890', 'no_reg' => 'REG010', 'nama' => 'SITI AMINAH, NY',    'jaminan' => 'BPJS'],
+        ['no_mr'=>'813500','no_reg'=>'REG001','nama'=>'ELLY MAYA, NY',      'jaminan'=>'BPJS'],
+        ['no_mr'=>'575360','no_reg'=>'REG002','nama'=>'IDH SUBINGSEN, NY',  'jaminan'=>'BPJS'],
+        ['no_mr'=>'087220','no_reg'=>'REG003','nama'=>'RUSMINI, NY',        'jaminan'=>'Umum'],
+        ['no_mr'=>'816302','no_reg'=>'REG004','nama'=>'PUSPA SARI, AN',     'jaminan'=>'BPJS'],
+        ['no_mr'=>'712405','no_reg'=>'REG005','nama'=>'BUDI SANTOSO, TN',   'jaminan'=>'Asuransi'],
+        ['no_mr'=>'654321','no_reg'=>'REG006','nama'=>'SRI WAHYUNI, NY',    'jaminan'=>'BPJS'],
+        ['no_mr'=>'789012','no_reg'=>'REG007','nama'=>'AHMAD FAUZI, TN',    'jaminan'=>'Umum'],
+        ['no_mr'=>'345678','no_reg'=>'REG008','nama'=>'DEWI RAHAYU, NY',    'jaminan'=>'BPJS'],
+        ['no_mr'=>'901234','no_reg'=>'REG009','nama'=>'HENDRA WIJAYA, TN',  'jaminan'=>'Asuransi'],
+        ['no_mr'=>'567890','no_reg'=>'REG010','nama'=>'SITI AMINAH, NY',    'jaminan'=>'BPJS'],
     ];
 
     public function run(): void
     {
-        // ── Users ──────────────────────────────────────────────────────────
+        // ── 3 Akun utama ──────────────────────────────────────────────────────
+        // 1. admin       — kelola aplikasi, akses semua menu + user management
+        // 2. qc_admission — entry data QC, Edukasi, Batal Ranap, Up Selling
+        // 3. kasir       — view only Batal Ranap
         $users = [
-            ['name' => 'Administrator',  'username' => 'admin',      'email' => 'admin@rsud.local',      'password' => 'Admin@1234',   'role' => 'admin'],
-            ['name' => 'Nurul Hidayah',  'username' => 'nurul',      'email' => 'nurul@rsud.local',      'password' => 'Petugas@1234', 'role' => 'petugas'],
-            ['name' => 'AYU Putri Anisa','username' => 'ayu.putri',  'email' => 'ayu@rsud.local',        'password' => 'Petugas@1234', 'role' => 'petugas'],
-            ['name' => 'Reskim Maulana', 'username' => 'reskim',     'email' => 'reskim@rsud.local',     'password' => 'Petugas@1234', 'role' => 'petugas'],
-            ['name' => 'Supervisor QC',  'username' => 'supervisor', 'email' => 'supervisor@rsud.local', 'password' => 'Super@1234',   'role' => 'supervisor'],
+            [
+                'name'       => 'Administrator',
+                'username'   => 'admin',
+                'email'      => 'admin@rsud.local',
+                'password'   => 'Admin@1234',
+                'role'       => 'admin',
+            ],
+            [
+                'name'       => 'Petugas QC Admission',
+                'username'   => 'qc_admission',
+                'email'      => 'qc@rsud.local',
+                'password'   => 'QcAdm@1234',
+                'role'       => 'qc_admission',
+            ],
+            [
+                'name'       => 'Kasir RSUD',
+                'username'   => 'kasir',
+                'email'      => 'kasir@rsud.local',
+                'password'   => 'Kasir@1234',
+                'role'       => 'kasir',
+            ],
         ];
 
         foreach ($users as $u) {
@@ -55,14 +73,15 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Users seeded (' . count($users) . ' akun)');
+        $this->command->info('✓ Users seeded — 3 akun (admin / qc_admission / kasir)');
 
-        // ── Quality Control ────────────────────────────────────────────────
+        // ── Quality Control ────────────────────────────────────────────────────
         $statuses      = ['Edukasi', 'Edukasi lanjutan', 'Masuk'];
         $statusKets    = ['Belum Dapat Kamar', 'Antri Kamar', 'Sudah Dapat Kamar'];
         $edukasiKamars = ['', 'Ruang Mawar', 'Ruang Anggrek', 'Ruang Dahlia', 'ICU', 'NICU'];
         $notes         = ['Pasien mengerti', 'Keluarga hadir', 'Sudah menjelaskan kelas', 'Dirujuk'];
         $keluargas     = ['Bambang', 'Siti', 'Andi', 'Rini', 'Hendra', 'Dewi'];
+        $pad           = fn($n) => str_pad($n, 2, '0', STR_PAD_LEFT);
 
         $qcRecords = [];
         for ($i = 0; $i < 20; $i++) {
@@ -70,13 +89,11 @@ class DatabaseSeeder extends Seeder
             $petugas   = $this->petugas[$i % count($this->petugas)];
             $status    = $statuses[$i % count($statuses)];
             $createdAt = Carbon::now()->subDays(rand(0, 7))->subHours(rand(0, 8));
-            $pad       = fn($n) => str_pad($n, 2, '0', STR_PAD_LEFT);
 
-            $jam = $pad($createdAt->hour) . '.' . $pad($createdAt->minute) . '.' . $pad($createdAt->second);
-            $tgl = $pad($createdAt->day) . '/' . $pad($createdAt->month) . '/' . $createdAt->year . ', ' . $jam;
-
+            $jam  = $pad($createdAt->hour) . '.' . $pad($createdAt->minute) . '.' . $pad($createdAt->second);
+            $tgl  = $pad($createdAt->day) . '/' . $pad($createdAt->month) . '/' . $createdAt->year . ', ' . $jam;
             $dSec = rand(600, 7200);
-            $durasi = $pad(floor($dSec / 3600)) . ':' . $pad(floor(($dSec % 3600) / 60)) . ':' . $pad($dSec % 60);
+            $dur  = $pad(floor($dSec / 3600)) . ':' . $pad(floor(($dSec % 3600) / 60)) . ':' . $pad($dSec % 60);
 
             $qc = QualityControl::create([
                 'tanggal'             => $tgl,
@@ -89,7 +106,7 @@ class DatabaseSeeder extends Seeder
                 'jaminan'             => $p['jaminan'],
                 'status_ket'          => $statusKets[$i % count($statusKets)],
                 'edukasi_kamar'       => $edukasiKamars[$i % count($edukasiKamars)],
-                'durasi_tunggu'       => $durasi,
+                'durasi_tunggu'       => $dur,
                 'note'                => $notes[$i % count($notes)],
                 'petugas'             => $petugas,
                 'status'              => $status,
@@ -98,20 +115,16 @@ class DatabaseSeeder extends Seeder
                 'created_at'          => $createdAt,
                 'updated_at'          => $createdAt,
             ]);
-
             $qcRecords[] = $qc;
         }
+        $this->command->info('✓ Quality Control seeded (20 record)');
 
-        $this->command->info('✓ Quality Control seeded (' . count($qcRecords) . ' record)');
-
-        // ── Edukasi Lanjutan — otomatis dari QC "Edukasi lanjutan" ─────────
+        // ── Edukasi Lanjutan ───────────────────────────────────────────────────
         $bulanMap = [
             1=>'JANUARI',2=>'FEBRUARI',3=>'MARET',4=>'APRIL',5=>'MEI',6=>'JUNI',
             7=>'JULI',8=>'AGUSTUS',9=>'SEPTEMBER',10=>'OKTOBER',11=>'NOVEMBER',12=>'DESEMBER',
         ];
-        $pad = fn($n) => str_pad($n, 2, '0', STR_PAD_LEFT);
         $eduCount = 0;
-
         foreach ($qcRecords as $qc) {
             if ($qc->status === 'Edukasi lanjutan') {
                 $t = Carbon::parse($qc->created_at)->addHours(2);
@@ -135,11 +148,10 @@ class DatabaseSeeder extends Seeder
                 $eduCount++;
             }
         }
-
         $this->command->info("✓ Edukasi Lanjutan seeded ($eduCount record)");
 
-        // ── Batal Ranap ────────────────────────────────────────────────────
-        $keterangans = ['Kamar Penuh','Pasien Menolak','DPJP Tidak Setuju','Keluarga Menolak','Kondisi Membaik'];
+        // ── Batal Ranap ────────────────────────────────────────────────────────
+        $keterangans = ['Kamar Penuh','Pasien Menolak','DPJP Tidak Setuju','Keluarga Menolak','Kondisi Membaik','APS Alih RS Lain','Batal Rawat'];
         $statusOks   = ['OK','Pending','Ditolak'];
         $ruangans    = ['Ruang Mawar','Ruang Anggrek','ICU','NICU','Ruang Dahlia'];
 
@@ -147,9 +159,8 @@ class DatabaseSeeder extends Seeder
             $p         = $this->patients[$i % count($this->patients)];
             $petugas   = $this->petugas[$i % count($this->petugas)];
             $createdAt = Carbon::now()->subDays(rand(0, 5))->subHours(rand(0, 6));
-            $pad2      = fn($n) => str_pad($n, 2, '0', STR_PAD_LEFT);
-            $jam       = $pad2($createdAt->hour) . '.' . $pad2($createdAt->minute) . '.' . $pad2($createdAt->second);
-            $tgl       = $pad2($createdAt->day) . '/' . $pad2($createdAt->month) . '/' . $createdAt->year . ', ' . $jam;
+            $jam       = $pad($createdAt->hour) . '.' . $pad($createdAt->minute) . '.' . $pad($createdAt->second);
+            $tgl       = $pad($createdAt->day) . '/' . $pad($createdAt->month) . '/' . $createdAt->year . ', ' . $jam;
 
             BatalRanap::create([
                 'tanggal'            => $tgl,
@@ -167,10 +178,9 @@ class DatabaseSeeder extends Seeder
                 'updated_at'         => $createdAt,
             ]);
         }
-
         $this->command->info('✓ Batal Ranap seeded (10 record)');
 
-        // ── Up Selling ─────────────────────────────────────────────────────
+        // ── Up Selling ─────────────────────────────────────────────────────────
         $kelasList  = ['VIP','Kelas 1','Kelas 2','Kelas 3'];
         $alasanList = ['Budget terbatas','Tidak ada kamar kelas lebih tinggi','Keinginan keluarga','Rekomendasi dokter'];
         $upStatus   = ['Berhasil','Tidak Berhasil','Pending'];
@@ -179,9 +189,8 @@ class DatabaseSeeder extends Seeder
             $p         = $this->patients[$i % count($this->patients)];
             $petugas   = $this->petugas[$i % count($this->petugas)];
             $createdAt = Carbon::now()->subDays(rand(0, 7))->subHours(rand(0, 5));
-            $pad3      = fn($n) => str_pad($n, 2, '0', STR_PAD_LEFT);
-            $jam       = $pad3($createdAt->hour) . '.' . $pad3($createdAt->minute) . '.' . $pad3($createdAt->second);
-            $tgl       = $pad3($createdAt->day) . '/' . $pad3($createdAt->month) . '/' . $createdAt->year . ', ' . $jam;
+            $jam       = $pad($createdAt->hour) . '.' . $pad($createdAt->minute) . '.' . $pad($createdAt->second);
+            $tgl       = $pad($createdAt->day) . '/' . $pad($createdAt->month) . '/' . $createdAt->year . ', ' . $jam;
 
             UpSelling::create([
                 'tanggal'           => $tgl,
@@ -199,14 +208,14 @@ class DatabaseSeeder extends Seeder
                 'updated_at'        => $createdAt,
             ]);
         }
-
         $this->command->info('✓ Up Selling seeded (10 record)');
+
         $this->command->info('');
-        $this->command->info('═══════════════════════════════════════');
+        $this->command->info('═══════════════════════════════════════════════');
         $this->command->info('  Akun Login:');
-        $this->command->info('  admin      / Admin@1234');
-        $this->command->info('  nurul      / Petugas@1234');
-        $this->command->info('  supervisor / Super@1234');
-        $this->command->info('═══════════════════════════════════════');
+        $this->command->info('  admin        / Admin@1234   (kelola aplikasi)');
+        $this->command->info('  qc_admission / QcAdm@1234   (entry data QC)');
+        $this->command->info('  kasir        / Kasir@1234   (view batal ranap)');
+        $this->command->info('═══════════════════════════════════════════════');
     }
 }

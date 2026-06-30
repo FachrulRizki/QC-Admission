@@ -1,7 +1,7 @@
 export const routes = [
   { path: '/', redirect: '/dashboard' },
 
-  // ── Authenticated layout (vertical nav) ───────────────────────────────────
+  // ── Authenticated layout ───────────────────────────────────────────────────
   {
     path: '/',
     component: () => import('@/layouts/default.vue'),
@@ -9,53 +9,54 @@ export const routes = [
       {
         path: 'dashboard',
         component: () => import('@/pages/dashboard.vue'),
+        meta: { roles: ['admin', 'qc_admission'] },
       },
-
-      // Quality Control
       {
         path: 'quality-control',
         component: () => import('@/pages/qc_admission/quality-control.vue'),
+        meta: { roles: ['admin', 'qc_admission'] },
       },
-
-      // Edukasi Lanjutan
       {
         path: 'edukasi-lanjutan',
         component: () => import('@/pages/qc_admission/edukasi-lanjutan.vue'),
+        meta: { roles: ['admin', 'qc_admission'] },
       },
-
-      // Batal Ranap (with internal sub-navigation)
       {
         path: 'batal-ranap',
         component: () => import('@/pages/qc_admission/batal-ranap.vue'),
+        meta: { roles: ['admin', 'qc_admission'] },
       },
-
-      // View Data Input
-      {
-        path: 'view-data-input',
-        component: () => import('@/pages/qc_admission/view-data-input.vue'),
-      },
-
-      // Up Selling
       {
         path: 'up-selling',
         component: () => import('@/pages/qc_admission/up-selling.vue'),
+        meta: { roles: ['admin', 'qc_admission'] },
+      },
+      {
+        path: 'view-data-input',
+        component: () => import('@/pages/qc_admission/view-data-input.vue'),
+        meta: { roles: ['admin', 'qc_admission'] },
+      },
+      {
+        path: 'activity-log',
+        component: () => import('@/pages/qc_admission/activity-log.vue'),
+        meta: { roles: ['admin'] },
+      },
+      // Kasir — view only batal ranap
+      {
+        path: 'batal-ranap-view',
+        component: () => import('@/pages/qc_admission/batal-ranap-view.vue'),
+        meta: { roles: ['admin', 'qc_admission', 'kasir'] },
       },
     ],
   },
 
-  // ── Blank layout (auth pages) ─────────────────────────────────────────────
+  // ── Blank layout ──────────────────────────────────────────────────────────
   {
     path: '/',
     component: () => import('@/layouts/blank.vue'),
     children: [
-      {
-        path: 'login',
-        component: () => import('@/pages/login.vue'),
-      },
-      {
-        path: '/:pathMatch(.*)*',
-        component: () => import('@/pages/[...error].vue'),
-      },
+      { path: 'login', component: () => import('@/pages/login.vue') },
+      { path: '/:pathMatch(.*)*', component: () => import('@/pages/[...error].vue') },
     ],
   },
 ]

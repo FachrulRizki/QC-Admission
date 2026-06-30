@@ -114,6 +114,28 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | DB RSUS — SQL Server (Pasien / Registrasi)
+        |----------------------------------------------------------------------
+        | Koneksi ke database RSUS untuk query data pasien rawat inap.
+        | Aktif ketika APP_MODE=hospital (jaringan RS).
+        | Fallback: data pasien dari mock / API eksternal ketika APP_MODE=local.
+        */
+        'rsus' => [
+            'driver'                  => 'sqlsrv',
+            'host'                    => env('RSUS_DB_HOST', '127.0.0.1'),
+            'port'                    => env('RSUS_DB_PORT', '1433'),
+            'database'                => env('RSUS_DB_DATABASE', 'RSUS'),
+            'username'                => env('RSUS_DB_USERNAME', 'sa'),
+            'password'                => env('RSUS_DB_PASSWORD', ''),
+            'charset'                 => 'utf8',
+            'prefix'                  => '',
+            'prefix_indexes'          => true,
+            'encrypt'                 => env('RSUS_DB_ENCRYPT', 'false'),
+            'trust_server_certificate'=> env('RSUS_DB_TRUST_SERVER_CERTIFICATE', 'true'),
+        ],
+
     ],
 
     /*

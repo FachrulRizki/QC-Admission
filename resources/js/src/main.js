@@ -7,17 +7,18 @@ import { setupAxiosInterceptors, useAuthStore } from '@/stores/useAuthStore'
 import '@core/scss/template/index.scss'
 import '@layouts/styles/index.scss'
 
-// Konfigurasi axios sebelum apapun
+// 1. Setup axios (Bearer token, 401 interceptor)
 setupAxiosInterceptors()
 
 const app = createApp(App)
 
-// Register plugins (Vuetify, Pinia, Router)
+// 2. Register plugins (Vuetify, Pinia, Router)
 registerPlugins(app)
 
-// Restore session dari localStorage sebelum mount
-// sehingga router guard dan UserProfile sudah punya data user
+// 3. Restore session dari localStorage — SINKRON, tidak blocking
+//    Menu langsung tampil, fetchMe jalan di background
 const authStore = useAuthStore()
-authStore.restoreSession().finally(() => {
-  app.mount('#app')
-})
+authStore.restoreSession()   // tidak perlu .finally — tidak blocking mount
+
+// 4. Mount langsung — tidak menunggu server
+app.mount('#app')

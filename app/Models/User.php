@@ -35,16 +35,36 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is admin or supervisor.
+     * Roles yang tersedia:
+     *  admin        — kelola aplikasi, akses semua menu
+     *  qc_admission — entry QC, Edukasi Lanjutan, Up Selling, Batal Ranap
+     *  kasir        — view only Batal Ranap (View Data Input)
      */
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['admin', 'supervisor']);
+        return $this->role === 'admin';
     }
 
-    /**
-     * Check if user logged in via SSO.
-     */
+    public function isQcAdmission(): bool
+    {
+        return $this->role === 'qc_admission';
+    }
+
+    public function isKasir(): bool
+    {
+        return $this->role === 'kasir';
+    }
+
+    public function canAccessMenu(string $menu): bool
+    {
+        return match ($this->role) {
+            'admin'        => true,
+            'qc_admission' => in_array($menu, ['dashboard', 'quality-control', 'edukasi-lanjutan', 'batal-ranap', 'up-selling', 'view-data-input']),
+            'kasir'        => in_array($menu, ['batal-ranap-view']),
+            default        => false,
+        };
+    }
+
     public function isSsoUser(): bool
     {
         return $this->login_type === 'sso';

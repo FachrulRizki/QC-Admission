@@ -5,131 +5,244 @@ import QCDataTable  from '@/views/qc-admission/quality-control/QCDataTable.vue'
 
 const store = useQualityControlStore()
 
-// ── state ──────────────────────────────────────────────────────────────────────
 const showDialog        = ref(false)
 const editItem          = ref(null)
 const showDeleteConfirm = ref(false)
 const deleteTarget      = ref(null)
+const loading           = ref(false)
+const lastRefresh       = ref(null)
 
-// ── mock data ──────────────────────────────────────────────────────────────────
-const mockRecords = ref([
-  {
-    id: 1, tanggal: '29/06/2026, 19.41.58', jam_input: '19.41.58',
-    no_mr: '813500', no_reg: 'REG001', nama_pasien: 'ELLY MAYA, NY',
-    jaminan: 'BPJS', status_ket: 'Belum Dapat Kamar', edukasi_kamar: '',
-    durasi_tunggu: '10:17:19', note: 'Pasien mengerti', petugas: 'Nurul',
-    status: 'Edukasi', keluarga_pasien: 'Bambang', ttd_keluarga_pasien: '',
-  },
-  {
-    id: 2, tanggal: '29/06/2026, 18.05.22', jam_input: '18.05.22',
-    no_mr: '575360', no_reg: 'REG002', nama_pasien: 'IDH SUBINGSEN, NY',
-    jaminan: 'BPJS', status_ket: 'Antri Kamar', edukasi_kamar: 'Ruang Mawar',
-    durasi_tunggu: '01:32:10', note: 'Keluarga hadir', petugas: 'Reskim',
-    status: 'Edukasi lanjutan', keluarga_pasien: 'Siti', ttd_keluarga_pasien: '',
-  },
-  {
-    id: 3, tanggal: '29/06/2026, 17.44.00', jam_input: '17.44.00',
-    no_mr: '087220', no_reg: 'REG003', nama_pasien: 'RUSMINI, NY',
-    jaminan: 'Umum', status_ket: 'Sudah Dapat Kamar', edukasi_kamar: 'Ruang Anggrek',
-    durasi_tunggu: '00:48:22', note: 'Dirujuk', petugas: 'Nurul',
-    status: 'Masuk', keluarga_pasien: 'Andi', ttd_keluarga_pasien: '',
-  },
-  {
-    id: 4, tanggal: '28/06/2026, 14.10.00', jam_input: '14.10.00',
-    no_mr: '816302', no_reg: 'REG004', nama_pasien: 'PUSPA SARI, AN',
-    jaminan: 'BPJS', status_ket: 'Antri Kamar', edukasi_kamar: 'ICU',
-    durasi_tunggu: '03:20:10', note: 'Keluarga hadir', petugas: 'AYU Putri Anisa',
-    status: 'Edukasi lanjutan', keluarga_pasien: 'Rini', ttd_keluarga_pasien: '',
-  },
+// ── Filters ────────────────────────────────────────────────────────────────────
+// Status: hanya Edukasi dan Edukasi Lanjutan
+const STATUS_OPTIONS = [
+  { title: 'Semua Status',      value: null },
+  { title: 'Edukasi',           value: 'Edukasi' },
+  { title: 'Edukasi Lanjutan',  value: 'Edukasi lanjutan' },
+]
+const filterStatus   = ref(null)
+const filterSearch   = ref('')
+const filterDateFrom = ref('')
+const filterDateTo   = ref('')
+const filterPetugas  = ref('')
+
+// ── Mock data ──────────────────────────────────────────────────────────────────
+const records = ref([
+  { id:1, tanggal:'29/06/2026, 19.41.58', no_mr:'813500', no_reg:'REG001', nama_pasien:'ELLY MAYA, NY',     jaminan:'BPJS',     durasi_tunggu:'01:17:19', status:'Edukasi',         petugas:'Nurul',           edukasi_kamar:'',            note:'Pasien mengerti', keluarga_pasien:'Bambang' },
+  { id:2, tanggal:'29/06/2026, 18.05.22', no_mr:'575360', no_reg:'REG002', nama_pasien:'IDH SUBINGSEN, NY', jaminan:'BPJS',     durasi_tunggu:'02:32:10', status:'Edukasi lanjutan',petugas:'Reskim',          edukasi_kamar:'Ruang Mawar', note:'Keluarga hadir',  keluarga_pasien:'Siti' },
+  { id:3, tanggal:'28/06/2026, 14.10.00', no_mr:'816302', no_reg:'REG004', nama_pasien:'PUSPA SARI, AN',    jaminan:'BPJS',     durasi_tunggu:'03:20:10', status:'Edukasi lanjutan',petugas:'AYU Putri Anisa', edukasi_kamar:'ICU',         note:'',                keluarga_pasien:'Rini' },
+  { id:4, tanggal:'28/06/2026, 09.00.00', no_mr:'712405', no_reg:'REG005', nama_pasien:'BUDI SANTOSO, TN',  jaminan:'Asuransi', durasi_tunggu:'01:05:00', status:'Edukasi',         petugas:'Mulbagus Koyum',  edukasi_kamar:'',            note:'',                keluarga_pasien:'' },
+  { id:5, tanggal:'27/06/2026, 16.30.00', no_mr:'654321', no_reg:'REG006', nama_pasien:'SRI WAHYUNI, NY',   jaminan:'BPJS',     durasi_tunggu:'00:45:00', status:'Edukasi',         petugas:'Abdul Hayyi',     edukasi_kamar:'',            note:'',                keluarga_pasien:'' },
 ])
 
-// ── stats ──────────────────────────────────────────────────────────────────────
+// ── Computed ───────────────────────────────────────────────────────────────────
+const filtered = computed(() => {
+  let data = records.value
+  if (filterStatus.value)        data = data.filter(r => r.status === filterStatus.value)
+  if (filterPetugas.value.trim()) data = data.filter(r => r.petugas?.toLowerCase().includes(filterPetugas.value.toLowerCase()))
+  if (filterSearch.value.trim()) {
+    const q = filterSearch.value.toLowerCase()
+    data = data.filter(r =>
+      r.no_reg?.toLowerCase().includes(q) ||
+      r.no_mr?.toLowerCase().includes(q) ||
+      r.nama_pasien?.toLowerCase().includes(q)
+    )
+  }
+  if (filterDateFrom.value) data = data.filter(r => r.tanggal >= filterDateFrom.value)
+  if (filterDateTo.value)   data = data.filter(r => r.tanggal <= filterDateTo.value)
+  return data
+})
+
 const stats = computed(() => ({
-  total:           mockRecords.value.length,
-  edukasi:         mockRecords.value.filter(r => r.status === 'Edukasi').length,
-  edukasiLanjutan: mockRecords.value.filter(r => r.status === 'Edukasi lanjutan').length,
-  masuk:           mockRecords.value.filter(r => r.status === 'Masuk').length,
+  total:           records.value.length,
+  edukasi:         records.value.filter(r => r.status === 'Edukasi').length,
+  edukasiLanjutan: records.value.filter(r => r.status === 'Edukasi lanjutan').length,
+  lanjutanPct: records.value.length
+    ? Math.round((records.value.filter(r => r.status === 'Edukasi lanjutan').length / records.value.length) * 100)
+    : 0,
 }))
 
-const statCards = computed(() => [
-  { label: 'Total Hari Ini', value: stats.value.total,           color: 'primary', icon: 'ri-shield-check-line' },
-  { label: 'Edukasi',        value: stats.value.edukasi,         color: 'success', icon: 'ri-book-2-line' },
-  { label: 'Edukasi Lanjutan', value: stats.value.edukasiLanjutan, color: 'warning', icon: 'ri-book-open-line' },
-  { label: 'Masuk',          value: stats.value.masuk,           color: 'info',    icon: 'ri-hospital-line' },
-])
-
-// ── handlers ──────────────────────────────────────────────────────────────────
-function openAdd()         { editItem.value = null;        showDialog.value = true }
-function openEdit(item)    { editItem.value = { ...item }; showDialog.value = true }
-function openDelete(item)  { deleteTarget.value = item;    showDeleteConfirm.value = true }
+// ── Handlers ──────────────────────────────────────────────────────────────────
+function openAdd()        { editItem.value = null;        showDialog.value = true }
+function openEdit(item)   { editItem.value = { ...item }; showDialog.value = true }
+function openDelete(item) { deleteTarget.value = item;    showDeleteConfirm.value = true }
 
 function confirmDelete() {
-  mockRecords.value = mockRecords.value.filter(r => r.id !== deleteTarget.value.id)
+  records.value = records.value.filter(r => r.id !== deleteTarget.value.id)
   showDeleteConfirm.value = false
   deleteTarget.value = null
 }
 
 function onSaved(data) {
   if (editItem.value) {
-    const idx = mockRecords.value.findIndex(r => r.id === editItem.value.id)
-    if (idx !== -1) mockRecords.value.splice(idx, 1, { ...editItem.value, ...data })
+    const idx = records.value.findIndex(r => r.id === editItem.value.id)
+    if (idx !== -1) records.value.splice(idx, 1, { ...editItem.value, ...data })
   } else {
-    mockRecords.value.unshift({ id: Date.now(), ...data })
+    records.value.unshift({ id: Date.now(), ...data })
   }
   showDialog.value = false
 }
 
-onMounted(() => { /* store.fetchRecords() */ })
+function resetFilters() {
+  filterStatus.value = null
+  filterSearch.value = ''
+  filterDateFrom.value = ''
+  filterDateTo.value = ''
+  filterPetugas.value = ''
+}
+
+async function doRefresh() {
+  loading.value = true
+  await new Promise(r => setTimeout(r, 500))
+  lastRefresh.value = new Date()
+  loading.value = false
+}
+
+onMounted(() => doRefresh())
 </script>
 
 <template>
   <div>
-    <!-- ── Page header ──────────────────────────────────────────────────────── -->
-    <div class="d-flex align-center justify-space-between flex-wrap gap-3 mb-5">
-      <div>
-        <h4 class="page-title">Quality Control</h4>
-        <p class="text-body-2 text-medium-emphasis mb-0">Manajemen data quality control admisi rawat inap</p>
+    <!-- Hero -->
+    <div class="page-hero page-hero--qc mb-5">
+      <div class="page-hero__content">
+        <div class="page-hero__badge">
+          <VIcon icon="ri-shield-check-line" size="13" />
+          Hiro · Quality Control
+        </div>
+        <h1 class="page-hero__title">Quality Control Admisi</h1>
+        <p class="page-hero__subtitle">Monitoring dan pencatatan data QC rawat inap · Durasi &ge; 2 jam → auto Edukasi Lanjutan</p>
       </div>
-      <VBtn color="primary" rounded="lg" prepend-icon="ri-add-line" @click="openAdd">
-        Input QC
-      </VBtn>
+      <div class="d-flex gap-2 align-center" style="position:relative;z-index:2">
+        <VBtn icon variant="text" color="white" size="small" :loading="loading" title="Refresh" @click="doRefresh">
+          <VIcon icon="ri-refresh-line" />
+        </VBtn>
+        <VBtn color="white" variant="elevated" rounded="lg" prepend-icon="ri-add-line" style="color:#667eea" @click="openAdd">
+          Input QC
+        </VBtn>
+      </div>
+      <VIcon icon="ri-shield-check-line" class="page-hero__icon" />
     </div>
 
-    <!-- ── Stat cards ──────────────────────────────────────────────────────── -->
-    <VRow dense class="mb-5">
-      <VCol v-for="card in statCards" :key="card.label" cols="6" sm="3">
-        <VCard elevation="0" border rounded="lg" class="stat-card pa-4">
-          <div class="d-flex align-center gap-3">
-            <VAvatar :color="card.color" variant="tonal" size="44" rounded="lg">
-              <VIcon :icon="card.icon" size="22" />
-            </VAvatar>
+    <!-- Info auto-trigger -->
+    <VAlert type="info" variant="tonal" border="start" density="compact" class="mb-4" closable>
+      <div class="text-caption">
+        <strong>Auto Edukasi Lanjutan:</strong>
+        Jika status <strong>"Edukasi Lanjutan"</strong> dan durasi tunggu mencapai <strong>≥ 2 jam</strong>,
+        data otomatis masuk ke menu Edukasi Lanjutan. Status hanya: <strong>Edukasi</strong> atau <strong>Edukasi Lanjutan</strong>.
+      </div>
+    </VAlert>
+
+    <!-- Stats — clickable filter -->
+    <VRow dense class="mb-4">
+      <VCol cols="6" sm="4">
+        <VCard
+          elevation="0" border rounded="lg"
+          class="stat-card text-center pa-4 cursor-pointer"
+          :class="filterStatus === null ? 'stat-active' : ''"
+          @click="filterStatus = null"
+        >
+          <p class="text-h4 font-weight-bold text-primary mb-0">{{ stats.total }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Total QC</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="4">
+        <VCard
+          elevation="0" border rounded="lg"
+          class="stat-card text-center pa-4 cursor-pointer"
+          :class="filterStatus === 'Edukasi' ? 'stat-active-success' : ''"
+          @click="filterStatus = filterStatus === 'Edukasi' ? null : 'Edukasi'"
+        >
+          <p class="text-h4 font-weight-bold mb-0" style="color:rgb(var(--v-theme-success))">{{ stats.edukasi }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            <VIcon icon="ri-book-line" size="12" class="me-1" />Edukasi
+          </p>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VCard
+          elevation="0" border rounded="lg"
+          class="stat-card pa-4 cursor-pointer"
+          :class="filterStatus === 'Edukasi lanjutan' ? 'stat-active-warning' : ''"
+          @click="filterStatus = filterStatus === 'Edukasi lanjutan' ? null : 'Edukasi lanjutan'"
+        >
+          <div class="d-flex align-center justify-space-between mb-2">
             <div>
-              <p class="text-h5 font-weight-bold mb-0" :style="`color: rgb(var(--v-theme-${card.color}))`">
-                {{ card.value }}
+              <p class="text-h4 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">{{ stats.edukasiLanjutan }}</p>
+              <p class="text-caption text-medium-emphasis mb-0">
+                <VIcon icon="ri-book-open-line" size="12" class="me-1" />Edukasi Lanjutan
               </p>
-              <p class="text-caption text-medium-emphasis mb-0">{{ card.label }}</p>
             </div>
+            <VChip color="warning" variant="tonal" size="small">{{ stats.lanjutanPct }}%</VChip>
           </div>
+          <VProgressLinear :model-value="stats.lanjutanPct" color="warning" rounded height="4" bg-color="warning" bg-opacity="0.15" />
         </VCard>
       </VCol>
     </VRow>
 
-    <!-- ── Data table ──────────────────────────────────────────────────────── -->
-    <QCDataTable
-      :items="mockRecords"
-      :loading="store.loading"
-      @edit="openEdit"
-      @delete="openDelete"
-    />
+    <!-- Filter bar -->
+    <VCard elevation="0" border rounded="lg" class="mb-4">
+      <VCardText class="py-3">
+        <VRow dense align="center">
+          <VCol cols="12" sm="4">
+            <VTextField
+              v-model="filterSearch"
+              placeholder="Cari No. Reg / No. MR / Nama Pasien..."
+              prepend-inner-icon="ri-search-line"
+              variant="outlined" density="compact" hide-details clearable
+            />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VSelect
+              v-model="filterStatus"
+              :items="STATUS_OPTIONS"
+              item-title="title"
+              item-value="value"
+              variant="outlined" density="compact" hide-details
+              placeholder="Status"
+            />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VTextField
+              v-model="filterPetugas"
+              placeholder="Petugas"
+              prepend-inner-icon="ri-nurse-line"
+              variant="outlined" density="compact" hide-details clearable
+            />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VTextField v-model="filterDateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VTextField v-model="filterDateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
+          </VCol>
+        </VRow>
 
-    <!-- ── Form dialog ─────────────────────────────────────────────────────── -->
-    <QCFormDialog
-      v-model="showDialog"
-      :edit-item="editItem"
-      @saved="onSaved"
-    />
+        <div class="d-flex justify-end gap-2 mt-2">
+          <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
+          <VBtn size="small" variant="tonal" color="primary" prepend-icon="ri-loop-left-line" :loading="loading" @click="doRefresh">Refresh</VBtn>
+        </div>
+      </VCardText>
+    </VCard>
 
-    <!-- ── Delete confirm ─────────────────────────────────────────────────── -->
+    <!-- Result count -->
+    <div class="d-flex align-center justify-space-between mb-3 flex-wrap gap-2">
+      <div class="d-flex align-center gap-2">
+        <VChip size="small" color="primary" variant="tonal">{{ filtered.length }} data</VChip>
+        <span class="text-caption text-disabled">dari {{ records.length }} total</span>
+      </div>
+      <span v-if="lastRefresh" class="text-caption text-disabled">
+        <VIcon icon="ri-time-line" size="13" class="me-1" />
+        Update: {{ lastRefresh.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) }}
+      </span>
+    </div>
+
+    <!-- Table -->
+    <QCDataTable :items="filtered" :loading="loading" @edit="openEdit" @delete="openDelete" />
+
+    <!-- Form dialog -->
+    <QCFormDialog v-model="showDialog" :edit-item="editItem" @saved="onSaved" />
+
+    <!-- Delete confirm -->
     <VDialog v-model="showDeleteConfirm" max-width="380">
       <VCard rounded="lg">
         <VCardText class="pa-6 text-center">
@@ -138,17 +251,12 @@ onMounted(() => { /* store.fetchRecords() */ })
           </VAvatar>
           <h6 class="text-h6 font-weight-bold mb-2">Hapus Data?</h6>
           <p class="text-body-2 text-medium-emphasis mb-0">
-            Data <strong>{{ deleteTarget?.nama_pasien }}</strong>
-            (No. MR: <strong>{{ deleteTarget?.no_mr }}</strong>) akan dihapus permanen.
+            Data <strong>{{ deleteTarget?.nama_pasien }}</strong> akan dihapus permanen.
           </p>
         </VCardText>
         <VCardActions class="px-6 pb-5 d-flex gap-2 pt-0">
-          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showDeleteConfirm = false">
-            Batal
-          </VBtn>
-          <VBtn color="error" rounded="lg" class="flex-grow-1" prepend-icon="ri-delete-bin-line" @click="confirmDelete">
-            Hapus
-          </VBtn>
+          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showDeleteConfirm = false">Batal</VBtn>
+          <VBtn color="error" rounded="lg" class="flex-grow-1" prepend-icon="ri-delete-bin-line" @click="confirmDelete">Hapus</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
@@ -156,7 +264,6 @@ onMounted(() => { /* store.fetchRecords() */ })
 </template>
 
 <style scoped>
-.page-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 2px; }
-.stat-card { transition: box-shadow 0.2s; }
-.stat-card:hover { box-shadow: 0 4px 16px rgba(var(--v-shadow-key-umbra-color), 0.1) !important; }
+.stat-card { transition: box-shadow 0.2s, transform 0.15s; cursor: pointer; }
+.stat-card:hover { box-shadow: 0 4px 16px rgba(var(--v-shadow-key-umbra-color), 0.1) !important; transform: translateY(-1px); }
 </style>

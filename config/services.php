@@ -51,4 +51,32 @@ return [
         'token'    => env('BED_MANAGEMENT_TOKEN', ''),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | KPI API — Pegawai Customer Care
+    |--------------------------------------------------------------------------
+    | Digunakan untuk mengambil daftar petugas dari departemen Customer Care.
+    | Autentikasi menggunakan username/password → ambil token → fetch pegawai.
+    | Token di-cache selama 55 menit (masa berlaku token biasanya 1 jam).
+    */
+    'kpi_api' => [
+        'base_url'    => env('KPI_API_URL', 'https://kpi.urip.care/api'),
+        'username'    => env('KPI_USERNAME', 'admin'),
+        'password'    => env('KPI_PASSWORD', 'password123'),
+        'departemen'  => env('KPI_DEPARTEMEN', 'Customer Care'),
+        'token_cache_minutes' => 55,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Feature Flags — Multi-Tenant
+    |--------------------------------------------------------------------------
+    | SSO_ENABLED    : true  = login via Keycloak SSO aktif (jaringan RS)
+    |                  false = login lokal saja
+    | RSUS_DB_ENABLED: true  = query pasien langsung ke DB SQL Server RSUS
+    |                  false = fallback mock / API eksternal
+    */
+    'sso_enabled'     => env('SSO_ENABLED', false),
+    'rsus_db_enabled' => env('RSUS_DB_ENABLED', false),
+
 ];

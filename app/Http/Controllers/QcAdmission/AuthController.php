@@ -134,14 +134,12 @@ class AuthController extends Controller
     {
         $realmRoles = $keycloakUser['realm_access']['roles'] ?? [];
 
-        if (in_array('qc_admin', $realmRoles) || in_array('admin', $realmRoles)) {
+        if (in_array('admin', $realmRoles) || in_array('qc_admin', $realmRoles)) {
             return 'admin';
         }
-
-        if (in_array('qc_supervisor', $realmRoles) || in_array('supervisor', $realmRoles)) {
-            return 'supervisor';
+        if (in_array('kasir', $realmRoles)) {
+            return 'kasir';
         }
-
-        return 'petugas';
+        return 'qc_admission'; // default untuk semua petugas RS
     }
 }

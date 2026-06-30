@@ -1,0 +1,252 @@
+<script setup>
+import axios from 'axios'
+
+const loading   = ref(false)
+const records   = ref([])
+const search    = ref('')
+const filterModule  = ref('')
+const filterAction  = ref('')
+const filterDateFrom = ref('')
+const filterDateTo   = ref('')
+const page      = ref(1)
+const perPage   = ref(30)
+const total     = ref(0)
+
+const MODULE_OPTIONS = [
+  { title: 'Semua Modul', value: '' },
+  { title: 'Quality Control',  value: 'quality-control' },
+  { title: 'Edukasi Lanjutan', value: 'edukasi-lanjutan' },
+  { title: 'Batal Ranap',      value: 'batal-ranap' },
+  { title: 'Up Selling',       value: 'up-selling' },
+  { title: 'Auth',             value: 'auth' },
+  { title: 'User',             value: 'user' },
+]
+
+const ACTION_OPTIONS = [
+  { title: 'Semua Aksi', value: '' },
+  { title: 'Login',   value: 'login' },
+  { title: 'Logout',  value: 'logout' },
+  { title: 'Create',  value: 'create' },
+  { title: 'Update',  value: 'update' },
+  { title: 'Delete',  value: 'delete' },
+]
+
+// Mock data saat API belum terhubung
+const mockData = [
+  { id:1, user_name:'Administrator', user_role:'admin',       module:'auth',            action:'login',  subject:'Login berhasil', ip_address:'127.0.0.1', created_at:'2026-06-30T16:05:00Z' },
+  { id:2, user_name:'Petugas QC',    user_role:'qc_admission',module:'quality-control', action:'create', subject:'QC ELLY MAYA, NY (REG001)', ip_address:'127.0.0.1', created_at:'2026-06-30T16:10:00Z' },
+  { id:3, user_name:'Petugas QC',    user_role:'qc_admission',module:'batal-ranap',     action:'create', subject:'Batal Ranap REG003BR', ip_address:'127.0.0.1', created_at:'2026-06-30T16:22:00Z' },
+  { id:4, user_name:'Administrator', user_role:'admin',       module:'user',            action:'create', subject:'User kasir dibuat', ip_address:'127.0.0.1', created_at:'2026-06-30T16:30:00Z' },
+  { id:5, user_name:'Petugas QC',    user_role:'qc_admission',module:'up-selling',      action:'create', subject:'Up Selling REG004UP', ip_address:'127.0.0.1', created_at:'2026-06-30T16:45:00Z' },
+  { id:6, user_name:'Kasir RSUD',    user_role:'kasir',       module:'auth',            action:'login',  subject:'Login berhasil', ip_address:'127.0.0.1', created_at:'2026-06-30T17:00:00Z' },
+  { id:7, user_name:'Petugas QC',    user_role:'qc_admission',module:'quality-control', action:'update', subject:'QC diupdate — IDH SUBINGSEN (REG002)', ip_address:'127.0.0.1', created_at:'2026-06-30T17:15:00Z' },
+  { id:8, user_name:'Administrator', user_role:'admin',       module:'auth',            action:'logout', subject:'Logout', ip_address:'127.0.0.1', created_at:'2026-06-30T17:30:00Z' },
+]
+
+const headers = [
+  { title: 'Waktu',       key: 'created_at',  sortable: true, width: '160px' },
+  { title: 'User',        key: 'user_name',   sortable: true },
+  { title: 'Role',        key: 'user_role',   sortable: true },
+  { title: 'Modul',       key: 'module',      sortable: true },
+  { title: 'Aksi',        key: 'action',      sortable: true, align: 'center' },
+  { title: 'Keterangan',  key: 'subject',     sortable: false },
+  { title: 'IP',          key: 'ip_address',  sortable: false, width: '110px' },
+]
+
+const filtered = computed(() => {
+  let d = mockData
+  if (search.value.trim()) {
+    const q = search.value.toLowerCase()
+    d = d.filter(r =>
+      r.user_name?.toLowerCase().includes(q) ||
+      r.subject?.toLowerCase().includes(q) ||
+      r.module?.toLowerCase().includes(q)
+    )
+  }
+  if (filterModule.value) d = d.filter(r => r.module === filterModule.value)
+  if (filterAction.value) d = d.filter(r => r.action === filterAction.value)
+  return d
+})
+
+function actionColor(a) {
+  return { login:'success', logout:'secondary', create:'primary', update:'warning', delete:'error' }[a] ?? 'default'
+}
+function actionIcon(a) {
+  return { login:'ri-login-circle-line', logout:'ri-logout-circle-line', create:'ri-add-circle-line', update:'ri-pencil-line', delete:'ri-delete-bin-line' }[a] ?? 'ri-circle-line'
+}
+function moduleColor(m) {
+  return { 'quality-control':'primary','edukasi-lanjutan':'warning','batal-ranap':'error','up-selling':'success','auth':'secondary','user':'info' }[m] ?? 'default'
+}
+function formatDate(d) {
+  return new Date(d).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+}
+function roleColor(r) {
+  return { admin:'error', qc_admission:'primary', kasir:'warning' }[r] ?? 'default'
+}
+
+function resetFilters() {
+  search.value = ''
+  filterModule.value = ''
+  filterAction.value = ''
+  filterDateFrom.value = ''
+  filterDateTo.value = ''
+}
+
+async function doRefresh() {
+  loading.value = true
+  try {
+    const { data } = await axios.get('/api/activity-log', {
+      params: {
+        search: search.value || undefined,
+        module: filterModule.value || undefined,
+        action: filterAction.value || undefined,
+        date_from: filterDateFrom.value || undefined,
+        date_to:   filterDateTo.value   || undefined,
+        page: page.value, per_page: perPage.value,
+      }
+    })
+    records.value = data.data ?? []
+    total.value   = data.meta?.total ?? data.total ?? 0
+  } catch {
+    // Pakai mock jika API belum ready
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => doRefresh())
+</script>
+
+<template>
+  <div>
+    <!-- Hero -->
+    <div class="page-hero page-hero--view mb-5">
+      <div class="page-hero__content">
+        <div class="page-hero__badge">
+          <VIcon icon="ri-history-line" size="13" />
+          Hiro · Log Aktivitas
+        </div>
+        <h1 class="page-hero__title">Log Aktivitas</h1>
+        <p class="page-hero__subtitle">Rekam jejak semua aktivitas pengguna di sistem</p>
+      </div>
+      <div style="position:relative;z-index:2">
+        <VBtn color="white" variant="elevated" rounded="lg" size="small" prepend-icon="ri-refresh-line" style="color:#4facfe" :loading="loading" @click="doRefresh">
+          Refresh
+        </VBtn>
+      </div>
+      <VIcon icon="ri-history-line" class="page-hero__icon" />
+    </div>
+
+    <!-- Filter bar -->
+    <VCard elevation="0" border rounded="lg" class="mb-4">
+      <VCardText class="py-3">
+        <VRow dense align="center">
+          <VCol cols="12" sm="4">
+            <VTextField
+              v-model="search"
+              placeholder="Cari user, keterangan, modul..."
+              prepend-inner-icon="ri-search-line"
+              variant="outlined" density="compact" hide-details clearable
+            />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VSelect
+              v-model="filterModule"
+              :items="MODULE_OPTIONS"
+              item-title="title" item-value="value"
+              variant="outlined" density="compact" hide-details
+              placeholder="Modul"
+            />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VSelect
+              v-model="filterAction"
+              :items="ACTION_OPTIONS"
+              item-title="title" item-value="value"
+              variant="outlined" density="compact" hide-details
+              placeholder="Aksi"
+            />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VTextField v-model="filterDateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
+          </VCol>
+          <VCol cols="6" sm="2">
+            <VTextField v-model="filterDateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
+          </VCol>
+        </VRow>
+        <div class="d-flex justify-end gap-2 mt-2">
+          <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
+        </div>
+      </VCardText>
+    </VCard>
+
+    <!-- Count -->
+    <div class="d-flex align-center gap-2 mb-3">
+      <VChip size="small" color="primary" variant="tonal">{{ filtered.length }} aktivitas</VChip>
+      <span class="text-caption text-disabled">ditampilkan</span>
+    </div>
+
+    <!-- Table -->
+    <VCard elevation="0" border rounded="lg">
+      <VDataTable
+        :headers="headers"
+        :items="filtered"
+        :loading="loading"
+        density="compact"
+        hover
+        :items-per-page="30"
+      >
+        <template #item.created_at="{ item }">
+          <span class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</span>
+        </template>
+
+        <template #item.user_name="{ item }">
+          <div class="d-flex align-center gap-2">
+            <VAvatar :color="roleColor(item.user_role)" variant="tonal" size="26" rounded="lg">
+              <span style="font-size:10px;font-weight:700">{{ item.user_name?.charAt(0) }}</span>
+            </VAvatar>
+            <span class="text-body-2 font-weight-medium">{{ item.user_name }}</span>
+          </div>
+        </template>
+
+        <template #item.user_role="{ item }">
+          <VChip :color="roleColor(item.user_role)" size="x-small" variant="tonal" class="text-capitalize">
+            {{ item.user_role }}
+          </VChip>
+        </template>
+
+        <template #item.module="{ item }">
+          <VChip :color="moduleColor(item.module)" size="x-small" variant="tonal">
+            {{ item.module }}
+          </VChip>
+        </template>
+
+        <template #item.action="{ item }">
+          <VChip :color="actionColor(item.action)" size="small" variant="tonal">
+            <VIcon :icon="actionIcon(item.action)" size="12" class="me-1" />
+            {{ item.action }}
+          </VChip>
+        </template>
+
+        <template #item.subject="{ item }">
+          <span class="text-body-2">{{ item.subject || '—' }}</span>
+        </template>
+
+        <template #item.ip_address="{ item }">
+          <span class="text-caption text-disabled font-mono">{{ item.ip_address || '—' }}</span>
+        </template>
+
+        <template #no-data>
+          <div class="text-center py-10 text-medium-emphasis">
+            <VIcon icon="ri-history-line" size="40" class="mb-2 opacity-40" />
+            <p class="mb-0">Belum ada log aktivitas</p>
+          </div>
+        </template>
+      </VDataTable>
+    </VCard>
+  </div>
+</template>
+
+<style scoped>
+.font-mono { font-family: 'Courier New', monospace; font-size: 0.75rem; }
+</style>
