@@ -1,11 +1,12 @@
-/* eslint-disable regex/invalid */
+import { Icon } from '@iconify/vue'
+
 import checkboxChecked from '@images/svg/checkbox-checked.svg'
 import checkboxIndeterminate from '@images/svg/checkbox-indeterminate.svg'
 import checkboxUnchecked from '@images/svg/checkbox-unchecked.svg'
 import radioChecked from '@images/svg/radio-checked.svg'
 import radioUnchecked from '@images/svg/radio-unchecked.svg'
 
-const customIcons = {
+const customSvgIcons = {
   'mdi-checkbox-blank-outline': checkboxUnchecked,
   'mdi-checkbox-marked': checkboxChecked,
   'mdi-minus-box': checkboxIndeterminate,
@@ -13,7 +14,8 @@ const customIcons = {
   'mdi-radiobox-blank': radioUnchecked,
 }
 
-const aliases = {
+// Alias icon Vuetify → Remix Icons
+export const aliases = {
   info: 'ri-error-warning-line',
   success: 'ri-checkbox-circle-line',
   warning: 'ri-alert-line',
@@ -48,32 +50,23 @@ const aliases = {
   sortDesc: 'ri-arrow-down-line',
 }
 
-/* eslint-enable */
+// Custom iconify set — render pakai @iconify/vue Icon component
 export const iconify = {
-  component: props => {
-    // Load custom SVG directly instead of going through icon component
-    if (typeof props.icon === 'string') {
-      const iconComponent = customIcons[props.icon]
-      if (iconComponent)
-        return h(iconComponent)
+  component: (props) => {
+    const { icon, tag, ...rest } = props
+
+    // Custom SVG (checkbox, radio)
+    if (typeof icon === 'string' && customSvgIcons[icon]) {
+      return h(customSvgIcons[icon], rest)
     }
-    
-    return h(props.tag, {
-      ...props,
 
-      // As we are using class based icons
-      class: [props.icon],
-
-      // Remove used props from DOM rendering
-      tag: undefined,
-      icon: undefined,
-    })
+    // Render semua icon ri-* dan lainnya pakai Iconify
+    return h(Icon, { ...rest, icon: icon ?? 'ri-question-line' })
   },
 }
+
 export const icons = {
   defaultSet: 'iconify',
   aliases,
-  sets: {
-    iconify,
-  },
+  sets: { iconify },
 }

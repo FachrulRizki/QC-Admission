@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EdukasiLanjutan extends Model
 {
@@ -14,9 +15,21 @@ class EdukasiLanjutan extends Model
     protected $fillable = [
         'tanggal',
         'no_mr',
+        'no_reg',
         'nama_pasien',
+        'jaminan',
         'bulan',
-        'catatan',
+        'edukasi_kamar',
+        'note',
         'petugas',
+        'keluarga_pasien',
+        'ttd_keluarga_pasien',
+        'status',
+        'quality_control_id',
     ];
+
+    public function qualityControl(): BelongsTo
+    {
+        return $this->belongsTo(QualityControl::class, 'quality_control_id');
+    }
 }

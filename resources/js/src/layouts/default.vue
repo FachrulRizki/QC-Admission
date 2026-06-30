@@ -3,11 +3,11 @@ import DefaultLayoutWithVerticalNav from './components/DefaultLayoutWithVertical
 </script>
 
 <template>
-  <!-- ⚠️ Do NOT wrap RouterView here again — the layout's slot renders it.
-       The dark overlay between routes was caused by a double RouterView wrap
-       combined with Vuetify's overlay scrim. We pass the page content
-       directly via the default slot instead. -->
-  <DefaultLayoutWithVerticalNav />
+  <DefaultLayoutWithVerticalNav>
+    <!-- RouterView di sini mengisi slot default layout,
+         yang kemudian dirender di dalam main content area -->
+    <RouterView />
+  </DefaultLayoutWithVerticalNav>
 </template>
 
 <style lang="scss">

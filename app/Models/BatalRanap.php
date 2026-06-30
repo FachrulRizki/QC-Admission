@@ -15,11 +15,14 @@ class BatalRanap extends Model
         'tanggal',
         'jam_input',
         'no_reg',
+        'nama_pasien',
         'keterangan_batal',
         'status_ok',
         'ketersediaan_kamar',
         'diagnosa',
         'note',
         'petugas',
+        'bed_id',
+        'ruangan',
     ];
 }

@@ -44,6 +44,24 @@ export default defineConfig({
       '@configured-variables': resolve(__dirname, 'resources/js/src/assets/styles/variables/_template.scss'),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // Matikan deprecation warning dari template Vuetify (bukan kode kita)
+        silenceDeprecations: ['if-function', 'legacy-js-api'],
+      },
+    },
+  },
+  // Proxy untuk Vite dev server → forward /api ke Laravel di Laragon
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://qc_admision.test',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   optimizeDeps: {
     exclude: ['vuetify'],
     entries: ['./resources/js/src/**/*.vue'],

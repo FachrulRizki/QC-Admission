@@ -9,17 +9,22 @@ class EdukasiLanjutanService
 {
     public function paginate(array $filters = []): LengthAwarePaginator
     {
-        $query = EdukasiLanjutan::query()->latest();
+        $query = EdukasiLanjutan::query()->with('qualityControl')->latest();
 
         if (! empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('no_mr', 'like', "%{$filters['search']}%")
-                  ->orWhere('nama_pasien', 'like', "%{$filters['search']}%");
+                $q->where('no_mr',       'like', "%{$filters['search']}%")
+                  ->orWhere('nama_pasien', 'like', "%{$filters['search']}%")
+                  ->orWhere('petugas',    'like', "%{$filters['search']}%");
             });
         }
 
         if (! empty($filters['month'])) {
             $query->where('bulan', $filters['month']);
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
         }
 
         if (! empty($filters['year'])) {
@@ -36,7 +41,7 @@ class EdukasiLanjutanService
 
     public function findOrFail(int $id): EdukasiLanjutan
     {
-        return EdukasiLanjutan::findOrFail($id);
+        return EdukasiLanjutan::with('qualityControl')->findOrFail($id);
     }
 
     public function update(int $id, array $data): EdukasiLanjutan

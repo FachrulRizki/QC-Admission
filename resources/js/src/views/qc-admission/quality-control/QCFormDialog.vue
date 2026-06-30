@@ -1,44 +1,55 @@
 <script setup>
 import { useQualityControlStore } from '@/stores/useQualityControlStore'
+import SignaturePad from '@/components/SignaturePad.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  editItem: { type: Object, default: null },
+  editItem:   { type: Object, default: null },
 })
 const emit = defineEmits(['update:modelValue', 'saved'])
 
 const store = useQualityControlStore()
 
-// ── form state ────────────────────────────────────────────────────────────────
-const now = new Date()
-const form = ref(initialForm())
+// ── form ──────────────────────────────────────────────────────────────────────
+const form    = ref(initialForm())
+const sigRef  = ref(null)
+const errorMsg  = ref('')
+const successMsg = ref('')
 
 function initialForm() {
+  const now = new Date()
   return {
-    tanggal: formatDatetime(new Date()),
-    jam_input: formatTime(new Date()),
-    tgl_daftar: formatDatetime(new Date()),
-    jam_daftar: formatDatetime(new Date()),
-    no_mr: '',
-    no_reg: null,
-    nama_pasien: '',
-    jaminan: '',
-    status_ket: '',
-    edukasi_kamar: '',
-    durasi_tunggu: '00:00:00',
-    note: null,
-    petugas: null,
-    status: null,           // 'Edukasi' | 'Edukasi lanjutan'
-    keluarga_pasien: '',
+    tanggal:             formatDatetime(now),
+    jam_input:           formatTime(now),
+    tgl_daftar:          formatDatetime(now),
+    jam_daftar:          formatTime(now),
+    no_mr:               '',
+    no_reg:              null,
+    nama_pasien:         '',
+    jaminan:             '',
+    status_ket:          '',
+    edukasi_kamar:       '',
+    durasi_tunggu:       '00:00:00',
+    note:                null,
+    petugas:             null,
+    status:              'Edukasi',
+    keluarga_pasien:     '',
     ttd_keluarga_pasien: '',
   }
 }
 
-// ── mock dropdown data (replace with API) ────────────────────────────────────
+// ── dropdown options ──────────────────────────────────────────────────────────
 const noRegOptions = ref([
-  { title: '813500 - ELLY MAYA, NY', value: '813500' },
-  { title: '575360 - IDH SUBINGSEN, NY', value: '575360' },
-  { title: '087220 - RUSMINI, NY', value: '087220' },
+  { title: 'REG001 - ELLY MAYA, NY',       value: 'REG001', mr: '813500', nama: 'ELLY MAYA, NY',       jaminan: 'BPJS' },
+  { title: 'REG002 - IDH SUBINGSEN, NY',   value: 'REG002', mr: '575360', nama: 'IDH SUBINGSEN, NY',   jaminan: 'BPJS' },
+  { title: 'REG003 - RUSMINI, NY',         value: 'REG003', mr: '087220', nama: 'RUSMINI, NY',         jaminan: 'Umum' },
+  { title: 'REG004 - PUSPA SARI, AN',      value: 'REG004', mr: '816302', nama: 'PUSPA SARI, AN',      jaminan: 'BPJS' },
+  { title: 'REG005 - BUDI SANTOSO, TN',    value: 'REG005', mr: '712405', nama: 'BUDI SANTOSO, TN',    jaminan: 'Asuransi' },
+  { title: 'REG006 - SRI WAHYUNI, NY',     value: 'REG006', mr: '654321', nama: 'SRI WAHYUNI, NY',     jaminan: 'BPJS' },
+  { title: 'REG007 - AHMAD FAUZI, TN',     value: 'REG007', mr: '789012', nama: 'AHMAD FAUZI, TN',     jaminan: 'Umum' },
+  { title: 'REG008 - DEWI RAHAYU, NY',     value: 'REG008', mr: '345678', nama: 'DEWI RAHAYU, NY',     jaminan: 'BPJS' },
+  { title: 'REG009 - HENDRA WIJAYA, TN',   value: 'REG009', mr: '901234', nama: 'HENDRA WIJAYA, TN',   jaminan: 'Asuransi' },
+  { title: 'REG010 - SITI AMINAH, NY',     value: 'REG010', mr: '567890', nama: 'SITI AMINAH, NY',     jaminan: 'BPJS' },
 ])
 
 const noteOptions = [
@@ -46,6 +57,7 @@ const noteOptions = [
   'Pasien mengerti',
   'Keluarga hadir',
   'Dirujuk',
+  'Menunggu kamar',
 ]
 
 const petugasOptions = [
@@ -56,52 +68,67 @@ const petugasOptions = [
   'Abdul Hayyi',
 ]
 
-const signatureLocked = ref(true)
-const errorMsg = ref('')
-const successMsg = ref('')
+const statusKetOptions = [
+  'Belum Dapat Kamar',
+  'Antri Kamar',
+  'Sudah Dapat Kamar',
+]
 
-// ── watchers ──────────────────────────────────────────────────────────────────
-watch(() => props.editItem, (item) => {
-  form.value = item ? { ...initialForm(), ...item } : initialForm()
-}, { immediate: true })
+// ── live durasi timer ──────────────────────────────────────────────────────────
+let durasiTimer = null
 
-watch(() => form.value.no_reg, (val) => {
-  const found = noRegOptions.value.find(o => o.value === val)
-  if (found) {
-    // Auto-fill nama & no_mr when noReg is selected
-    form.value.no_mr = found.value
-    form.value.nama_pasien = found.title.split(' - ')[1] ?? ''
-  }
-})
-
-// Recalculate durasi_tunggu every second while dialog is open
-let timer = null
 watch(() => props.modelValue, (open) => {
   if (open) {
+    form.value = props.editItem ? { ...initialForm(), ...props.editItem } : initialForm()
+    errorMsg.value = ''
+    successMsg.value = ''
     if (!props.editItem) {
-      form.value = initialForm()
+      durasiTimer = setInterval(updateDurasi, 1000)
     }
-    timer = setInterval(updateDurasi, 1000)
   } else {
-    clearInterval(timer)
+    clearInterval(durasiTimer)
   }
 })
 
 function updateDurasi() {
-  const start = new Date(`${form.value.tgl_daftar}`)
-  const diff = Math.floor((Date.now() - start.getTime()) / 1000)
-  const h = String(Math.floor(diff / 3600)).padStart(2, '0')
-  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0')
-  const s = String(diff % 60).padStart(2, '0')
-  form.value.durasi_tunggu = `${h}:${m}:${s}`
+  try {
+    const startStr = form.value.tgl_daftar
+    if (!startStr) return
+    // parse "dd/mm/yyyy, HH.MM.SS"
+    const parts   = startStr.split(', ')
+    const dateParts = parts[0].split('/')
+    const timeParts = (parts[1] ?? '00.00.00').split('.')
+    const start = new Date(
+      parseInt(dateParts[2]),
+      parseInt(dateParts[1]) - 1,
+      parseInt(dateParts[0]),
+      parseInt(timeParts[0]),
+      parseInt(timeParts[1]),
+      parseInt(timeParts[2]),
+    )
+    const diff = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000))
+    const h = String(Math.floor(diff / 3600)).padStart(2, '0')
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0')
+    const s = String(diff % 60).padStart(2, '0')
+    form.value.durasi_tunggu = `${h}:${m}:${s}`
+  } catch {}
 }
+
+// ── NoReg auto-fill ───────────────────────────────────────────────────────────
+watch(() => form.value.no_reg, (val) => {
+  const found = noRegOptions.value.find(o => o.value === val)
+  if (found) {
+    form.value.no_mr       = found.mr
+    form.value.nama_pasien = found.nama
+    form.value.jaminan     = found.jaminan
+  }
+})
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function formatDatetime(d) {
   const pad = n => String(n).padStart(2, '0')
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}.${pad(d.getMinutes())}.${pad(d.getSeconds())}`
 }
-
 function formatTime(d) {
   const pad = n => String(n).padStart(2, '0')
   return `${pad(d.getHours())}.${pad(d.getMinutes())}.${pad(d.getSeconds())}`
@@ -110,33 +137,28 @@ function formatTime(d) {
 // ── submit ────────────────────────────────────────────────────────────────────
 async function handleSave() {
   errorMsg.value = ''
-  if (!form.value.no_reg) {
-    errorMsg.value = 'NoReg wajib dipilih.'
-    return
-  }
-  if (!form.value.petugas) {
-    errorMsg.value = 'Petugas wajib dipilih.'
-    return
-  }
+  if (!form.value.no_reg)   { errorMsg.value = 'NoReg wajib dipilih.'; return }
+  if (!form.value.petugas)  { errorMsg.value = 'Petugas wajib dipilih.'; return }
+  if (!form.value.status)   { errorMsg.value = 'Status wajib dipilih.'; return }
+
+  const payload = { ...form.value }
 
   const result = props.editItem
-    ? await store.update(props.editItem.id, form.value)
-    : await store.store(form.value)
+    ? await store.update(props.editItem.id, payload)
+    : await store.store(payload)
 
   if (result.success) {
-    successMsg.value = 'Data berhasil disimpan.'
-    emit('saved')
-    setTimeout(() => close(), 800)
+    successMsg.value = 'Data berhasil disimpan!'
+    emit('saved', payload)
+    setTimeout(() => close(), 600)
   } else {
-    errorMsg.value = result.message
+    errorMsg.value = result.message ?? 'Gagal menyimpan data.'
   }
 }
 
 function close() {
-  clearInterval(timer)
+  clearInterval(durasiTimer)
   emit('update:modelValue', false)
-  errorMsg.value = ''
-  successMsg.value = ''
 }
 </script>
 
@@ -148,280 +170,262 @@ function close() {
     scrollable
     @update:model-value="close"
   >
-    <VCard>
-      <!-- Header -->
-      <VCardTitle class="d-flex align-center justify-space-between pa-4 pb-3">
-        <div class="d-flex align-center gap-2">
-          <VBtn
-            icon
-            variant="text"
-            size="small"
-            @click="close"
-          >
-            <VIcon icon="ri-close-line" />
-          </VBtn>
-          <span class="text-h6 font-weight-bold">Quality Control</span>
+    <VCard rounded="lg">
+      <!-- ── Header ──────────────────────────────────────────────────────── -->
+      <div class="dialog-header d-flex align-center gap-3 px-5 py-4">
+        <VAvatar color="primary" variant="tonal" size="40" rounded="lg">
+          <VIcon icon="ri-shield-check-line" size="20" />
+        </VAvatar>
+        <div class="flex-grow-1">
+          <p class="text-subtitle-1 font-weight-bold mb-0">
+            {{ editItem ? 'Edit Quality Control' : 'Input Quality Control' }}
+          </p>
+          <p class="text-caption text-medium-emphasis mb-0">Form entry data QC admisi</p>
         </div>
-        <div class="d-flex gap-2">
-          <VBtn
-            variant="outlined"
-            size="small"
-            @click="close"
-          >
-            Cancel
-          </VBtn>
-          <VBtn
-            color="primary"
-            size="small"
-            :loading="store.loading"
-            @click="handleSave"
-          >
-            Save
-          </VBtn>
-        </div>
-      </VCardTitle>
+        <VBtn icon variant="text" size="small" @click="close">
+          <VIcon icon="ri-close-line" />
+        </VBtn>
+      </div>
 
       <VDivider />
 
-      <VCardText class="pa-4">
+      <VCardText class="pa-5">
         <!-- Alerts -->
         <VAlert v-if="errorMsg" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="errorMsg = ''">
           {{ errorMsg }}
         </VAlert>
         <VAlert v-if="successMsg" type="success" variant="tonal" density="compact" class="mb-4">
-          {{ successMsg }}
+          <VIcon icon="ri-check-line" class="me-1" /> {{ successMsg }}
         </VAlert>
 
         <VForm @submit.prevent="handleSave">
-          <!-- Tanggal -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Tanggal</p>
-            <VTextField
-              v-model="form.tanggal"
-              variant="outlined"
-              density="compact"
-              readonly
-              :append-inner-icon="'ri-calendar-line'"
-            />
-          </div>
+          <!-- Tanggal + Jam (readonly auto) -->
+          <VRow dense class="mb-1">
+            <VCol cols="7">
+              <VTextField
+                v-model="form.tanggal"
+                label="Tanggal Input"
+                variant="outlined"
+                density="compact"
+                readonly
+                prepend-inner-icon="ri-calendar-line"
+              />
+            </VCol>
+            <VCol cols="5">
+              <VTextField
+                v-model="form.jam_input"
+                label="Jam Input"
+                variant="outlined"
+                density="compact"
+                readonly
+                prepend-inner-icon="ri-time-line"
+              />
+            </VCol>
+          </VRow>
 
-          <!-- Jam Input -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Jam_Input</p>
-            <VTextField
-              v-model="form.jam_input"
-              variant="outlined"
-              density="compact"
-              readonly
-              :append-inner-icon="'ri-time-line'"
-            />
-          </div>
-
-          <!-- tgldaftar -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">tgldaftar</p>
-            <VTextField
-              v-model="form.tgl_daftar"
-              variant="outlined"
-              density="compact"
-              readonly
-              :append-inner-icon="'ri-calendar-line'"
-            />
-          </div>
-
-          <!-- jamdaftar -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">jamdaftar</p>
-            <VTextField
-              v-model="form.jam_daftar"
-              variant="outlined"
-              density="compact"
-              readonly
-              :append-inner-icon="'ri-calendar-line'"
-            />
-          </div>
-
-          <!-- NoMR -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">NoMR</p>
-            <VTextField
-              v-model="form.no_mr"
-              variant="outlined"
-              density="compact"
-              readonly
-              placeholder="Otomatis dari NoReg"
-            />
-          </div>
-
-          <!-- NoReg -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">NoReg</p>
+          <!-- NoReg (autocomplete) -->
+          <div class="mb-3">
             <VAutocomplete
               v-model="form.no_reg"
               :items="noRegOptions"
               item-title="title"
               item-value="value"
+              label="No. Registrasi *"
               variant="outlined"
               density="compact"
-              placeholder="Pilih NoReg..."
+              placeholder="Pilih atau ketik NoReg..."
+              prepend-inner-icon="ri-search-line"
               clearable
             />
           </div>
 
-          <!-- NamaPasien -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">NamaPasien</p>
-            <VTextField
-              v-model="form.nama_pasien"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </div>
+          <!-- NoMR + Nama (readonly, auto-filled) -->
+          <VRow dense class="mb-1">
+            <VCol cols="4">
+              <VTextField
+                v-model="form.no_mr"
+                label="No. MR"
+                variant="outlined"
+                density="compact"
+                readonly
+                bg-color="grey-lighten-4"
+              />
+            </VCol>
+            <VCol cols="8">
+              <VTextField
+                v-model="form.nama_pasien"
+                label="Nama Pasien"
+                variant="outlined"
+                density="compact"
+                readonly
+                bg-color="grey-lighten-4"
+              />
+            </VCol>
+          </VRow>
 
-          <!-- Jaminan -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Jaminan</p>
-            <VTextField
-              v-model="form.jaminan"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </div>
-
-          <!-- status_ket -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">status_ket</p>
-            <VTextField
-              v-model="form.status_ket"
-              variant="outlined"
-              density="compact"
-              readonly
-            />
-          </div>
+          <!-- Jaminan + Status Ket -->
+          <VRow dense class="mb-1">
+            <VCol cols="5">
+              <VTextField
+                v-model="form.jaminan"
+                label="Jaminan"
+                variant="outlined"
+                density="compact"
+                readonly
+                bg-color="grey-lighten-4"
+              />
+            </VCol>
+            <VCol cols="7">
+              <VSelect
+                v-model="form.status_ket"
+                :items="statusKetOptions"
+                label="Status Keterangan"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </VCol>
+          </VRow>
 
           <!-- Edukasi Kamar -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Edukasi_kamar</p>
+          <div class="mb-3">
             <VTextField
               v-model="form.edukasi_kamar"
+              label="Edukasi Kamar / Ruangan"
               variant="outlined"
               density="compact"
-              placeholder="Nama ruangan..."
+              prepend-inner-icon="ri-hospital-line"
+              placeholder="contoh: Ruang Mawar, ICU..."
             />
           </div>
 
-          <!-- DurasiTunggu -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">DurasiTunggu</p>
+          <!-- Durasi Tunggu (live timer) -->
+          <div class="mb-3">
             <VTextField
               v-model="form.durasi_tunggu"
+              label="Durasi Tunggu (auto)"
               variant="outlined"
               density="compact"
               readonly
-            />
+              prepend-inner-icon="ri-timer-flash-line"
+            >
+              <template #append-inner>
+                <VChip
+                  :color="form.durasi_tunggu > '02:00:00' ? 'error' : 'success'"
+                  size="x-small"
+                  variant="tonal"
+                >
+                  {{ form.durasi_tunggu > '02:00:00' ? 'Lama' : 'Normal' }}
+                </VChip>
+              </template>
+            </VTextField>
           </div>
 
-          <!-- Note -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Note</p>
-            <VSelect
-              v-model="form.note"
-              :items="noteOptions"
-              variant="outlined"
-              density="compact"
-              placeholder="Pilih note..."
-              clearable
-            />
-          </div>
-
-          <!-- Petugas -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Petugas</p>
-            <VAutocomplete
-              v-model="form.petugas"
-              :items="petugasOptions"
-              variant="outlined"
-              density="compact"
-              placeholder="Search..."
-              clearable
-            />
-          </div>
+          <!-- Note + Petugas -->
+          <VRow dense class="mb-1">
+            <VCol cols="6">
+              <VSelect
+                v-model="form.note"
+                :items="noteOptions"
+                label="Note"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </VCol>
+            <VCol cols="6">
+              <VAutocomplete
+                v-model="form.petugas"
+                :items="petugasOptions"
+                label="Petugas *"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="ri-nurse-line"
+                clearable
+              />
+            </VCol>
+          </VRow>
 
           <!-- Status toggle -->
           <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Status</p>
+            <p class="text-caption font-weight-semibold text-medium-emphasis mb-2">Status *</p>
             <VBtnToggle
               v-model="form.status"
               mandatory
-              rounded="sm"
+              rounded="lg"
               color="primary"
-              class="w-100"
+              density="compact"
+              class="w-100 status-toggle"
             >
-              <VBtn value="Edukasi" class="flex-grow-1">
+              <VBtn value="Edukasi" class="flex-grow-1" variant="outlined">
+                <VIcon icon="ri-book-2-line" class="me-1" size="16" />
                 Edukasi
               </VBtn>
-              <VBtn value="Edukasi lanjutan" class="flex-grow-1">
-                Edukasi lanjutan
+              <VBtn value="Edukasi lanjutan" class="flex-grow-1" variant="outlined">
+                <VIcon icon="ri-book-open-line" class="me-1" size="16" />
+                Edukasi Lanjutan
+              </VBtn>
+              <VBtn value="Masuk" class="flex-grow-1" variant="outlined">
+                <VIcon icon="ri-hospital-line" class="me-1" size="16" />
+                Masuk
               </VBtn>
             </VBtnToggle>
           </div>
 
+          <VDivider class="mb-4" />
+
           <!-- Keluarga Pasien -->
-          <div class="mb-4">
-            <p class="text-caption font-weight-medium mb-1">Keluarga Pasien</p>
+          <div class="mb-3">
             <VTextField
               v-model="form.keluarga_pasien"
+              label="Nama Keluarga Pasien"
               variant="outlined"
               density="compact"
+              prepend-inner-icon="ri-group-line"
+              placeholder="Nama penanggungjawab..."
             />
           </div>
 
-          <!-- TTD Keluarga Pasien -->
-          <div class="mb-2">
-            <p class="text-caption font-weight-medium mb-1">ttd_keluargaPasien</p>
-            <VCard
-              variant="outlined"
-              class="pa-4 text-center"
-              min-height="120"
-            >
-              <div
-                v-if="signatureLocked"
-                class="d-flex flex-column align-center justify-center gap-3"
-                style="min-height: 100px;"
-              >
-                <VIcon icon="ri-lock-2-line" size="36" color="secondary" />
-                <VBtn
-                  variant="text"
-                  size="small"
-                  color="secondary"
-                  @click="signatureLocked = false"
-                >
-                  Tap to unlock
-                </VBtn>
-              </div>
-              <div v-else class="text-center">
-                <VTextarea
-                  v-model="form.ttd_keluarga_pasien"
-                  variant="outlined"
-                  density="compact"
-                  rows="3"
-                  placeholder="Tanda tangan / nama lengkap..."
-                />
-                <VBtn
-                  size="x-small"
-                  variant="text"
-                  class="mt-2"
-                  @click="signatureLocked = true"
-                >
-                  Kunci kembali
-                </VBtn>
-              </div>
-            </VCard>
-          </div>
+          <!-- TTD Keluarga Pasien — Signature Pad -->
+          <SignaturePad
+            v-model="form.ttd_keluarga_pasien"
+            ref="sigRef"
+            label="Tanda Tangan Keluarga Pasien"
+            :height="160"
+          />
         </VForm>
       </VCardText>
+
+      <VDivider />
+
+      <div class="d-flex gap-3 px-5 py-4">
+        <VBtn variant="outlined" class="flex-grow-1" @click="close">
+          Batal
+        </VBtn>
+        <VBtn
+          color="primary"
+          class="flex-grow-1"
+          :loading="store.loading"
+          prepend-icon="ri-save-line"
+          @click="handleSave"
+        >
+          Simpan
+        </VBtn>
+      </div>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.dialog-header {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-primary), 0.05) 0%,
+    rgba(var(--v-theme-surface), 1) 100%
+  );
+}
+
+.status-toggle :deep(.v-btn) {
+  font-size: 0.75rem;
+}
+</style>

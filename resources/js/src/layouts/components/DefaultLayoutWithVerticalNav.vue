@@ -35,14 +35,14 @@ const today = new Date().toLocaleDateString('id-ID', {
         <VSpacer />
 
         <!-- Notification -->
-        <IconBtn class="me-1">
+        <!-- <IconBtn class="me-1">
           <VIcon icon="ri-notification-3-line" />
           <VBadge
             color="error"
             content="3"
             floating
           />
-        </IconBtn>
+        </IconBtn> -->
 
         <!-- Theme switcher -->
         <NavbarThemeSwitcher class="me-2" />

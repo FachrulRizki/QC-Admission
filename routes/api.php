@@ -16,7 +16,8 @@ use App\Http\Controllers\QcAdmission\UpSellingController;
 
 // ── Auth (public) ─────────────────────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login']);              // local
+    Route::post('/sso/callback', [AuthController::class, 'ssoCallback']); // SSO Keycloak
 });
 
 // ── Protected routes (Sanctum) ────────────────────────────────────────────────
@@ -40,6 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Edukasi Lanjutan
     Route::apiResource('edukasi-lanjutan', EdukasiLanjutanController::class);
+    // Auto-populate from QC (2-hour trigger endpoint)
+    Route::get('edukasi-lanjutan/pending', [EdukasiLanjutanController::class, 'pending']);
 
     // Up Selling
     Route::apiResource('up-selling', UpSellingController::class);

@@ -2,8 +2,6 @@
 import { defineComponent, ref, h } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { syncRef } from '@vueuse/core'
-
 import VerticalNav from '@layouts/components/VerticalNav.vue'
 
 const useToggle = target => {
@@ -21,9 +19,15 @@ export default defineComponent({
     const { mdAndDown } = useDisplay()
 
 
-    // ℹ️ This is alternative to below two commented watcher
-    // We want to show overlay if overlay nav is visible and want to hide overlay if overlay is hidden and vice versa.
-    syncRef(isOverlayNavActive, isLayoutOverlayVisible)
+    // Only show layout overlay on mobile/tablet (md and down)
+    // On desktop, the nav is always visible so no overlay is needed
+    watch(isOverlayNavActive, val => {
+      if (mdAndDown.value) {
+        isLayoutOverlayVisible.value = val
+      } else {
+        isLayoutOverlayVisible.value = false
+      }
+    })
     
     return () => {
       // 👉 Vertical nav
