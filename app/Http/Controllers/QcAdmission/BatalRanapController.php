@@ -29,12 +29,19 @@ class BatalRanapController extends Controller
             'tanggal'             => 'required|string',
             'jam_input'           => 'required|string',
             'no_reg'              => 'required|string|max:20',
+            'no_mr'               => 'nullable|string|max:20',
+            'tgl_daftar'          => 'nullable|string',
+            'jam_daftar'          => 'nullable|string',
+            'nama_pasien'         => 'nullable|string|max:100',
             'keterangan_batal'    => 'required|string|max:100',
             'status_ok'           => 'nullable|in:Bedah,Non Bedah',
+            'status_closing'      => 'nullable|in:Siap Closing,Belum Siap Closing',
             'ketersediaan_kamar'  => 'nullable|string|max:100',
             'diagnosa'            => 'nullable|string|max:255',
-            'note'                => 'nullable|string|max:255',
+            'note'                => 'nullable|string|max:1000',
             'petugas'             => 'required|string|max:100',
+            'ruangan'             => 'nullable|string|max:100',
+            'bed_id'              => 'nullable|string|max:50',
         ]);
 
         $record = $this->service->create($validated);
@@ -55,10 +62,12 @@ class BatalRanapController extends Controller
         $validated = $request->validate([
             'keterangan_batal'   => 'sometimes|string|max:100',
             'status_ok'          => 'nullable|in:Bedah,Non Bedah',
+            'status_closing'     => 'nullable|in:Siap Closing,Belum Siap Closing',
             'ketersediaan_kamar' => 'nullable|string|max:100',
             'diagnosa'           => 'nullable|string|max:255',
-            'note'               => 'nullable|string|max:255',
+            'note'               => 'nullable|string|max:1000',
             'petugas'            => 'sometimes|string|max:100',
+            'ruangan'            => 'nullable|string|max:100',
         ]);
 
         $record = $this->service->update($id, $validated);
@@ -85,6 +94,23 @@ class BatalRanapController extends Controller
             "Verifikasi Batal Ranap {$record->no_reg} → {$record->status_ok}");
 
         return response()->json(['data' => $record, 'message' => 'Verifikasi berhasil.']);
+    }
+
+    /**
+     * Konfirmasi Closing — update status_closing, jika Siap Closing bed management diupdate via frontend.
+     */
+    public function konfirmasiClosing(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status_closing' => 'required|in:Siap Closing,Belum Siap Closing',
+        ]);
+
+        $record = $this->service->update($id, $validated);
+
+        ActivityLog::record('batal-ranap', 'closing',
+            "Closing Batal Ranap {$record->no_reg} → {$record->status_closing}");
+
+        return response()->json(['data' => $record, 'message' => 'Status closing berhasil disimpan.']);
     }
 
     public function destroy(int $id): JsonResponse

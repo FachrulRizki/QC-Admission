@@ -1,7 +1,7 @@
 <script setup>
 import { useUpSellingStore } from '@/stores/useUpSellingStore'
-import { usePegawaiStore } from '@/stores/usePegawaiStore'
-import { usePasienStore } from '@/stores/usePasienStore'
+import { usePegawaiStore }   from '@/stores/usePegawaiStore'
+import { usePasienStore }    from '@/stores/usePasienStore'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -13,68 +13,75 @@ const store        = useUpSellingStore()
 const pegawaiStore = usePegawaiStore()
 const pasienStore  = usePasienStore()
 
-const form       = ref(initialForm())
-const errorMsg   = ref('')
-const successMsg = ref('')
+const form     = ref(initialForm())
+const errorMsg = ref('')
+const saving   = ref(false)
 
-// ── Master options ────────────────────────────────────────────────────────────
-const ketUpSellingOptions = ['Naik Kelas', 'Perubahan Jaminan']
+// Live clock
+const nowDisplay = ref('')
+let clockTimer = null
+function tickClock() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  nowDisplay.value = `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
+}
 
-// ── Search no_reg ─────────────────────────────────────────────────────────────
+const ketUpSellingOpts = ['Naik Kelas', 'Perubahan Jaminan']
+
+// ── Search pasien ─────────────────────────────────────────────────────────────
 const noRegSearch  = ref('')
 const noRegLoading = ref(false)
-let   searchDebounce = null
+let searchTimer = null
 
 watch(noRegSearch, (val) => {
-  clearTimeout(searchDebounce)
-  if (!val || val.length < 2) return
+  clearTimeout(searchTimer)
+  if (!val || val.length < 2) { pasienStore.clear(); return }
   noRegLoading.value = true
-  searchDebounce = setTimeout(async () => {
+  searchTimer = setTimeout(async () => {
     await pasienStore.search(val)
     noRegLoading.value = false
-  }, 350)
+  }, 300)
 })
 
-// Auto-fill saat no_reg dipilih
 watch(() => form.value.no_reg, async (val) => {
   if (!val) return
-  const found = pasienStore.results.find(p => p.no_reg === val)
-    ?? (await pasienStore.lookup(val))
-  if (found) {
-    form.value.no_mr        = found.no_mr
-    form.value.nama_pasien  = found.nama_pasien
-    form.value.ket_bayar    = found.ket_bayar
-    form.value.nama_ruang   = found.nama_ruang   ?? ''
-    form.value.nama_bangsal = found.nama_bangsal ?? ''
-    form.value.kelas        = found.nama_kelas   ?? ''
-    form.value.tgl_daftar   = found.tgl_daftar   ?? ''
+  const hit = pasienStore.results.find(p => p.no_reg === val)
+    ?? await pasienStore.lookup(val)
+  if (hit) {
+    form.value.no_mr        = hit.no_mr        ?? ''
+    form.value.nama_pasien  = hit.nama_pasien  ?? ''
+    form.value.ket_bayar    = hit.ket_bayar    ?? ''
+    form.value.nama_ruang   = hit.nama_ruang   ?? ''
+    form.value.nama_bangsal = hit.nama_bangsal ?? ''
+    form.value.kelas        = hit.nama_kelas   ?? ''
+    form.value.tgl_daftar   = hit.tgl_daftar   ?? ''
   }
 })
 
 watch(() => props.modelValue, (open) => {
   if (open) {
-    form.value       = props.editItem ? { ...initialForm(), ...props.editItem } : initialForm()
-    errorMsg.value   = ''
-    successMsg.value = ''
+    form.value        = props.editItem ? { ...initialForm(), ...props.editItem } : initialForm()
+    errorMsg.value    = ''
     pasienStore.clear()
     noRegSearch.value = ''
     pegawaiStore.fetch()
+    tickClock()
+    clockTimer = setInterval(tickClock, 1000)
+  } else {
+    clearInterval(clockTimer)
   }
 })
 
 function initialForm() {
-  const now = new Date()
-  const fmt = d => d.toLocaleString('id-ID', { dateStyle:'short', timeStyle:'medium' })
   return {
-    update_at:      fmt(now),
-    tgl_daftar:     '',
-    no_mr:          '',
     no_reg:         null,
+    no_mr:          '',
     nama_pasien:    '',
     ket_bayar:      '',
     nama_ruang:     '',
     nama_bangsal:   '',
     kelas:          '',
+    tgl_daftar:     '',
     ket_up_selling: null,
     notes:          '',
     nama_petugas:   null,
@@ -83,157 +90,238 @@ function initialForm() {
 
 async function handleSave() {
   errorMsg.value = ''
-  if (!form.value.no_reg)          { errorMsg.value = 'NoReg wajib dipilih.'; return }
-  if (!form.value.nama_petugas)    { errorMsg.value = 'Nama Petugas wajib dipilih.'; return }
-  if (!form.value.ket_up_selling)  { errorMsg.value = 'Keterangan Up Selling wajib dipilih.'; return }
+  if (!form.value.no_reg)         { errorMsg.value = 'NoReg wajib dipilih.'; return }
+  if (!form.value.nama_petugas)   { errorMsg.value = 'nama_petugas wajib dipilih.'; return }
+  if (!form.value.ket_up_selling) { errorMsg.value = 'Ket_Up_Selling wajib dipilih.'; return }
+
+  saving.value = true
+  const now = new Date()
+  const p   = n => String(n).padStart(2, '0')
+  const jam = `${p(now.getHours())}.${p(now.getMinutes())}.${p(now.getSeconds())}`
+  const tgl = `${p(now.getDate())}/${p(now.getMonth()+1)}/${now.getFullYear()}, ${jam}`
 
   const payload = {
-    tanggal:           form.value.update_at,
-    jam_input:         new Date().toTimeString().slice(0, 8),
+    tanggal:           tgl,
+    jam_input:         jam,
     no_reg:            form.value.no_reg,
+    no_mr:             form.value.no_mr,
+    tgl_daftar:        form.value.tgl_daftar,
     nama_pasien:       form.value.nama_pasien,
     jaminan:           form.value.ket_bayar,
+    nama_ruang:        form.value.nama_ruang,
+    nama_bangsal:      form.value.nama_bangsal,
+    kelas:             form.value.kelas,
     rekomendasi_kelas: form.value.kelas,
     kelas_diambil:     form.value.kelas,
     alasan:            form.value.ket_up_selling,
     petugas:           form.value.nama_petugas,
-    status:            form.value.ket_up_selling === 'Naik Kelas' ? 'Berhasil' : 'Pending',
     note:              form.value.notes,
+    status:            'Pending',
   }
 
   const result = props.editItem
     ? await store.update(props.editItem.id, payload)
     : await store.store(payload)
 
-  if (result?.success ?? true) {
-    successMsg.value = 'Data berhasil disimpan!'
-    emit('saved', { ...form.value, ...payload })
-    setTimeout(() => close(), 500)
+  saving.value = false
+
+  if (result?.success !== false) {
+    emit('saved', payload)
+    close()
   } else {
     errorMsg.value = result?.message ?? 'Gagal menyimpan.'
   }
 }
 
-function close() { emit('update:modelValue', false) }
+function close() {
+  clearInterval(clockTimer)
+  emit('update:modelValue', false)
+}
 </script>
 
 <template>
   <VDialog :model-value="modelValue" max-width="520" persistent scrollable @update:model-value="close">
-    <VCard rounded="lg">
+    <VCard rounded="xl">
+
       <!-- Header -->
-      <div class="dialog-header d-flex align-center gap-3 px-5 py-4">
-        <VAvatar color="success" variant="tonal" size="40" rounded="lg">
-          <VIcon icon="ri-arrow-up-circle-line" size="20" />
+      <div class="dlg-header d-flex align-center gap-3 px-5 py-4">
+        <VAvatar color="success" variant="tonal" size="44" rounded="lg">
+          <VIcon icon="ri-arrow-up-circle-line" size="22" />
         </VAvatar>
-        <div class="flex-grow-1">
-          <p class="text-subtitle-1 font-weight-bold mb-0">{{ editItem ? 'Edit Up Selling' : 'Input Up Selling' }}</p>
-          <p class="text-caption text-medium-emphasis mb-0">Penawaran upgrade kelas kamar pasien</p>
+        <div class="flex-grow-1 min-width-0">
+          <p class="text-subtitle-1 font-weight-bold mb-0">
+            {{ editItem ? 'Edit Up Selling' : 'Input Up Selling' }}
+          </p>
+          <p class="text-caption text-medium-emphasis mb-0">Penawaran upgrade kelas kamar rawat inap</p>
         </div>
-        <VBtn icon variant="text" size="small" @click="close"><VIcon icon="ri-close-line" /></VBtn>
+        <VBtn icon variant="text" size="small" @click="close">
+          <VIcon icon="ri-close-line" />
+        </VBtn>
       </div>
       <VDivider />
 
       <VCardText class="pa-5">
-        <VAlert v-if="errorMsg"   type="error"   variant="tonal" density="compact" class="mb-4" closable @click:close="errorMsg=''">{{ errorMsg }}</VAlert>
-        <VAlert v-if="successMsg" type="success" variant="tonal" density="compact" class="mb-4">{{ successMsg }}</VAlert>
+        <VAlert v-if="errorMsg" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="errorMsg=''">
+          {{ errorMsg }}
+        </VAlert>
 
-        <VForm @submit.prevent="handleSave">
-          <!-- updateAt -->
-          <div class="mb-3">
-            <VTextField v-model="form.update_at" label="updateAt" variant="outlined" density="compact" readonly prepend-inner-icon="ri-calendar-line" bg-color="grey-100" />
-          </div>
+        <!-- updateAt -->
+        <VTextField
+          :model-value="nowDisplay"
+          label="updateAt"
+          variant="outlined" density="compact" readonly
+          prepend-inner-icon="ri-calendar-line"
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          class="mb-4" hide-details
+        />
 
-          <!-- NoReg — search real time -->
-          <div class="mb-3">
-            <VAutocomplete
-              v-model="form.no_reg"
-              v-model:search="noRegSearch"
-              :items="pasienStore.optionList"
-              item-title="title"
-              item-value="value"
-              label="NoReg *"
-              variant="outlined"
-              density="compact"
-              prepend-inner-icon="ri-search-line"
-              clearable
-              no-filter
-              :loading="noRegLoading || pasienStore.loading"
-              placeholder="Ketik No. Reg / No. MR / Nama Pasien..."
-              no-data-text="Ketik min. 2 karakter untuk mencari..."
-            />
-          </div>
+        <!-- tgldaftar -->
+        <VTextField
+          v-model="form.tgl_daftar"
+          label="tgldaftar"
+          variant="outlined" density="compact" readonly
+          prepend-inner-icon="ri-calendar-check-line"
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          placeholder="Otomatis dari NoReg..."
+          class="mb-3" hide-details
+        />
 
-          <!-- Tgl Daftar (auto) -->
-          <div class="mb-3">
-            <VTextField v-model="form.tgl_daftar" label="Tgl Daftar" variant="outlined" density="compact" readonly prepend-inner-icon="ri-calendar-check-line" bg-color="grey-100" placeholder="Otomatis dari NoReg..." />
-          </div>
+        <!-- NoMR -->
+        <VTextField
+          v-model="form.no_mr"
+          label="NoMR"
+          variant="outlined" density="compact" readonly
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          class="mb-3" hide-details
+        />
 
-          <!-- NoMR -->
-          <div class="mb-3">
-            <VTextField v-model="form.no_mr" label="NoMR" variant="outlined" density="compact" readonly bg-color="grey-100" />
-          </div>
+        <!-- NoReg — search -->
+        <VAutocomplete
+          v-model="form.no_reg"
+          v-model:search="noRegSearch"
+          :items="pasienStore.optionList"
+          item-title="title"
+          item-value="value"
+          label="NoReg *"
+          variant="outlined" density="compact"
+          prepend-inner-icon="ri-search-line"
+          clearable no-filter
+          :loading="noRegLoading || pasienStore.loading"
+          placeholder="Cari No. Reg / No. MR / Nama..."
+          no-data-text="Ketik min. 2 karakter..."
+          class="mb-3" hide-details="auto"
+        >
+          <template #item="{ item, props: iProps }">
+            <VListItem v-bind="iProps" class="py-2">
+              <template #prepend>
+                <VAvatar color="success" variant="tonal" size="32" rounded="lg" class="me-2">
+                  <span style="font-size:11px;font-weight:700">{{ item.raw?.data?.nama_pasien?.charAt(0) ?? '?' }}</span>
+                </VAvatar>
+              </template>
+              <VListItemTitle class="text-body-2 font-weight-semibold">{{ item.raw?.data?.nama_pasien }}</VListItemTitle>
+              <VListItemSubtitle class="d-flex gap-1 mt-1 flex-wrap">
+                <VChip size="x-small" color="success" variant="tonal" label>{{ item.raw?.data?.no_reg }}</VChip>
+                <span class="text-caption text-medium-emphasis">{{ item.raw?.data?.ket_bayar }} · {{ item.raw?.data?.nama_bangsal }}</span>
+              </VListItemSubtitle>
+            </VListItem>
+          </template>
+        </VAutocomplete>
 
-          <!-- NamaPasien -->
-          <div class="mb-3">
-            <VTextField v-model="form.nama_pasien" label="NamaPasien" variant="outlined" density="compact" readonly bg-color="grey-100" />
-          </div>
+        <!-- NamaPasien -->
+        <VTextField
+          v-model="form.nama_pasien"
+          label="NamaPasien"
+          variant="outlined" density="compact" readonly
+          prepend-inner-icon="ri-user-3-line"
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          class="mb-3" hide-details
+        />
 
-          <!-- ketBayar -->
-          <div class="mb-3">
-            <VTextField v-model="form.ket_bayar" label="ketBayar" variant="outlined" density="compact" readonly bg-color="grey-100" />
-          </div>
+        <!-- ketBayar -->
+        <VTextField
+          v-model="form.ket_bayar"
+          label="ketBayar"
+          variant="outlined" density="compact" readonly
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          class="mb-3" hide-details
+        />
 
-          <!-- NamaRuang + NamaBangsal -->
-          <VRow dense class="mb-1">
-            <VCol cols="6">
-              <VTextField v-model="form.nama_ruang" label="NamaRuang" variant="outlined" density="compact" readonly bg-color="grey-100" />
-            </VCol>
-            <VCol cols="6">
-              <VTextField v-model="form.nama_bangsal" label="NamaBangsal" variant="outlined" density="compact" readonly bg-color="grey-100" />
-            </VCol>
-          </VRow>
+        <!-- NamaRuang -->
+        <VTextField
+          v-model="form.nama_ruang"
+          label="NamaRuang"
+          variant="outlined" density="compact" readonly
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          class="mb-3" hide-details
+        />
 
-          <!-- Kelas -->
-          <div class="mb-3">
-            <VTextField v-model="form.kelas" label="Kelas" variant="outlined" density="compact" readonly bg-color="grey-100" />
-          </div>
+        <!-- NamaBangsal -->
+        <VTextField
+          v-model="form.nama_bangsal"
+          label="NamaBangsal"
+          variant="outlined" density="compact" readonly
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          class="mb-3" hide-details
+        />
 
-          <!-- Ket Up Selling -->
-          <div class="mb-3">
-            <VSelect v-model="form.ket_up_selling" :items="ketUpSellingOptions" label="Keterangan Up Selling *" variant="outlined" density="compact" prepend-inner-icon="ri-arrow-up-circle-line" clearable />
-          </div>
+        <!-- Kelas -->
+        <VTextField
+          v-model="form.kelas"
+          label="Kelas"
+          variant="outlined" density="compact" readonly
+          bg-color="rgba(var(--v-theme-on-surface), 0.03)"
+          class="mb-3" hide-details
+        />
 
-          <!-- Notes -->
-          <div class="mb-3">
-            <VTextField v-model="form.notes" label="Notes" variant="outlined" density="compact" prepend-inner-icon="ri-sticky-note-line" />
-          </div>
+        <!-- Ket_Up_Selling — hanya 2 pilihan sesuai AppSheet -->
+        <VSelect
+          v-model="form.ket_up_selling"
+          :items="ketUpSellingOpts"
+          label="Ket_Up_Selling *"
+          variant="outlined" density="compact"
+          clearable class="mb-3" hide-details="auto"
+        />
 
-          <!-- Nama Petugas — dari KPI API -->
-          <div class="mb-3">
-            <VAutocomplete
-              v-model="form.nama_petugas"
-              :items="pegawaiStore.namaList"
-              label="Nama Petugas *"
-              variant="outlined"
-              density="compact"
-              prepend-inner-icon="ri-nurse-line"
-              clearable
-              :loading="pegawaiStore.loading"
-              no-data-text="Memuat petugas..."
-            />
-          </div>
-        </VForm>
+        <!-- notes -->
+        <VTextarea
+          v-model="form.notes"
+          label="notes"
+          variant="outlined" density="compact"
+          rows="3" auto-grow
+          class="mb-3" hide-details="auto"
+        />
+
+        <!-- nama_petugas -->
+        <VAutocomplete
+          v-model="form.nama_petugas"
+          :items="pegawaiStore.namaList"
+          label="nama_petugas *"
+          variant="outlined" density="compact"
+          prepend-inner-icon="ri-nurse-line"
+          clearable hide-details="auto"
+          :loading="pegawaiStore.loading"
+          no-data-text="Memuat petugas..."
+        />
       </VCardText>
 
       <VDivider />
       <div class="d-flex gap-3 px-5 py-4">
-        <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="close">Batal</VBtn>
-        <VBtn color="success" rounded="lg" class="flex-grow-1" prepend-icon="ri-save-line" :loading="store.loading" @click="handleSave">Simpan</VBtn>
+        <VBtn variant="outlined" rounded="lg" @click="close">Cancel</VBtn>
+        <VBtn
+          color="success" rounded="xl" class="flex-grow-1"
+          prepend-icon="ri-save-line"
+          :loading="saving || store.loading"
+          @click="handleSave"
+        >
+          Save
+        </VBtn>
       </div>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.dialog-header { background: rgba(var(--v-theme-success), 0.05); }
+.dlg-header {
+  background: linear-gradient(135deg, rgba(var(--v-theme-success), 0.06), rgba(var(--v-theme-success), 0.02));
+}
 </style>

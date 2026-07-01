@@ -15,9 +15,13 @@ class BatalRanap extends Model
         'tanggal',
         'jam_input',
         'no_reg',
+        'no_mr',
+        'tgl_daftar',
+        'jam_daftar',
         'nama_pasien',
         'keterangan_batal',
         'status_ok',          // null = belum diverifikasi, 'Bedah' | 'Non Bedah'
+        'status_closing',     // 'Siap Closing' | 'Belum Siap Closing'
         'ketersediaan_kamar',
         'diagnosa',
         'note',

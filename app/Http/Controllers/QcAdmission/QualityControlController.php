@@ -45,7 +45,7 @@ class QualityControlController extends Controller
             'durasi_tunggu'     => 'nullable|string|max:20',
             'note'              => 'nullable|string|max:255',
             'petugas'           => 'required|string|max:100',
-            'status'            => 'required|in:Edukasi,Edukasi lanjutan',
+            'status'            => 'required|in:Edukasi',
             'keluarga_pasien'   => 'nullable|string|max:100',
             'ttd_keluarga_pasien' => 'nullable|string',
         ]);
@@ -83,7 +83,7 @@ class QualityControlController extends Controller
             'durasi_tunggu'     => 'nullable|string|max:20',
             'note'              => 'nullable|string|max:255',
             'petugas'           => 'sometimes|string|max:100',
-            'status'            => 'sometimes|in:Edukasi,Edukasi lanjutan',
+            'status'            => 'sometimes|in:Edukasi',
             'keluarga_pasien'   => 'nullable|string|max:100',
             'ttd_keluarga_pasien' => 'nullable|string',
         ]);

@@ -46,6 +46,35 @@ export const useBatalRanapStore = defineStore('batalRanap', {
       }
     },
 
+    async update(id, payload) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await axios.put(`/api/batal-ranap/${id}`, payload)
+        const idx = this.records.findIndex(r => r.id === id)
+        if (idx !== -1) this.records.splice(idx, 1, response.data.data ?? { ...this.records[idx], ...payload })
+        return { success: true, data: response.data }
+      } catch (err) {
+        this.error = err.response?.data?.message ?? 'Gagal update data'
+        return { success: false, message: this.error }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async konfirmasiClosing(id, statusClosing) {
+      try {
+        const response = await axios.patch(`/api/batal-ranap/${id}/konfirmasi-closing`, {
+          status_closing: statusClosing,
+        })
+        const idx = this.records.findIndex(r => r.id === id)
+        if (idx !== -1) this.records[idx] = { ...this.records[idx], status_closing: statusClosing }
+        return { success: true, data: response.data }
+      } catch (err) {
+        return { success: false, message: err.response?.data?.message ?? 'Gagal konfirmasi closing' }
+      }
+    },
+
     async verifikasi(id, payload) {
       try {
         const response = await axios.patch(`/api/batal-ranap/${id}/verifikasi`, payload)

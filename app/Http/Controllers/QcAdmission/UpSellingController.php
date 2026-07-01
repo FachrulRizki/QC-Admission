@@ -29,14 +29,19 @@ class UpSellingController extends Controller
             'tanggal'            => 'required|string',
             'jam_input'          => 'required|string',
             'no_reg'             => 'required|string|max:20',
+            'no_mr'              => 'nullable|string|max:20',
+            'tgl_daftar'         => 'nullable|string',
             'nama_pasien'        => 'nullable|string|max:100',
             'jaminan'            => 'nullable|string|max:50',
+            'nama_ruang'         => 'nullable|string|max:100',
+            'nama_bangsal'       => 'nullable|string|max:100',
+            'kelas'              => 'nullable|string|max:50',
             'rekomendasi_kelas'  => 'nullable|string|max:50',
             'kelas_diambil'      => 'nullable|string|max:50',
-            'alasan'             => 'nullable|string|max:255',
+            'alasan'             => 'nullable|in:Naik Kelas,Perubahan Jaminan',
             'petugas'            => 'required|string|max:100',
             'status'             => 'nullable|in:Berhasil,Tidak Berhasil,Pending',
-            'note'               => 'nullable|string|max:255',
+            'note'               => 'nullable|string|max:1000',
         ]);
 
         $record = $this->service->create($validated);

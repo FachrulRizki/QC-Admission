@@ -11,6 +11,11 @@ class QualityControl extends Model
 
     protected $table = 'quality_controls';
 
+    public function edukasiLanjutans()
+    {
+        return $this->hasMany(\App\Models\EdukasiLanjutan::class, 'quality_control_id');
+    }
+
     protected $fillable = [
         'tanggal',
         'jam_input',

@@ -2,6 +2,7 @@
 import { useQualityControlStore } from '@/stores/useQualityControlStore'
 import QCFormDialog from '@/views/qc-admission/quality-control/QCFormDialog.vue'
 import QCDataTable  from '@/views/qc-admission/quality-control/QCDataTable.vue'
+import axios from 'axios'
 
 const store = useQualityControlStore()
 
@@ -10,15 +11,11 @@ const editItem          = ref(null)
 const showDeleteConfirm = ref(false)
 const deleteTarget      = ref(null)
 const loading           = ref(false)
+const processing        = ref(false)
 const lastRefresh       = ref(null)
+const snackbar          = ref({ show: false, message: '', color: 'success' })
 
 // ── Filters ────────────────────────────────────────────────────────────────────
-const STATUS_OPTIONS = [
-  { title: 'Semua Status',      value: null },
-  { title: 'Edukasi',           value: 'Edukasi' },
-  { title: 'Edukasi Lanjutan',  value: 'Edukasi lanjutan' },
-]
-const filterStatus   = ref(null)
 const filterSearch   = ref('')
 const filterDateFrom = ref('')
 const filterDateTo   = ref('')
@@ -27,19 +24,29 @@ const filterPetugas  = ref('')
 // ── Data dari store/API ────────────────────────────────────────────────────────
 const records = computed(() => store.records ?? [])
 
-const stats = computed(() => ({
-  total:           records.value.length,
-  edukasi:         records.value.filter(r => r.status === 'Edukasi').length,
-  edukasiLanjutan: records.value.filter(r => r.status === 'Edukasi lanjutan').length,
-  lanjutanPct: records.value.length
-    ? Math.round((records.value.filter(r => r.status === 'Edukasi lanjutan').length / records.value.length) * 100)
-    : 0,
-}))
+// Hitung berapa yang sudah >= 2 jam (akan masuk Edukasi Lanjutan)
+const now = ref(Date.now())
+let clockTick = null
+onMounted(() => { clockTick = setInterval(() => { now.value = Date.now() }, 5000) })
+onUnmounted(() => clearInterval(clockTick))
+
+const stats = computed(() => {
+  const siapLanjutan = records.value.filter(r => {
+    if (!r.created_at) return false
+    return (now.value - new Date(r.created_at).getTime()) / 1000 >= 7200
+  }).length
+  return {
+    total:       records.value.length,
+    edukasi:     records.value.length - siapLanjutan,
+    siapLanjutan,
+  }
+})
 
 const filtered = computed(() => {
   let data = records.value
-  if (filterStatus.value)         data = data.filter(r => r.status === filterStatus.value)
-  if (filterPetugas.value.trim()) data = data.filter(r => r.petugas?.toLowerCase().includes(filterPetugas.value.toLowerCase()))
+  if (filterPetugas.value.trim()) {
+    data = data.filter(r => r.petugas?.toLowerCase().includes(filterPetugas.value.toLowerCase()))
+  }
   if (filterSearch.value.trim()) {
     const q = filterSearch.value.toLowerCase()
     data = data.filter(r =>
@@ -63,8 +70,9 @@ async function confirmDelete() {
   loading.value = true
   try {
     await store.destroy(deleteTarget.value.id)
+    snackbar.value = { show: true, message: 'Data berhasil dihapus.', color: 'success' }
   } catch (e) {
-    console.error('Delete error', e)
+    snackbar.value = { show: true, message: 'Gagal menghapus data.', color: 'error' }
   } finally {
     loading.value = false
     showDeleteConfirm.value = false
@@ -74,15 +82,33 @@ async function confirmDelete() {
 
 async function onSaved() {
   showDialog.value = false
+  snackbar.value = { show: true, message: 'Data QC berhasil disimpan.', color: 'success' }
   await doRefresh()
 }
 
 function resetFilters() {
-  filterStatus.value   = null
   filterSearch.value   = ''
   filterDateFrom.value = ''
   filterDateTo.value   = ''
   filterPetugas.value  = ''
+}
+
+// Trigger manual proses auto-Edukasi Lanjutan
+async function processManual() {
+  processing.value = true
+  try {
+    const { data } = await axios.post('/api/quality-control/process-edukasi-lanjutan')
+    snackbar.value = {
+      show: true,
+      message: data.output || 'Proses selesai.',
+      color: 'info',
+    }
+    await doRefresh()
+  } catch {
+    snackbar.value = { show: true, message: 'Gagal menjalankan proses.', color: 'error' }
+  } finally {
+    processing.value = false
+  }
 }
 
 async function doRefresh() {
@@ -90,7 +116,6 @@ async function doRefresh() {
   try {
     await store.fetchRecords({
       search:    filterSearch.value   || undefined,
-      status:    filterStatus.value   || undefined,
       petugas:   filterPetugas.value  || undefined,
       date_from: filterDateFrom.value || undefined,
       date_to:   filterDateTo.value   || undefined,
@@ -117,10 +142,17 @@ onMounted(() => doRefresh())
           QC Admission · Quality Control
         </div>
         <h1 class="page-hero__title">Quality Control Admisi</h1>
-        <p class="page-hero__subtitle">Monitoring dan pencatatan data QC rawat inap · Durasi &ge; 2 jam → auto Edukasi Lanjutan</p>
+        <p class="page-hero__subtitle">Pasien otomatis pindah ke Edukasi Lanjutan 2 jam setelah entry</p>
       </div>
       <div class="d-flex gap-2 align-center" style="position:relative;z-index:2">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" title="Refresh" @click="doRefresh">
+        <VTooltip text="Proses manual Edukasi Lanjutan">
+          <template #activator="{ props: tp }">
+            <VBtn v-bind="tp" icon variant="text" color="white" size="small" :loading="processing" @click="processManual">
+              <VIcon icon="ri-play-circle-line" />
+            </VBtn>
+          </template>
+        </VTooltip>
+        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="doRefresh">
           <VIcon icon="ri-refresh-line" />
         </VBtn>
         <VBtn color="white" variant="elevated" rounded="lg" prepend-icon="ri-add-line" style="color:#667eea" @click="openAdd">
@@ -130,58 +162,45 @@ onMounted(() => doRefresh())
       <VIcon icon="ri-shield-check-line" class="page-hero__icon" />
     </div>
 
-    <!-- Info auto-trigger -->
+    <!-- Alur info -->
     <VAlert type="info" variant="tonal" border="start" density="compact" class="mb-4" closable>
       <div class="text-caption">
-        <strong>Auto Edukasi Lanjutan:</strong>
-        Jika status <strong>"Edukasi Lanjutan"</strong> dan durasi tunggu mencapai <strong>≥ 2 jam</strong>,
-        data otomatis masuk ke menu Edukasi Lanjutan. Status hanya: <strong>Edukasi</strong> atau <strong>Edukasi Lanjutan</strong>.
+        <strong>Alur:</strong>
+        Entry pasien → Status <strong>Edukasi</strong> →
+        <VIcon icon="ri-timer-flash-line" size="12" class="mx-1" />
+        Sistem cek tiap menit → Jika sudah <strong>≥ 2 jam</strong> sejak entry → otomatis masuk <strong>Edukasi Lanjutan</strong>.
+        Gunakan tombol <VIcon icon="ri-play-circle-line" size="12" class="mx-1" /> untuk trigger manual.
       </div>
     </VAlert>
 
-    <!-- Stats — clickable filter -->
+    <!-- Stats -->
     <VRow dense class="mb-4">
-      <VCol cols="6" sm="4">
-        <VCard
-          elevation="0" border rounded="lg"
-          class="stat-card text-center pa-4 cursor-pointer"
-          :class="filterStatus === null ? 'stat-active' : ''"
-          @click="filterStatus = null"
-        >
+      <VCol cols="4">
+        <VCard elevation="0" border rounded="lg" class="stat-card text-center pa-4">
           <p class="text-h4 font-weight-bold text-primary mb-0">{{ stats.total }}</p>
           <p class="text-caption text-medium-emphasis mb-0">Total QC</p>
         </VCard>
       </VCol>
-      <VCol cols="6" sm="4">
-        <VCard
-          elevation="0" border rounded="lg"
-          class="stat-card text-center pa-4 cursor-pointer"
-          :class="filterStatus === 'Edukasi' ? 'stat-active-success' : ''"
-          @click="filterStatus = filterStatus === 'Edukasi' ? null : 'Edukasi'"
-        >
+      <VCol cols="4">
+        <VCard elevation="0" border rounded="lg" class="stat-card text-center pa-4">
           <p class="text-h4 font-weight-bold mb-0" style="color:rgb(var(--v-theme-success))">{{ stats.edukasi }}</p>
           <p class="text-caption text-medium-emphasis mb-0">
-            <VIcon icon="ri-book-line" size="12" class="me-1" />Edukasi
+            <VIcon icon="ri-book-line" size="12" class="me-1" />Sedang Edukasi
           </p>
         </VCard>
       </VCol>
-      <VCol cols="12" sm="4">
-        <VCard
-          elevation="0" border rounded="lg"
-          class="stat-card pa-4 cursor-pointer"
-          :class="filterStatus === 'Edukasi lanjutan' ? 'stat-active-warning' : ''"
-          @click="filterStatus = filterStatus === 'Edukasi lanjutan' ? null : 'Edukasi lanjutan'"
-        >
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div>
-              <p class="text-h4 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">{{ stats.edukasiLanjutan }}</p>
-              <p class="text-caption text-medium-emphasis mb-0">
-                <VIcon icon="ri-book-open-line" size="12" class="me-1" />Edukasi Lanjutan
-              </p>
-            </div>
-            <VChip color="warning" variant="tonal" size="small">{{ stats.lanjutanPct }}%</VChip>
-          </div>
-          <VProgressLinear :model-value="stats.lanjutanPct" color="warning" rounded height="4" bg-color="warning" bg-opacity="0.15" />
+      <VCol cols="4">
+        <VCard elevation="0" border rounded="lg" class="stat-card text-center pa-4"
+          :class="stats.siapLanjutan > 0 ? 'stat-active-warning' : ''">
+          <p class="text-h4 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">
+            {{ stats.siapLanjutan }}
+          </p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            <VIcon icon="ri-timer-flash-line" size="12" class="me-1" />Siap → Edukasi Lanjutan
+          </p>
+          <p v-if="stats.siapLanjutan > 0" class="text-caption text-warning mt-1 mb-0">
+            (belum diproses scheduler)
+          </p>
         </VCard>
       </VCol>
     </VRow>
@@ -199,16 +218,6 @@ onMounted(() => doRefresh())
             />
           </VCol>
           <VCol cols="6" sm="2">
-            <VSelect
-              v-model="filterStatus"
-              :items="STATUS_OPTIONS"
-              item-title="title"
-              item-value="value"
-              variant="outlined" density="compact" hide-details
-              placeholder="Status"
-            />
-          </VCol>
-          <VCol cols="6" sm="2">
             <VTextField
               v-model="filterPetugas"
               placeholder="Petugas"
@@ -222,11 +231,10 @@ onMounted(() => doRefresh())
           <VCol cols="6" sm="2">
             <VTextField v-model="filterDateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
           </VCol>
+          <VCol cols="auto">
+            <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
+          </VCol>
         </VRow>
-        <div class="d-flex justify-end gap-2 mt-2">
-          <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
-          <VBtn size="small" variant="tonal" color="primary" prepend-icon="ri-loop-left-line" :loading="loading" @click="doRefresh">Refresh</VBtn>
-        </div>
       </VCardText>
     </VCard>
 
@@ -238,7 +246,7 @@ onMounted(() => doRefresh())
       </div>
       <span v-if="lastRefresh" class="text-caption text-disabled">
         <VIcon icon="ri-time-line" size="13" class="me-1" />
-        Update: {{ lastRefresh.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) }}
+        {{ lastRefresh.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) }}
       </span>
     </div>
 
@@ -266,10 +274,18 @@ onMounted(() => doRefresh())
         </VCardActions>
       </VCard>
     </VDialog>
+
+    <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000" location="bottom right" rounded="lg">
+      {{ snackbar.message }}
+      <template #actions>
+        <VBtn variant="text" size="small" @click="snackbar.show = false">Tutup</VBtn>
+      </template>
+    </VSnackbar>
   </div>
 </template>
 
 <style scoped>
-.stat-card { transition: box-shadow 0.2s, transform 0.15s; cursor: pointer; }
+.stat-card { transition: box-shadow 0.2s, transform 0.15s; }
 .stat-card:hover { box-shadow: 0 4px 16px rgba(var(--v-shadow-key-umbra-color), 0.1) !important; transform: translateY(-1px); }
+.font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
 </style>

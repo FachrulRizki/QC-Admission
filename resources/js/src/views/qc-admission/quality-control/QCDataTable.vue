@@ -7,37 +7,48 @@ const emit = defineEmits(['edit', 'delete'])
 
 const search = ref('')
 
-// Detail dialog state
+// ── Detail dialog ─────────────────────────────────────────────────────────────
 const detailDialog = ref(false)
 const selectedItem  = ref(null)
+function openDetail(item) { selectedItem.value = item; detailDialog.value = true }
 
-function openDetail(item) {
-  selectedItem.value = item
-  detailDialog.value = true
+// ── Live countdown per row ────────────────────────────────────────────────────
+// Hitung sisa waktu menuju 2 jam sejak created_at
+const now = ref(Date.now())
+let tickTimer = null
+onMounted(() => { tickTimer = setInterval(() => { now.value = Date.now() }, 1000) })
+onUnmounted(() => clearInterval(tickTimer))
+
+function getElapsedSeconds(item) {
+  if (!item.created_at) return 0
+  return Math.floor((now.value - new Date(item.created_at).getTime()) / 1000)
+}
+
+function getCountdown(item) {
+  const elapsed = getElapsedSeconds(item)
+  const remaining = Math.max(0, 7200 - elapsed)
+  if (remaining === 0) return null // sudah lewat
+  const h = String(Math.floor(remaining / 3600)).padStart(2, '0')
+  const m = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')
+  const s = String(remaining % 60).padStart(2, '0')
+  return `${h}:${m}:${s}`
+}
+
+function isAlreadyLanjutan(item) {
+  // Sudah ada di Edukasi Lanjutan (ditandai dari backend — field has_edukasi_lanjutan)
+  // atau elapsed >= 2 jam
+  return item.has_edukasi_lanjutan || getElapsedSeconds(item) >= 7200
 }
 
 const headers = [
-  { title: 'Tanggal',       key: 'tanggal',      sortable: true  },
-  { title: 'No. MR',        key: 'no_mr',         sortable: true,  width: '90px' },
-  { title: 'Nama Pasien',   key: 'nama_pasien',   sortable: true  },
-  { title: 'Jaminan',       key: 'jaminan',       sortable: true,  width: '90px' },
-  { title: 'Status',        key: 'status',        sortable: true,  width: '160px' },
-  { title: 'Petugas',       key: 'petugas',       sortable: true  },
-  { title: 'Durasi Tunggu', key: 'durasi_tunggu', sortable: true,  align: 'center', width: '130px' },
-  { title: 'Aksi',          key: 'actions',       sortable: false, align: 'center', width: '90px' },
+  { title: 'Tanggal',     key: 'tanggal',      sortable: true },
+  { title: 'No. MR',      key: 'no_mr',         sortable: true, width: '90px' },
+  { title: 'Nama Pasien', key: 'nama_pasien',   sortable: true },
+  { title: 'Jaminan',     key: 'jaminan',       sortable: true, width: '90px' },
+  { title: 'Petugas',     key: 'petugas',       sortable: true },
+  { title: 'Status Edu.',  key: 'edukasi_status', sortable: false, align: 'center', width: '180px' },
+  { title: 'Aksi',        key: 'actions',       sortable: false, align: 'center', width: '90px' },
 ]
-
-const statusMap = {
-  'Edukasi':          { color: 'success', icon: 'ri-book-2-line' },
-  'Edukasi lanjutan': { color: 'warning', icon: 'ri-book-open-line' },
-  'Masuk':            { color: 'info',    icon: 'ri-hospital-line' },
-}
-function getStatus(s) { return statusMap[s] ?? { color: 'secondary', icon: 'ri-question-line' } }
-
-function isDurasiLong(d) {
-  if (!d) return false
-  return d > '02:00:00'
-}
 </script>
 
 <template>
@@ -50,21 +61,20 @@ function isDurasiLong(d) {
         </VAvatar>
         <div>
           <p class="text-subtitle-2 font-weight-bold mb-0">Data Quality Control</p>
-          <p class="text-caption text-medium-emphasis mb-0">{{ items.length }} record — klik baris untuk detail</p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            {{ items.length }} record · klik baris untuk detail · auto pindah ke Edukasi Lanjutan setelah 2 jam
+          </p>
         </div>
       </div>
       <VTextField
         v-model="search"
-        placeholder="Cari pasien, petugas, NoMR..."
+        placeholder="Cari pasien, petugas, No MR..."
         prepend-inner-icon="ri-search-line"
-        variant="outlined"
-        density="compact"
-        hide-details
-        clearable
-        style="max-width: 280px;"
+        variant="outlined" density="compact"
+        hide-details clearable
+        style="max-width:260px"
       />
     </div>
-
     <VDivider />
 
     <VDataTable
@@ -78,35 +88,43 @@ function isDurasiLong(d) {
       class="qc-table"
       @click:row="(_, { item }) => openDetail(item)"
     >
-      <!-- Status -->
-      <template #item.status="{ item }">
-        <VChip
-          :color="getStatus(item.status).color"
-          size="small"
-          variant="tonal"
-          label
-        >
-          <VIcon :icon="getStatus(item.status).icon" size="13" class="me-1" />
-          {{ item.status }}
-        </VChip>
+
+      <!-- Nama pasien with avatar -->
+      <template #item.nama_pasien="{ item }">
+        <div class="d-flex align-center gap-2 py-1">
+          <VAvatar color="primary" variant="tonal" size="28" rounded="md">
+            <span style="font-size:11px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
+          </VAvatar>
+          <span class="text-body-2 font-weight-medium">{{ item.nama_pasien }}</span>
+        </div>
       </template>
 
-      <!-- Durasi Tunggu -->
-      <template #item.durasi_tunggu="{ item }">
-        <VChip
-          :color="isDurasiLong(item.durasi_tunggu) ? 'error' : 'default'"
-          size="small"
-          variant="tonal"
-        >
-          <VIcon icon="ri-timer-line" size="12" class="me-1" />
-          {{ item.durasi_tunggu || '—' }}
-        </VChip>
+      <!-- Status Edukasi + countdown -->
+      <template #item.edukasi_status="{ item }">
+        <div class="d-flex flex-column align-center gap-1 py-1">
+          <template v-if="isAlreadyLanjutan(item)">
+            <VChip color="warning" size="small" variant="tonal" prepend-icon="ri-arrow-right-circle-line">
+              Edukasi Lanjutan
+            </VChip>
+          </template>
+          <template v-else>
+            <VChip color="success" size="small" variant="tonal" prepend-icon="ri-book-line">
+              Edukasi
+            </VChip>
+            <!-- Countdown ke Edukasi Lanjutan -->
+            <div v-if="getCountdown(item)" class="d-flex align-center gap-1">
+              <VIcon icon="ri-timer-line" size="11" color="secondary" />
+              <span class="text-caption text-disabled font-mono">{{ getCountdown(item) }}</span>
+              <span class="text-caption text-disabled">lagi</span>
+            </div>
+          </template>
+        </div>
       </template>
 
-      <!-- Actions (stop row-click propagation) -->
+      <!-- Actions -->
       <template #item.actions="{ item }">
         <div class="d-flex gap-1 justify-center" @click.stop>
-          <VTooltip text="Edit data">
+          <VTooltip text="Edit">
             <template #activator="{ props: tp }">
               <VBtn v-bind="tp" icon size="x-small" variant="text" color="primary" @click="emit('edit', item)">
                 <VIcon icon="ri-pencil-line" size="15" />
@@ -123,153 +141,119 @@ function isDurasiLong(d) {
         </div>
       </template>
 
-      <!-- Loading -->
       <template #loading>
         <div class="text-center py-8">
-          <VProgressCircular indeterminate color="primary" size="36" />
-          <p class="text-body-2 text-medium-emphasis mt-3 mb-0">Memuat data...</p>
+          <VProgressCircular indeterminate color="primary" size="32" />
+          <p class="text-body-2 text-medium-emphasis mt-2 mb-0">Memuat data...</p>
         </div>
       </template>
 
-      <!-- Empty state -->
       <template #no-data>
         <div class="text-center py-12">
-          <VIcon icon="ri-inbox-line" size="52" color="secondary" class="opacity-40 mb-3" />
-          <p class="text-body-1 font-weight-medium mb-1">Belum ada data</p>
-          <p class="text-body-2 text-medium-emphasis mb-0">Klik <strong>Input QC</strong> untuk menambah data.</p>
+          <VIcon icon="ri-inbox-line" size="48" color="secondary" class="opacity-40 mb-3" />
+          <p class="text-body-1 font-weight-medium mb-1">Belum ada data QC</p>
+          <p class="text-body-2 text-medium-emphasis mb-0">Klik <strong>Input QC</strong> untuk menambah.</p>
         </div>
       </template>
+
     </VDataTable>
   </VCard>
 
   <!-- ── Detail Dialog ──────────────────────────────────────────────────────── -->
-  <VDialog v-model="detailDialog" max-width="520" scrollable>
-    <VCard v-if="selectedItem" rounded="lg">
-      <!-- Header -->
-      <div class="detail-header px-5 pt-5 pb-3">
-        <div class="d-flex align-center gap-3 mb-3">
-          <VAvatar
-            :color="getStatus(selectedItem.status).color"
-            variant="tonal"
-            size="48"
-            rounded="lg"
-          >
-            <VIcon :icon="getStatus(selectedItem.status).icon" size="24" />
-          </VAvatar>
-          <div class="flex-grow-1">
-            <p class="text-h6 font-weight-bold mb-0">{{ selectedItem.nama_pasien }}</p>
-            <p class="text-caption text-medium-emphasis mb-0">
-              No. MR: <strong>{{ selectedItem.no_mr }}</strong>
-              · No. Reg: <strong>{{ selectedItem.no_reg }}</strong>
-            </p>
-          </div>
-          <VBtn icon variant="text" size="small" @click="detailDialog = false">
-            <VIcon icon="ri-close-line" />
-          </VBtn>
+  <VDialog v-model="detailDialog" max-width="500" scrollable>
+    <VCard v-if="selectedItem" rounded="xl">
+      <div class="detail-header d-flex align-center gap-3 px-5 py-4">
+        <VAvatar color="primary" variant="tonal" size="46" rounded="lg">
+          <span style="font-size:16px;font-weight:700">{{ selectedItem.nama_pasien?.charAt(0) ?? '?' }}</span>
+        </VAvatar>
+        <div class="flex-grow-1 min-width-0">
+          <p class="text-h6 font-weight-bold mb-0 text-truncate">{{ selectedItem.nama_pasien }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            No. MR: <strong>{{ selectedItem.no_mr }}</strong> · No. Reg: <strong>{{ selectedItem.no_reg }}</strong>
+          </p>
         </div>
-        <VChip :color="getStatus(selectedItem.status).color" variant="tonal" size="small" label>
-          <VIcon :icon="getStatus(selectedItem.status).icon" size="13" class="me-1" />
-          {{ selectedItem.status }}
-        </VChip>
+        <VBtn icon variant="text" size="small" @click="detailDialog = false">
+          <VIcon icon="ri-close-line" />
+        </VBtn>
+      </div>
+
+      <VDivider />
+
+      <!-- Status edukasi + countdown -->
+      <div class="px-5 py-3 d-flex align-center gap-3 flex-wrap" style="background:rgba(var(--v-theme-on-surface),0.02)">
+        <template v-if="isAlreadyLanjutan(selectedItem)">
+          <VChip color="warning" variant="tonal" size="small" prepend-icon="ri-arrow-right-circle-line">
+            Sudah masuk Edukasi Lanjutan
+          </VChip>
+        </template>
+        <template v-else>
+          <VChip color="success" variant="tonal" size="small" prepend-icon="ri-book-line">Edukasi</VChip>
+          <div v-if="getCountdown(selectedItem)" class="d-flex align-center gap-1">
+            <VIcon icon="ri-timer-flash-line" size="14" color="warning" />
+            <span class="text-caption font-weight-semibold text-warning font-mono">{{ getCountdown(selectedItem) }}</span>
+            <span class="text-caption text-medium-emphasis">lagi masuk Edukasi Lanjutan</span>
+          </div>
+        </template>
       </div>
 
       <VDivider />
 
       <VCardText class="pa-5">
-        <!-- Info grid -->
-        <VRow dense class="mb-4">
+        <VRow dense>
           <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Tanggal Input</p>
-              <p class="info-value">{{ selectedItem.tanggal }}</p>
-            </div>
+            <p class="info-label">Tanggal Input</p>
+            <p class="info-value">{{ selectedItem.tanggal }}</p>
           </VCol>
           <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Jaminan</p>
-              <p class="info-value">{{ selectedItem.jaminan || '—' }}</p>
-            </div>
+            <p class="info-label">Jam Input</p>
+            <p class="info-value">{{ selectedItem.jam_input }}</p>
           </VCol>
           <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Edukasi Kamar</p>
-              <p class="info-value">{{ selectedItem.edukasi_kamar || '—' }}</p>
-            </div>
+            <p class="info-label">Jaminan</p>
+            <p class="info-value">{{ selectedItem.jaminan || '—' }}</p>
           </VCol>
           <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Durasi Tunggu</p>
-              <p class="info-value">
-                <VChip
-                  :color="isDurasiLong(selectedItem.durasi_tunggu) ? 'error' : 'success'"
-                  size="x-small"
-                  variant="tonal"
-                >
-                  <VIcon icon="ri-timer-line" size="11" class="me-1" />
-                  {{ selectedItem.durasi_tunggu || '—' }}
-                </VChip>
-              </p>
-            </div>
+            <p class="info-label">Tgl. Daftar Pasien</p>
+            <p class="info-value">{{ selectedItem.tgl_daftar || '—' }}</p>
+          </VCol>
+          <VCol cols="12">
+            <p class="info-label">Edukasi Kamar</p>
+            <p class="info-value">{{ selectedItem.edukasi_kamar || '—' }}</p>
           </VCol>
           <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Note</p>
-              <p class="info-value">{{ selectedItem.note || '—' }}</p>
-            </div>
+            <p class="info-label">Note / Kamar</p>
+            <p class="info-value">{{ selectedItem.note || '—' }}</p>
           </VCol>
           <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Petugas</p>
-              <p class="info-value d-flex align-center gap-1">
-                <VIcon icon="ri-user-3-line" size="14" />
-                {{ selectedItem.petugas || '—' }}
-              </p>
-            </div>
+            <p class="info-label">Petugas</p>
+            <p class="info-value d-flex align-center gap-1">
+              <VIcon icon="ri-user-3-line" size="14" />{{ selectedItem.petugas || '—' }}
+            </p>
+          </VCol>
+          <VCol cols="12">
+            <p class="info-label">Status Pasien</p>
+            <p class="info-value">{{ selectedItem.status_ket || '—' }}</p>
           </VCol>
           <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Status Keterangan</p>
-              <p class="info-value">{{ selectedItem.status_ket || '—' }}</p>
-            </div>
-          </VCol>
-          <VCol cols="6">
-            <div class="info-field">
-              <p class="info-label">Keluarga Pasien</p>
-              <p class="info-value">{{ selectedItem.keluarga_pasien || '—' }}</p>
-            </div>
+            <p class="info-label">Keluarga Pasien</p>
+            <p class="info-value">{{ selectedItem.keluarga_pasien || '—' }}</p>
           </VCol>
         </VRow>
 
-        <!-- TTD Keluarga Pasien -->
-        <div class="ttd-section pa-3 rounded-lg">
-          <p class="text-caption font-weight-semibold text-medium-emphasis mb-2">
-            <VIcon icon="ri-pen-nib-line" size="14" class="me-1" />
-            Tanda Tangan Keluarga Pasien
-          </p>
-          <div v-if="selectedItem.ttd_keluarga_pasien" class="ttd-preview rounded-lg overflow-hidden">
-            <img
-              :src="selectedItem.ttd_keluarga_pasien"
-              alt="TTD Keluarga"
-              style="width:100%; max-height:120px; object-fit:contain; background:#fff;"
-            />
-          </div>
-          <div v-else class="ttd-empty text-center py-4 text-medium-emphasis">
-            <VIcon icon="ri-pen-nib-line" size="28" class="mb-1" />
-            <p class="text-caption mb-0">Belum ada tanda tangan</p>
-          </div>
+        <!-- TTD -->
+        <div class="mt-3 pa-3 rounded-lg" style="background:rgba(var(--v-theme-on-surface),0.03);border:1px dashed rgba(var(--v-border-color),var(--v-border-opacity))">
+          <p class="info-label mb-2">Tanda Tangan Keluarga</p>
+          <img v-if="selectedItem.ttd_keluarga_pasien" :src="selectedItem.ttd_keluarga_pasien"
+            alt="TTD" style="max-height:100px;width:100%;object-fit:contain;background:#fff;border-radius:6px" />
+          <p v-else class="text-caption text-medium-emphasis text-center py-2 mb-0">Belum ada tanda tangan</p>
         </div>
       </VCardText>
 
       <VDivider />
-
       <div class="d-flex gap-3 px-5 py-4">
         <VBtn variant="outlined" class="flex-grow-1" @click="detailDialog = false">Tutup</VBtn>
-        <VBtn
-          color="primary"
-          class="flex-grow-1"
-          prepend-icon="ri-pencil-line"
-          @click="emit('edit', selectedItem); detailDialog = false"
-        >
+        <VBtn color="primary" class="flex-grow-1" prepend-icon="ri-pencil-line"
+          @click="emit('edit', selectedItem); detailDialog = false">
           Edit
         </VBtn>
       </div>
@@ -278,35 +262,20 @@ function isDurasiLong(d) {
 </template>
 
 <style scoped>
+.qc-table :deep(tr) { cursor: pointer; }
+.qc-table :deep(tr:hover td) { background: rgba(var(--v-theme-primary), 0.025); }
 .qc-table :deep(.v-data-table__thead th) {
-  background: rgb(var(--v-theme-table-header-color)) !important;
   font-weight: 700 !important;
   font-size: 0.72rem !important;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  color: rgba(var(--v-theme-on-surface), 0.75) !important;
+  letter-spacing: 0.04em;
+  background: rgba(var(--v-theme-on-surface), 0.025) !important;
 }
-
-.qc-table :deep(tr) { cursor: pointer; }
-.qc-table :deep(tr:hover td) { background: rgba(var(--v-theme-primary), 0.03); }
-
-.detail-header { background: rgba(var(--v-theme-primary), 0.03); }
-
-.info-field { padding: 6px 0; }
+.detail-header { background: rgba(var(--v-theme-primary), 0.04); }
 .info-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-  margin-bottom: 2px;
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(var(--v-theme-on-surface), 0.45); margin-bottom: 2px;
 }
-.info-value { font-size: 0.875rem; font-weight: 500; margin-bottom: 0; }
-
-.ttd-section { background: rgba(var(--v-theme-on-surface), 0.03); }
-.ttd-preview { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
-.ttd-empty {
-  border: 1.5px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 8px;
-}
+.info-value { font-size: 0.875rem; font-weight: 500; margin-bottom: 8px; }
+.font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
 </style>

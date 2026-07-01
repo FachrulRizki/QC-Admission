@@ -66,7 +66,7 @@ function resetForm() {
     petugas:       null,
     keluarga_pasien:     props.patient?.keluarga_pasien ?? '',
     ttd_keluarga_pasien: '',
-    status:        'Menunggu',
+    status:        'Menunggu', // selalu Menunggu — berubah ke Selesai hanya via Sync SIMRS
     quality_control_id:  props.patient?.quality_control_id ?? null,
   }
 }
@@ -309,17 +309,15 @@ function fmtDate(d) {
               </VCol>
             </VRow>
 
-            <!-- Status toggle — Edukasi / Edukasi Lanjutan -->
+            <!-- Status toggle — hanya Lanjut Edukasi (tidak ada pilihan Edukasi) -->
             <div class="mt-3">
-              <p class="text-caption font-weight-semibold text-medium-emphasis mb-2">Status Edukasi</p>
-              <VBtnToggle v-model="form.status" mandatory rounded="lg" color="warning" density="compact" class="w-100">
-                <VBtn value="Menunggu" class="flex-grow-1" variant="outlined">
-                  <VIcon icon="ri-book-line" size="15" class="me-1" />Edukasi
-                </VBtn>
-                <VBtn value="Selesai" class="flex-grow-1" variant="outlined">
-                  <VIcon icon="ri-check-double-line" size="15" class="me-1" />Edukasi Lanjutan
-                </VBtn>
-              </VBtnToggle>
+              <p class="text-caption font-weight-semibold text-medium-emphasis mb-2">Status Edukasi Lanjutan</p>
+              <div class="d-flex align-center gap-2 px-3 py-2 rounded-lg" style="background:rgba(var(--v-theme-warning),0.06);border:1px solid rgba(var(--v-theme-warning),0.25)">
+                <VIcon icon="ri-book-open-line" size="16" color="warning" />
+                <span class="text-caption text-medium-emphasis">Status:</span>
+                <VChip color="warning" variant="tonal" size="small" label>Lanjut Edukasi</VChip>
+                <span class="text-caption text-disabled">· status tetap Menunggu hingga dapat bed</span>
+              </div>
             </div>
           </div>
 

@@ -58,21 +58,23 @@ const stats = computed(() => ({
   nonBedah:     records.value.filter(r => r.status_ok === 'Non Bedah').length,
 }))
 
-// Headers — tanpa kolom Aksi karena klik baris → modal
 const headers = [
   { title: 'Tanggal',          key: 'tanggal',          sortable: true },
   { title: 'No. Reg',          key: 'no_reg',           sortable: true },
   { title: 'Nama Pasien',      key: 'nama_pasien',      sortable: true },
   { title: 'Keterangan Batal', key: 'keterangan_batal', sortable: true },
   { title: 'Ruangan',          key: 'ruangan',          sortable: true },
-  { title: 'Diagnosa',         key: 'diagnosa',         sortable: true },
-  { title: 'Status',           key: 'status_ok',        sortable: true, align: 'center' },
+  { title: 'Status OK',        key: 'status_ok',        sortable: true, align: 'center' },
+  { title: 'Closing',          key: 'status_closing',   sortable: true, align: 'center' },
   { title: 'Petugas',          key: 'petugas',          sortable: true },
   { title: 'Aksi',             key: 'actions',          sortable: false, align: 'center', width: '70px' },
 ]
 
 function statusColor(s) {
   return { Bedah: 'success', 'Non Bedah': 'info' }[s] ?? 'secondary'
+}
+function closingColor(s) {
+  return s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
 }
 
 function notify(msg, color = 'success') {
@@ -272,8 +274,19 @@ onMounted(() => doRefresh())
 
         <template #item.status_ok="{ item }">
           <VChip :color="statusColor(item.status_ok)" size="small" variant="tonal" label>
-            {{ item.status_ok || 'Belum Diverifikasi' }}
+            {{ item.status_ok || '—' }}
           </VChip>
+        </template>
+
+        <template #item.status_closing="{ item }">
+          <VChip
+            v-if="item.status_closing"
+            :color="closingColor(item.status_closing)"
+            size="small" variant="tonal" label
+          >
+            {{ item.status_closing }}
+          </VChip>
+          <span v-else class="text-caption text-disabled">—</span>
         </template>
 
         <template #item.actions="{ item }">

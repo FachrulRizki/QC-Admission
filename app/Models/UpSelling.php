@@ -15,13 +15,18 @@ class UpSelling extends Model
         'tanggal',
         'jam_input',
         'no_reg',
+        'no_mr',
+        'tgl_daftar',
         'nama_pasien',
         'jaminan',
+        'nama_ruang',
+        'nama_bangsal',
+        'kelas',
         'rekomendasi_kelas',
         'kelas_diambil',
-        'alasan',
+        'alasan',          // Ket_Up_Selling: Naik Kelas / Perubahan Jaminan
         'petugas',
         'status',
-        'note',
+        'note',            // notes — keterangan bebas
     ];
 }

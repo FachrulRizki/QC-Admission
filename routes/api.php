@@ -78,9 +78,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // Edukasi Lanjutan — admin + qc_admission
     Route::middleware('role:admin,qc_admission')->group(function () {
         Route::apiResource('edukasi-lanjutan', EdukasiLanjutanController::class);
-    // Sync status dari RSUS (manual trigger dari frontend)
-    Route::get('edukasi-lanjutan/sync-rsus',  [EdukasiLanjutanController::class, 'syncRsus']);
-    Route::get('edukasi-lanjutan-pending',    [EdukasiLanjutanController::class, 'pending']);
+        // Sync status dari RSUS (manual trigger dari frontend)
+        Route::get('edukasi-lanjutan/sync-rsus',  [EdukasiLanjutanController::class, 'syncRsus']);
+        Route::get('edukasi-lanjutan-pending',    [EdukasiLanjutanController::class, 'pending']);
+        // Trigger manual proses auto-Edukasi Lanjutan (jalankan command via HTTP)
+        Route::post('quality-control/process-edukasi-lanjutan', function () {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('qc:process-edukasi-lanjutan');
+                $output = \Illuminate\Support\Facades\Artisan::output();
+                return response()->json(['success' => true, 'output' => trim($output)]);
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+        });
     });
 
     // Up Selling — admin + qc_admission
@@ -95,7 +105,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post  ('batal-ranap',                     [BatalRanapController::class, 'store']);
         Route::put   ('batal-ranap/{id}',                [BatalRanapController::class, 'update']);
         Route::delete('batal-ranap/{id}',                [BatalRanapController::class, 'destroy']);
-        Route::patch ('batal-ranap/{id}/verifikasi',     [BatalRanapController::class, 'verifikasi']);
+        Route::patch ('batal-ranap/{id}/verifikasi',          [BatalRanapController::class, 'verifikasi']);
+        Route::patch ('batal-ranap/{id}/konfirmasi-closing',  [BatalRanapController::class, 'konfirmasiClosing']);
     });
 
     // User management — admin only
