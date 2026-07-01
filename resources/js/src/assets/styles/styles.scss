@@ -7,17 +7,52 @@
 .page-transition-enter-active, .page-transition-leave-active { transition: opacity 0.18s ease; }
 .page-transition-enter-from, .page-transition-leave-to { opacity: 0; }
 
+// ─── Card global — soft shadow, not flat ─────────────────────────────────────
 .v-card:not(.v-card--elevated) { box-shadow: none !important; }
 .v-chip.v-chip--variant-tonal .v-chip__content { font-weight: 600; }
 
+// ─── Hover lift on interactive cards ─────────────────────────────────────────
+.v-card[border] {
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+// ─── Table headers ────────────────────────────────────────────────────────────
 .v-data-table .v-data-table__thead th {
   font-weight: 700 !important;
   font-size: 0.75rem !important;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
+  background: rgba(var(--v-theme-on-surface), 0.02) !important;
 }
 
+// ─── Navbar glassmorphism ─────────────────────────────────────────────────────
+.layout-navbar.navbar-blur {
+  background: rgba(var(--v-theme-surface), 0.9) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+// ─── Vertical nav ─────────────────────────────────────────────────────────────
+.nav-vertical .layout-vertical-nav {
+  border-right: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+// ─── Vertical nav link — pill style ──────────────────────────────────────────
+.layout-vertical-nav .nav-link {
+  border-radius: 10px !important;
+  margin: 2px 8px !important;
+  transition: background 0.15s, transform 0.15s !important;
+
+  &:hover { background: rgba(var(--v-theme-primary), 0.07) !important; transform: translateX(2px); }
+  &.router-link-active,
+  &.router-link-exact-active {
+    background: rgba(var(--v-theme-primary), 0.12) !important;
+    .v-icon, .nav-item-title { color: rgb(var(--v-theme-primary)) !important; }
+  }
+}
+
+// ─── Text aliases ─────────────────────────────────────────────────────────────
 .qc-label {
   font-size: 0.8125rem; font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.85);
@@ -36,6 +71,19 @@
   cursor: crosshair; overflow: hidden;
 }
 .signature-canvas-wrapper:focus-within { border-color: rgb(var(--v-theme-primary)); }
+
+// ─── Buttons global — more rounded ────────────────────────────────────────────
+.v-btn:not(.v-btn--icon) { letter-spacing: 0.01em !important; }
+
+// ─── VTextField / VSelect — subtle focus ring ────────────────────────────────
+.v-field--focused .v-field__outline {
+  --v-field-border-width: 2px !important;
+}
+
+// ─── VChip — slightly bigger radius ──────────────────────────────────────────
+.v-chip { border-radius: 8px !important; }
+.v-chip.v-chip--size-x-small { border-radius: 6px !important; }
+.v-chip.v-chip--variant-tonal .v-chip__content { font-weight: 600; }
 
 // ─── Hero Banner ─────────────────────────────────────────────────────────────
 .page-hero {

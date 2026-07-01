@@ -60,6 +60,8 @@ watch(() => form.value.no_reg, async (val) => {
     form.value.nama_pasien       = hit.nama_pasien ?? ''
     form.value.tgl_jam_daftar    = (hit.tgl_daftar ?? '') + (hit.jam_daftar ? ' ' + hit.jam_daftar : '')
     form.value.keterangan_pasien = hit.keterangan  ?? ''
+    // diagnosa dari field keterangan DB — tidak perlu isi manual
+    form.value.diagnosa          = hit.diagnosa  ?? ''
   }
 })
 
@@ -275,9 +277,10 @@ function close() { emit('update:modelValue', false) }
 
           <VTextField
             v-model="form.diagnosa"
-            label="Diagnosa (isi manual)"
+            label="Diagnosa (dari data pasien)"
             variant="outlined" density="compact"
             prepend-inner-icon="ri-stethoscope-line"
+            bg-color="grey-lighten-5" readonly
             class="mb-3"
           />
 

@@ -3,9 +3,6 @@ import VerticalNavLink from '@layouts/components/VerticalNavLink.vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 const auth = useAuthStore()
-
-const kasirViewPath = '/batal-ranap-view'
-const viewDataPath  = '/view-data-input'
 </script>
 
 <template>
@@ -16,10 +13,10 @@ const viewDataPath  = '/view-data-input'
     <VerticalNavLink :item="{ title: 'Edukasi Lanjutan', icon: 'ri-book-open-line',         to: '/edukasi-lanjutan' }" />
     <VerticalNavLink :item="{ title: 'Batal Ranap',      icon: 'ri-close-circle-line',      to: '/batal-ranap' }" />
     <VerticalNavLink :item="{ title: 'Up Selling',       icon: 'ri-arrow-up-circle-line',   to: '/up-selling' }" />
-    <VerticalNavLink :item="{ title: 'View Data Input',  icon: 'ri-table-line',             to: viewDataPath }" />
+    <VerticalNavLink :item="{ title: 'View Data Input',  icon: 'ri-table-line',             to: '/view-data-input' }" />
   </template>
 
-  <!-- Kasir only -->
+  <!-- Kasir only — satu menu saja -->
   <template v-if="auth.isKasir">
     <VerticalNavLink :item="{ title: 'View Data Input',  icon: 'ri-table-line',             to: '/view-data-input' }" />
   </template>
@@ -31,8 +28,8 @@ const viewDataPath  = '/view-data-input'
         Administrasi
       </span>
     </div>
-    <VerticalNavLink :item="{ title: 'Log Aktivitas',    icon: 'ri-history-line',           to: '/activity-log' }" />
-    <VerticalNavLink :item="{ title: 'Master Data',      icon: 'ri-database-2-line',        to: '/master-data' }" />
-    <VerticalNavLink :item="{ title: 'Manajemen User',   icon: 'ri-team-line',              to: '/user-management' }" />
+    <VerticalNavLink :item="{ title: 'Log Aktivitas',  icon: 'ri-history-line',      to: '/activity-log' }" />
+    <VerticalNavLink :item="{ title: 'Master Data',    icon: 'ri-database-2-line',   to: '/master-data' }" />
+    <VerticalNavLink :item="{ title: 'Manajemen User', icon: 'ri-team-line',         to: '/user-management' }" />
   </template>
 </template>

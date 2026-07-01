@@ -68,7 +68,20 @@ const noteOptions = [
 const statusKetOptions = ['Belum Dapat Kamar','Antri Kamar','Sudah Dapat Kamar']
 
 // ── Timer durasi tunggu ───────────────────────────────────────────────────────
+// Durasi dihitung sejak form dibuka (bukan dari tgl_daftar pasien yg bisa error)
 let durasiTimer = null
+let durasiStart = null  // timestamp saat form dibuka
+
+// Live clock untuk section Waktu Input
+const nowDisplay = ref('')
+let clockTimer = null
+
+function tickClock() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  nowDisplay.value = p(d.getDate()) + '/' + p(d.getMonth()+1) + '/' + d.getFullYear()
+    + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds())
+}
 
 watch(() => props.modelValue, (open) => {
   if (open) {
@@ -78,36 +91,34 @@ watch(() => props.modelValue, (open) => {
     pasienStore.clear()
     noRegSearch.value = ''
     pegawaiStore.fetch()
-    if (!props.editItem) durasiTimer = setInterval(updateDurasi, 1000)
+    tickClock()
+    clockTimer = setInterval(tickClock, 1000)
+    if (!props.editItem) {
+      durasiStart = Date.now()
+      durasiTimer = setInterval(updateDurasi, 1000)
+    }
   } else {
     clearInterval(durasiTimer)
+    clearInterval(clockTimer)
+    durasiStart = null
   }
 })
 
 function updateDurasi() {
-  try {
-    const raw = form.value.tgl_daftar
-    if (!raw) return
-    const parts     = raw.split(', ')
-    const dateParts = parts[0].split('/')
-    const timeParts = (parts[1] ?? '00.00.00').split('.')
-    const start = new Date(
-      +dateParts[2], +dateParts[1] - 1, +dateParts[0],
-      +timeParts[0], +timeParts[1], +timeParts[2],
-    )
-    const diff = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000))
-    const h = String(Math.floor(diff / 3600)).padStart(2, '0')
-    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0')
-    const s = String(diff % 60).padStart(2, '0')
-    form.value.durasi_tunggu = `${h}:${m}:${s}`
-  } catch {}
+  if (!durasiStart) return
+  const diff = Math.max(0, Math.floor((Date.now() - durasiStart) / 1000))
+  const h = String(Math.floor(diff / 3600)).padStart(2, '0')
+  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0')
+  const s = String(diff % 60).padStart(2, '0')
+  form.value.durasi_tunggu = h + ':' + m + ':' + s
 }
 
 function initialForm() {
   const now = new Date()
   return {
     tanggal: '', jam_input: '',
-    tgl_daftar: fmt(now), jam_daftar: fmtTime(now),
+    // tgl_daftar & jam_daftar = dari pasien DB (readonly display)
+    tgl_daftar: '', jam_daftar: '',
     no_mr: '', no_reg: null, nama_pasien: '', jaminan: '',
     status_ket: '', edukasi_kamar: '',
     durasi_tunggu: '00:00:00', note: null, petugas: null,
@@ -176,15 +187,14 @@ function close() { clearInterval(durasiTimer); emit('update:modelValue', false) 
 
         <!-- Section: Waktu -->
         <div class="form-section mb-4">
-          <p class="form-section-label">Waktu QC Admission</p>
-          <VRow dense>
-            <VCol cols="7">
-              <VTextField v-model="form.tgl_daftar" label="Tanggal Daftar" variant="outlined" density="compact" readonly prepend-inner-icon="ri-calendar-line" bg-color="grey-lighten-5" />
-            </VCol>
-            <VCol cols="5">
-              <VTextField v-model="form.jam_daftar" label="Jam" variant="outlined" density="compact" readonly prepend-inner-icon="ri-time-line" bg-color="grey-lighten-5" />
-            </VCol>
-          </VRow>
+          <p class="form-section-label">Waktu Input QC</p>
+          <VTextField
+            :model-value="nowDisplay"
+            label="Tanggal & Jam Input (auto)"
+            variant="outlined" density="compact" readonly
+            prepend-inner-icon="ri-calendar-line"
+            bg-color="grey-lighten-5"
+          />
         </div>
 
         <!-- Section: Data Pasien -->
@@ -236,17 +246,16 @@ function close() { clearInterval(durasiTimer); emit('update:modelValue', false) 
               <VTextField v-model="form.jaminan" label="Jaminan" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" />
             </VCol>
             <VCol cols="7">
-              <!-- Status Keterangan dari DB RSUS — readonly, bukan dropdown -->
               <VTextField v-model="form.status_ket" label="Status Keterangan" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-information-line" placeholder="Otomatis dari data pasien..." />
             </VCol>
           </VRow>
-          <!-- Tgl & Jam Daftar dari DB (readonly) -->
+          <!-- Tgl & Jam Daftar Pasien dari DB RSUS -->
           <VRow dense class="mt-2">
             <VCol cols="6">
-              <VTextField v-model="form.tgl_daftar" label="Tgl. Daftar Pasien" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-calendar-check-line" />
+              <VTextField v-model="form.tgl_daftar" label="Tgl. Daftar Pasien" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-calendar-check-line" placeholder="Pilih No. Reg..." />
             </VCol>
             <VCol cols="6">
-              <VTextField v-model="form.jam_daftar" label="Jam Daftar" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-time-line" />
+              <VTextField v-model="form.jam_daftar" label="Jam Daftar" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-time-line" placeholder="—" />
             </VCol>
           </VRow>
         </div>
