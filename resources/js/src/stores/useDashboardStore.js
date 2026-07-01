@@ -4,32 +4,45 @@ import axios from 'axios'
 export const useDashboardStore = defineStore('dashboard', {
   state: () => ({
     stats: {
-      jumlahEksternalPasien: 0,
-      durasiTungguEdukasi: '00:00',
-      totalQC: 0,
-      totalBatalRanap: 0,
+      jumlahEdukasiPasien:  0,
+      durasiTungguEdukasi:  '0',
+      totalEdukasi:         0,
       totalEdukasiLanjutan: 0,
-      totalUpSelling: 0,
+      totalBatalRanap:      0,
+      totalUpSelling:       0,
     },
-    recentQC: [],
-    petugasStats: [],
-    ruanganStats: [],
-    loading: false,
-    error: null,
+    avgPerPetugas:     [],
+    matrix:            [],
+    edukasiPerPetugas: [],
+    perStatus:         [],
+    perKamar:          [],
+    recentQC:          [],
+    dateFrom:          null,  // Y-m-d
+    dateTo:            null,  // Y-m-d
+    loading:           false,
+    error:             null,
   }),
 
   actions: {
-    async fetchDashboard() {
+    async fetchDashboard(dateFrom = null, dateTo = null) {
       this.loading = true
-      this.error = null
+      this.error   = null
       try {
-        const response = await axios.get('/api/dashboard')
-        const data = response.data
+        const params = {}
+        if (dateFrom) params.date_from = dateFrom
+        if (dateTo)   params.date_to   = dateTo
 
-        this.stats = data.stats ?? this.stats
-        this.recentQC = data.recent_qc ?? []
-        this.petugasStats = data.petugas_stats ?? []
-        this.ruanganStats = data.ruangan_stats ?? []
+        const { data } = await axios.get('/api/dashboard', { params })
+
+        this.stats             = data.stats             ?? this.stats
+        this.avgPerPetugas     = data.avg_per_petugas   ?? []
+        this.matrix            = data.matrix            ?? []
+        this.edukasiPerPetugas = data.edukasi_per_petugas ?? []
+        this.perStatus         = data.per_status        ?? []
+        this.perKamar          = data.per_kamar         ?? []
+        this.recentQC          = data.recent_qc         ?? []
+        this.dateFrom          = data.date_from         ?? dateFrom
+        this.dateTo            = data.date_to           ?? dateTo
       } catch (err) {
         this.error = err.response?.data?.message ?? 'Gagal memuat data dashboard'
       } finally {

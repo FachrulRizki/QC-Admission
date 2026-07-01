@@ -14,11 +14,20 @@ class DashboardController extends Controller
     ) {}
 
     /**
-     * Return all dashboard statistics and recent data in one call.
+     * GET /api/dashboard?date_from=2026-07-01&date_to=2026-07-01
+     * Default: hari ini.
      */
     public function index(Request $request): JsonResponse
     {
-        $data = $this->service->getSummary();
+        $request->validate([
+            'date_from' => 'nullable|date_format:Y-m-d',
+            'date_to'   => 'nullable|date_format:Y-m-d',
+        ]);
+
+        $data = $this->service->getSummary(
+            $request->query('date_from'),
+            $request->query('date_to')
+        );
 
         return response()->json($data);
     }
