@@ -1,266 +1,390 @@
-// ─── QC Admission Global Style Overrides ────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+//  QC Admission — Global Design System  (green primary: #00B37E)
+//  Fully responsive: HP (≤599) · Tablet (600–959) · Desktop (960+) · TV (1440+)
+// ═══════════════════════════════════════════════════════════════════════════
 
-.layout-overlay,
-.v-overlay__scrim { transition: none !important; }
+// ─── Layout resets ───────────────────────────────────────────────────────────
+.layout-overlay, .v-overlay__scrim { transition: none !important; }
 .layout-page-content, .layout-wrapper { box-shadow: none !important; }
-
 .page-transition-enter-active, .page-transition-leave-active { transition: opacity 0.18s ease; }
 .page-transition-enter-from, .page-transition-leave-to { opacity: 0; }
 
-// ─── Card global — soft shadow, not flat ─────────────────────────────────────
-.v-card:not(.v-card--elevated) { box-shadow: none !important; }
-.v-chip.v-chip--variant-tonal .v-chip__content { font-weight: 600; }
+// Prevent horizontal overflow at root
+html, body { overflow-x: hidden !important; max-width: 100vw; }
 
-// ─── Hover lift on interactive cards ─────────────────────────────────────────
-.v-card[border] {
-  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+// ─── Root CSS variables ───────────────────────────────────────────────────────
+:root {
+  --qc-green:       #00B37E;
+  --qc-green-dark:  #009E6B;
+  --qc-green-light: #D7F5EA;
+  --qc-text:        #1A1F1E;
+  --qc-text-sub:    #5C6B67;
+  --qc-border:      #E1E7E5;
+  --qc-bg:          #F4F7F6;
+  --qc-shadow:      rgba(16, 24, 22, 0.08);
 }
 
-// ─── Table headers ────────────────────────────────────────────────────────────
+// ─── Typography ───────────────────────────────────────────────────────────────
+body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+
+// ─── Card overrides ───────────────────────────────────────────────────────────
+.v-card:not(.v-card--elevated) { box-shadow: none !important; }
+.v-card[border] {
+  transition: box-shadow 0.2s ease, transform 0.18s ease;
+  border-color: var(--qc-border) !important;
+}
+
+// ─── Chips ────────────────────────────────────────────────────────────────────
+.v-chip { border-radius: 8px !important; font-weight: 600; }
+.v-chip.v-chip--size-x-small { border-radius: 6px !important; }
+
+// ─── Buttons ──────────────────────────────────────────────────────────────────
+.v-btn:not(.v-btn--icon) { letter-spacing: 0.01em !important; font-weight: 600 !important; }
+.v-btn--variant-elevated { box-shadow: 0 2px 8px rgba(0,179,126,0.25) !important; }
+
+// ─── TABLE — core responsive fix ─────────────────────────────────────────────
+// Vuetify VDataTable responsive wrapper
+.v-data-table {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+// Table container should clip, not overflow the page
+.v-data-table .v-table__wrapper {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+// Table headers — compact, no nowrap on most devices
 .v-data-table .v-data-table__thead th {
   font-weight: 700 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.72rem !important;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
-  background: rgba(var(--v-theme-on-surface), 0.02) !important;
+  background: rgba(var(--v-theme-on-surface), 0.025) !important;
+  color: rgba(var(--v-theme-on-surface), 0.55) !important;
+  padding: 8px 12px !important;
 }
+
+// Table cells — proper wrapping
+.v-data-table .v-data-table__tbody td {
+  padding: 8px 12px !important;
+  vertical-align: middle;
+}
+
+// ─── Focus ring ───────────────────────────────────────────────────────────────
+.v-field--focused .v-field__outline { --v-field-border-width: 2px !important; }
 
 // ─── Navbar glassmorphism ─────────────────────────────────────────────────────
 .layout-navbar.navbar-blur {
-  background: rgba(var(--v-theme-surface), 0.9) !important;
-  backdrop-filter: blur(12px) !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  background: rgba(var(--v-theme-surface), 0.94) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border-bottom: 1px solid var(--qc-border) !important;
 }
 
-// ─── Vertical nav ─────────────────────────────────────────────────────────────
+// ─── Vertical nav pill style ──────────────────────────────────────────────────
 .nav-vertical .layout-vertical-nav {
-  border-right: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  border-right: 1px solid var(--qc-border) !important;
+  background: #fff !important;
 }
-
-// ─── Vertical nav link — pill style ──────────────────────────────────────────
 .layout-vertical-nav .nav-link {
   border-radius: 10px !important;
-  margin: 2px 8px !important;
-  transition: background 0.15s, transform 0.15s !important;
-
-  &:hover { background: rgba(var(--v-theme-primary), 0.07) !important; transform: translateX(2px); }
-  &.router-link-active,
-  &.router-link-exact-active {
-    background: rgba(var(--v-theme-primary), 0.12) !important;
-    .v-icon, .nav-item-title { color: rgb(var(--v-theme-primary)) !important; }
+  margin: 1px 8px !important;
+  transition: background 0.15s, transform 0.12s !important;
+  &:hover {
+    background: rgba(0,179,126, 0.07) !important;
+    transform: translateX(2px);
+  }
+  &.router-link-active, &.router-link-exact-active {
+    background: rgba(0,179,126, 0.12) !important;
+    .v-icon, .nav-item-title { color: var(--qc-green) !important; }
   }
 }
 
-// ─── Text aliases ─────────────────────────────────────────────────────────────
+// ─── Text helpers ─────────────────────────────────────────────────────────────
+.page-title    { font-size: 1.25rem; font-weight: 700; line-height: 1.3; }
+.page-subtitle { font-size: 0.875rem; color: var(--qc-text-sub); }
+
+// ─── Form sections ────────────────────────────────────────────────────────────
+.form-section {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.form-section-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: rgba(var(--v-theme-on-surface), 0.45);
+  margin-bottom: 10px;
+}
 .qc-label {
   font-size: 0.8125rem; font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.85);
   margin-bottom: 4px; display: block;
 }
 .qc-label-required::after { content: " *"; color: rgb(var(--v-theme-error)); }
-
-.page-title    { font-size: 1.25rem; font-weight: 700; line-height: 1.3; color: rgb(var(--v-theme-on-surface)); }
-.page-subtitle { font-size: 0.875rem; color: rgba(var(--v-theme-on-surface), 0.6); }
-
-.v-card.qc-card { border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important; border-radius: 12px !important; }
-
 .signature-canvas-wrapper {
   border: 2px dashed rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 8px; background: rgba(var(--v-theme-surface), 1);
   cursor: crosshair; overflow: hidden;
 }
-.signature-canvas-wrapper:focus-within { border-color: rgb(var(--v-theme-primary)); }
-
-// ─── Buttons global — more rounded ────────────────────────────────────────────
-.v-btn:not(.v-btn--icon) { letter-spacing: 0.01em !important; }
-
-// ─── VTextField / VSelect — subtle focus ring ────────────────────────────────
-.v-field--focused .v-field__outline {
-  --v-field-border-width: 2px !important;
-}
-
-// ─── VChip — slightly bigger radius ──────────────────────────────────────────
-.v-chip { border-radius: 8px !important; }
-.v-chip.v-chip--size-x-small { border-radius: 6px !important; }
-.v-chip.v-chip--variant-tonal .v-chip__content { font-weight: 600; }
+.signature-canvas-wrapper:focus-within { border-color: var(--qc-green); }
 
 // ─── Hero Banner ─────────────────────────────────────────────────────────────
 .page-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 16px;
-  padding: 28px 32px;
-  margin-bottom: 24px;
-  min-height: 130px;
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  min-height: 110px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgba(var(--v-theme-primary), 0.75) 100%);
+  gap: 12px;
+  background: linear-gradient(135deg, var(--qc-green), var(--qc-green-dark));
 
-  &__content { position: relative; z-index: 2; flex: 1; }
-
-  &__title {
-    font-size: 1.6rem; font-weight: 800;
-    color: #fff; margin-bottom: 4px; line-height: 1.2;
+  &__content { position: relative; z-index: 2; flex: 1; min-width: 0; }
+  &__title    { font-size: 1.45rem; font-weight: 800; color: #fff; margin-bottom: 3px; line-height: 1.2; }
+  &__subtitle { font-size: 0.83rem; color: rgba(255,255,255,0.82); margin: 0; }
+  &__icon     {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    opacity: 0.1; z-index: 1; font-size: 7rem !important; color: #fff; pointer-events: none;
   }
-
-  &__subtitle {
-    font-size: 0.875rem;
-    color: rgba(255,255,255,0.8);
-    margin-bottom: 0;
-  }
-
-  &__icon {
-    position: absolute; right: 24px; top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.1; z-index: 1;
-    font-size: 8rem !important;
-    color: #fff;
-    pointer-events: none;
-  }
-
   &__badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(255,255,255,0.22); border-radius: 20px;
-    padding: 4px 12px; font-size: 0.72rem; font-weight: 700;
-    color: #fff; margin-bottom: 8px; backdrop-filter: blur(4px);
-    letter-spacing: 0.04em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,0.2); border-radius: 20px;
+    padding: 3px 10px; font-size: 0.68rem; font-weight: 700;
+    color: #fff; margin-bottom: 6px; letter-spacing: 0.04em; text-transform: uppercase;
   }
-
-  // Variants per menu
-  &--dashboard { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); }
-  &--qc        { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-  &--edukasi   { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-  &--batal     { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
-  &--upselling { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
-  &--view      { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-  &--kasir     { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
-  &--master    { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-  &--user      {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-    .page-hero__title, .page-hero__subtitle, .page-hero__badge { color: rgba(0,60,30,0.9) !important; }
-    .page-hero__icon { color: rgba(0,60,30,0.12) !important; }
-  }
-
-  // Decorative circles
   &::before {
-    content: '';
-    position: absolute; top: -40px; right: -40px;
-    width: 200px; height: 200px; border-radius: 50%;
-    background: rgba(255,255,255,0.08); z-index: 1;
-    pointer-events: none;
+    content: ''; position: absolute; top: -30px; right: -30px;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); z-index: 1; pointer-events: none;
   }
-  &::after {
-    content: '';
-    position: absolute; bottom: -60px; right: 80px;
-    width: 140px; height: 140px; border-radius: 50%;
-    background: rgba(255,255,255,0.05); z-index: 1;
-    pointer-events: none;
+
+  // Colour variants
+  &--dashboard { background: linear-gradient(135deg, #003d26, var(--qc-green-dark)); }
+  &--qc        { background: linear-gradient(135deg, #00B37E, #009E6B); }
+  &--edukasi   { background: linear-gradient(135deg, #00B37E, #00C896); }
+  &--batal     { background: linear-gradient(135deg, #e63946, #c1121f); }
+  &--upselling { background: linear-gradient(135deg, #2d6a4f, #52b788); }
+  &--view      { background: linear-gradient(135deg, #00B37E, #00f2c0); }
+  &--master    { background: linear-gradient(135deg, #00B37E, #009E6B); }
+  &--user      {
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
+    .page-hero__title, .page-hero__subtitle, .page-hero__badge { color: rgba(0,50,30,0.92) !important; }
+    .page-hero__icon { color: rgba(0,50,30,0.1) !important; }
   }
 }
 
-// ─── Stat Cards ──────────────────────────────────────────────────────────────
+// ─── Stat cards ───────────────────────────────────────────────────────────────
 .stat-card {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.18s ease;
   &:hover {
-    box-shadow: 0 6px 24px rgba(var(--v-shadow-key-umbra-color), 0.12) !important;
+    box-shadow: 0 6px 18px rgba(0,179,126,0.14) !important;
     transform: translateY(-2px);
   }
 }
-.stat-active         { border-color: rgb(var(--v-theme-primary)) !important; background: rgba(var(--v-theme-primary),0.05) !important; }
-.stat-active-warning { border-color: rgb(var(--v-theme-warning)) !important; background: rgba(var(--v-theme-warning),0.05) !important; }
-.stat-active-success { border-color: rgb(var(--v-theme-success)) !important; background: rgba(var(--v-theme-success),0.05) !important; }
-.stat-active-error   { border-color: rgb(var(--v-theme-error))   !important; background: rgba(var(--v-theme-error),0.05)   !important; }
-.stat-active-info    { border-color: rgb(var(--v-theme-info))    !important; background: rgba(var(--v-theme-info),0.05)    !important; }
+.stat-active         { border-color: var(--qc-green) !important;    background: rgba(0,179,126,0.06) !important; }
+.stat-active-success { border-color: #56CA00 !important;             background: rgba(86,202,0,0.06)  !important; }
+.stat-active-warning { border-color: #FFB400 !important;             background: rgba(255,180,0,0.06) !important; }
+.stat-active-error   { border-color: #FF4C51 !important;             background: rgba(255,76,81,0.06) !important; }
+.stat-active-info    { border-color: #16B1FF !important;             background: rgba(22,177,255,0.06)!important; }
 
-// ─── Filter Bar ──────────────────────────────────────────────────────────────
-.filter-bar {
-  background: rgba(var(--v-theme-surface), 1);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-}
-
-// ─── Quick nav cards ─────────────────────────────────────────────────────────
+// ─── Filter bar & quick cards ─────────────────────────────────────────────────
+.filter-bar { background: #fff; border: 1px solid var(--qc-border); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
 .quick-card {
-  transition: box-shadow 0.2s, transform 0.15s;
-  &:hover {
-    box-shadow: 0 4px 20px rgba(var(--v-shadow-key-umbra-color), 0.12) !important;
-    transform: translateY(-2px);
-  }
+  transition: box-shadow 0.18s, transform 0.15s;
+  &:hover { box-shadow: 0 4px 18px rgba(0,179,126,0.18) !important; transform: translateY(-2px); }
 }
-
-// ─── Durasi chip colors ───────────────────────────────────────────────────────
-.chip-durasi-ok     { background: rgba(86,202,0,0.12) !important;  color: #3d8f00 !important; }
-.chip-durasi-warn   { background: rgba(255,180,0,0.15) !important;  color: #b37d00 !important; }
-.chip-durasi-danger { background: rgba(255,76,81,0.15) !important;  color: #c4282d !important; }
 
 // ─── Status chip aliases ──────────────────────────────────────────────────────
-.chip-edukasi          { background-color: rgba(86,202,0,0.15) !important;   color: #3d8f00 !important; }
-.chip-edukasi-lanjutan { background-color: rgba(255,180,0,0.15) !important;  color: #b37d00 !important; }
-.chip-batal            { background-color: rgba(255,76,81,0.15) !important;  color: #c4282d !important; }
+.chip-edukasi          { background: rgba(0,179,126,0.12) !important;  color: #005C42 !important; }
+.chip-edukasi-lanjutan { background: rgba(255,180,0,0.14) !important;  color: #B37A00 !important; }
+.chip-batal            { background: rgba(255,76,81,0.12) !important;  color: #C4282D !important; }
+.chip-durasi-ok        { background: rgba(86,202,0,0.12) !important;   color: #3d8f00 !important; }
+.chip-durasi-warn      { background: rgba(255,180,0,0.14) !important;  color: #b37d00 !important; }
+.chip-durasi-danger    { background: rgba(255,76,81,0.12) !important;  color: #c4282d !important; }
 
-// ─── Batal Ranap table — klik baris ──────────────────────────────────────────
+// ─── Dashboard table cursor ───────────────────────────────────────────────────
 .batal-table :deep(tr) { cursor: pointer; }
-.batal-table :deep(tr:hover td) { background: rgba(var(--v-theme-error), 0.03); }
-
-// ─── Hero Banner — Mobile Responsive ─────────────────────────────────────────
-@media (max-width: 599px) {
-  .page-hero {
-    padding: 20px 18px;
-    min-height: 100px;
-    border-radius: 12px;
-
-    &__title { font-size: 1.25rem; }
-    &__subtitle { font-size: 0.8rem; }
-    &__icon { font-size: 5rem !important; right: 12px; }
-    &__badge { font-size: 0.65rem; padding: 3px 8px; }
-  }
-}
-
-// ─── Dialog — full screen on mobile ──────────────────────────────────────────
-@media (max-width: 599px) {
-  .v-dialog > .v-overlay__content { margin: 0 !important; }
-  .v-dialog > .v-overlay__content > .v-card {
-    border-radius: 16px 16px 0 0 !important;
-    max-height: 95dvh;
-  }
-}
-
-// ─── Data table — horizontal scroll on mobile ────────────────────────────────
-@media (max-width: 767px) {
-  .v-data-table {
-    overflow-x: auto;
-    .v-data-table__thead th,
-    .v-data-table__tbody td { white-space: nowrap; }
-  }
-  // Hide less important columns on mobile via class
-  .hide-mobile { display: none !important; }
-}
-
-// ─── Page padding mobile ─────────────────────────────────────────────────────
-@media (max-width: 599px) {
-  .page-content-container { padding: 12px 10px !important; }
-}
-
-// ─── Stat cards — 2 column on mobile ─────────────────────────────────────────
-// already handled by Vuetify VCol cols="6" sm="3" / cols="4"
-// override card padding on mobile
-@media (max-width: 599px) {
-  .stat-card { padding: 10px 8px !important; }
-  .stat-card .text-h4 { font-size: 1.5rem !important; }
-  .stat-card .text-h5 { font-size: 1.25rem !important; }
-}
-
-// ─── Form section — full width on mobile ─────────────────────────────────────
-@media (max-width: 599px) {
-  .form-section { padding: 10px 10px !important; }
-}
+.batal-table :deep(tr:hover td) { background: rgba(0,179,126,0.03); }
 
 // ─── Nav section label ────────────────────────────────────────────────────────
-.nav-section-label {
-  margin-top: 4px;
-  padding-bottom: 2px;
+.nav-section-label { margin-top: 4px; padding-bottom: 2px; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RESPONSIVE BREAKPOINTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Mobile ≤ 599px ──────────────────────────────────────────────────────────
+@media (max-width: 599px) {
+  // Page padding
+  .page-content-container { padding: 10px 8px !important; }
+
+  // Hero banner — compact
+  .page-hero {
+    padding: 14px 14px;
+    min-height: 84px;
+    border-radius: 10px;
+    gap: 8px;
+    &__title     { font-size: 1.1rem; }
+    &__subtitle  { font-size: 0.75rem; display: none; } // hide on very small
+    &__icon      { font-size: 4rem !important; right: 8px; }
+    &__badge     { font-size: 0.62rem; padding: 2px 8px; margin-bottom: 4px; }
+  }
+
+  // Stat cards — smaller text
+  .stat-card .text-h4 { font-size: 1.35rem !important; }
+  .stat-card .text-h5 { font-size: 1.15rem !important; }
+  .stat-card.pa-4 { padding: 10px !important; }
+  .stat-card.pa-3 { padding: 8px !important; }
+
+  // Form sections
+  .form-section { padding: 10px !important; }
+
+  // Tables — allow horizontal scroll but CONTAINED in card
+  .v-data-table .v-table__wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  // Hide non-critical columns on mobile
+  // QC table: hide Jaminan, Durasi, Edukasi Kamar
+  .qc-table :deep(th:nth-child(4)),
+  .qc-table :deep(td:nth-child(4)),
+  .qc-table :deep(th:nth-child(7)),
+  .qc-table :deep(td:nth-child(7)) { display: none !important; }
+
+  // Batal Ranap: hide Ruangan, Diagnosa
+  .batal-table :deep(th:nth-child(5)),
+  .batal-table :deep(td:nth-child(5)),
+  .batal-table :deep(th:nth-child(6)),
+  .batal-table :deep(td:nth-child(6)) { display: none !important; }
+
+  // Activity log: hide IP, Role
+  .activity-table :deep(th:nth-child(3)),
+  .activity-table :deep(td:nth-child(3)),
+  .activity-table :deep(th:nth-child(7)),
+  .activity-table :deep(td:nth-child(7)) { display: none !important; }
+
+  // Up selling: hide Jaminan, Rek Kelas
+  .upselling-table :deep(th:nth-child(4)),
+  .upselling-table :deep(td:nth-child(4)),
+  .upselling-table :deep(th:nth-child(5)),
+  .upselling-table :deep(td:nth-child(5)) { display: none !important; }
+
+  // Dialogs — bottom sheet
+  .v-dialog > .v-overlay__content {
+    margin: 0 !important;
+    align-items: flex-end !important;
+    max-width: 100% !important;
+  }
+  .v-dialog > .v-overlay__content > .v-card {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 94dvh;
+    overflow-y: auto;
+  }
+
+  // Search field in toolbar — full width
+  .v-card .v-text-field[style*='max-width'] { max-width: 100% !important; }
+
+  // Filter rows — stack vertically
+  .filter-bar .v-row { flex-direction: column; }
+}
+
+// ─── Tablet 600–959px ────────────────────────────────────────────────────────
+@media (min-width: 600px) and (max-width: 959px) {
+  .page-content-container { padding: 12px 10px !important; }
+
+  .page-hero {
+    padding: 18px 20px;
+    min-height: 98px;
+    &__title    { font-size: 1.3rem; }
+    &__subtitle { font-size: 0.82rem; }
+    &__icon     { font-size: 5.5rem !important; }
+  }
+
+  // Tables — allow scroll but cards contain them
+  .v-data-table .v-table__wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  // Less critical columns hidden on tablet
+  .activity-table :deep(th:nth-child(7)),
+  .activity-table :deep(td:nth-child(7)) { display: none !important; }
+
+  // Dialogs — centered but not bottom sheet
+  .v-dialog > .v-overlay__content { max-width: 92vw !important; }
+}
+
+// ─── Desktop ≥ 960px ──────────────────────────────────────────────────────────
+@media (min-width: 960px) {
+  .v-data-table .v-table__wrapper { overflow-x: visible; }
+}
+
+// ─── Large screen / TV ≥ 1440px ──────────────────────────────────────────────
+@media (min-width: 1440px) {
+  .page-content-container { max-width: 1600px; margin: 0 auto; }
+  .page-hero__title { font-size: 1.75rem; }
+}
+
+// ─── Dashboard grid responsive ────────────────────────────────────────────────
+// Dashboard has its own inline grid styles, but ensure collapse on mobile
+@media (max-width: 768px) {
+  // Force dashboard grid to single column
+  .db-grid--row1,
+  .db-grid--row2 {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: unset !important;
+  }
+  .db-grid__avg,
+  .db-grid__matrix,
+  .db-grid__filter,
+  .db-grid__petugas,
+  .db-grid__funnel,
+  .db-grid__bar {
+    grid-area: unset !important;
+  }
+  // Dashboard KPI cards
+  .db-kpi-row { display: none !important; }
+  // Dashboard page padding
+  .db-page { padding: 8px !important; }
+  // Dashboard topbar compact
+  .db-topbar { padding: 8px 12px !important; flex-wrap: wrap; gap: 8px !important; }
+  // Dashboard native table — horizontal scroll contained
+  .qc-table-scroll { overflow-x: auto !important; max-height: none !important; }
+  .ds-table { min-width: unset !important; width: 100% !important; }
+  // Hide some columns in dashboard QC table
+  .ds-th:nth-child(5),
+  .ds-td:nth-child(5),
+  .ds-th:nth-child(7),
+  .ds-td:nth-child(7),
+  .ds-th:nth-child(8),
+  .ds-td:nth-child(8) { display: none !important; }
+}
+
+@media (min-width: 769px) and (max-width: 1100px) {
+  // Tablet-specific dashboard grid
+  .db-grid--row1 {
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-areas: 'avg matrix' 'filter filter' !important;
+  }
+  .db-grid--row2 {
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-areas: 'petugas funnel' 'bar bar' !important;
+  }
+}
+
+// ─── Print ────────────────────────────────────────────────────────────────────
+@media print {
+  .layout-navbar, .layout-vertical-nav, .page-hero, .v-btn { display: none !important; }
+  .layout-page-content { padding: 0 !important; }
+  .v-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+  .v-data-table .v-table__wrapper { overflow-x: visible !important; }
 }

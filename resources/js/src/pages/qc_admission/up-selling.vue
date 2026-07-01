@@ -240,6 +240,7 @@ onMounted(() => doRefresh())
         density="comfortable"
         hover
         :items-per-page="15"
+        class="upselling-table"
       >
         <template #item.nama_pasien="{ item }">
           <div class="d-flex align-center gap-2 py-1">

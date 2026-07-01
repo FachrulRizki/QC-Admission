@@ -1,7 +1,8 @@
 <script setup>
 import { useDashboardStore } from '@/stores/useDashboardStore'
 import { useAuthStore }      from '@/stores/useAuthStore'
-import VueApexCharts          from 'vue3-apexcharts'
+import { usePegawaiStore }   from '@/stores/usePegawaiStore'
+import axios                 from 'axios'
 
 import DashboardAvgTable          from '@/views/qc-admission/dashboard/DashboardAvgTable.vue'
 import DashboardMatrixTable       from '@/views/qc-admission/dashboard/DashboardMatrixTable.vue'
@@ -10,41 +11,42 @@ import DashboardFunnelChart       from '@/views/qc-admission/dashboard/Dashboard
 import DashboardBarChart          from '@/views/qc-admission/dashboard/DashboardBarChart.vue'
 import DashboardRecentQCTable     from '@/views/qc-admission/dashboard/DashboardRecentQCTable.vue'
 
-const store = useDashboardStore()
-const auth  = useAuthStore()
+const store        = useDashboardStore()
+const auth         = useAuthStore()
+const pegawaiStore = usePegawaiStore()
 
 // ── Date filter ───────────────────────────────────────────────────────────────
-const today   = new Date().toISOString().slice(0, 10)
-const dateFrom = ref(today)
-const dateTo   = ref(today)
+const today         = new Date().toISOString().slice(0, 10)
+const dateFrom      = ref(today)
+const dateTo        = ref(today)
+const activeRange   = ref('Hari Ini')
 const showDatePicker = ref(false)
 
-// Quick ranges
 const RANGES = [
-  { label: 'Hari Ini',     days: 0  },
-  { label: '7 Hari',       days: 6  },
-  { label: '30 Hari',      days: 29 },
-  { label: 'Bulan Ini',    days: -1 }, // special
-  { label: 'Semua Data',   days: -2 }, // special
+  { label: 'Hari Ini',   days: 0  },
+  { label: '7 Hari',     days: 6  },
+  { label: '30 Hari',    days: 29 },
+  { label: 'Bulan Ini',  days: -1 },
+  { label: 'Semua Data', days: -2 },
 ]
 
-function applyRange(days) {
-  const now  = new Date()
-  const to   = now.toISOString().slice(0, 10)
+function applyRange(r) {
+  const days  = typeof r === 'object' ? r.days  : r
+  const label = typeof r === 'object' ? r.label : ''
+  activeRange.value = label
+
+  const now = new Date()
+  const to  = now.toISOString().slice(0, 10)
   if (days === 0) {
-    dateFrom.value = to
-    dateTo.value   = to
+    dateFrom.value = to; dateTo.value = to
   } else if (days === -1) {
     dateFrom.value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-    dateTo.value   = to
+    dateTo.value = to
   } else if (days === -2) {
-    dateFrom.value = '2020-01-01'
-    dateTo.value   = to
+    dateFrom.value = '2020-01-01'; dateTo.value = to
   } else {
-    const from = new Date(now)
-    from.setDate(now.getDate() - days)
-    dateFrom.value = from.toISOString().slice(0, 10)
-    dateTo.value   = to
+    const from = new Date(now); from.setDate(now.getDate() - days)
+    dateFrom.value = from.toISOString().slice(0, 10); dateTo.value = to
   }
   doFetch()
   showDatePicker.value = false
@@ -54,12 +56,57 @@ async function doFetch() {
   await store.fetchDashboard(dateFrom.value, dateTo.value)
 }
 
-// ── Current time ──────────────────────────────────────────────────────────────
+// ── 4 QC column filters (client-side) ────────────────────────────────────────
+const filterNamaPasien = ref('')
+const filterPetugas    = ref('')
+const filterNoMR       = ref('')
+const filterStatus     = ref('')
+
+// Opsi petugas dari KPI API (sudah di-fetch saat app load)
+const petugasOptions = computed(() =>
+  (pegawaiStore.items ?? []).map(p => p.nama).filter(Boolean).sort()
+)
+
+function clearFilters() {
+  filterNamaPasien.value = ''
+  filterPetugas.value    = ''
+  filterNoMR.value       = ''
+  filterStatus.value     = ''
+}
+
+// filteredRecentQC — filter data tabel QC secara client-side
+const filteredRecentQC = computed(() => {
+  let data = store.recentQC ?? []
+
+  if (filterNamaPasien.value.trim()) {
+    const q = filterNamaPasien.value.toLowerCase()
+    data = data.filter(r => r.nama_pasien?.toLowerCase().includes(q))
+  }
+  if (filterPetugas.value) {
+    data = data.filter(r => r.petugas === filterPetugas.value)
+  }
+  if (filterNoMR.value.trim()) {
+    const q = filterNoMR.value.trim()
+    data = data.filter(r => r.no_mr?.includes(q) || r.no_reg?.includes(q))
+  }
+  if (filterStatus.value) {
+    data = data.filter(r => r.status === filterStatus.value)
+  }
+  return data
+})
+
+const hasActiveFilter = computed(() =>
+  !!(filterNamaPasien.value || filterPetugas.value || filterNoMR.value || filterStatus.value)
+)
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
 const now = ref(new Date())
 let clockTimer
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
   doFetch()
+  // Ambil data petugas dari KPI API (untuk dropdown filter)
+  pegawaiStore.fetch()
 })
 onUnmounted(() => clearInterval(clockTimer))
 
@@ -69,30 +116,19 @@ const formattedDate = computed(() =>
 const formattedTime = computed(() =>
   now.value.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
 )
-
-// ── Date range label ──────────────────────────────────────────────────────────
 const rangeLabelDisplay = computed(() => {
-  if (dateFrom.value === dateTo.value) {
+  if (dateFrom.value === dateTo.value)
     return new Date(dateFrom.value).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })
-  }
-  const fmtD = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
-  return fmtD(dateFrom.value) + ' – ' + fmtD(dateTo.value)
+  const fmt = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
+  return fmt(dateFrom.value) + ' – ' + fmt(dateTo.value)
 })
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 const stats = computed(() => store.stats)
 
 const kpiCards = computed(() => [
-  {
-    label: 'Jumlah Edukasi Pasien',
-    value: (stats.value.jumlahEdukasiPasien ?? 0).toLocaleString('id-ID'),
-    icon: 'ri-user-heart-line',
-  },
-  {
-    label: 'Durasi Tunggu Edukasi (Menit)',
-    value: stats.value.durasiTungguEdukasi ?? '0',
-    icon: 'ri-timer-flash-line',
-  },
+  { label: 'Jumlah Edukasi Pasien',         value: (stats.value.jumlahEdukasiPasien ?? 0).toLocaleString('id-ID') },
+  { label: 'Durasi Tunggu Edukasi (Menit)', value: stats.value.durasiTungguEdukasi ?? '0' },
 ])
 </script>
 
@@ -204,36 +240,65 @@ const kpiCards = computed(() => [
         <!-- ══ Filter Panel ══════════════════════════════════════════════════ -->
         <div class="fp">
 
-          <!-- BAGIAN 1: Cari Berdasarkan (date range) -->
+          <!-- Filter Tabel QC — 4 inputs pill -->
           <p class="fp__title">Filter Tabel QC</p>
-
           <div class="fp__divider" />
-          <!-- NamaPasien -->
+
+          <!-- NamaPasien — text input -->
           <div class="fp__qcf" :class="filterNamaPasien ? 'fp__qcf--on' : ''">
+            <span class="fp__qcf-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
             <input v-model="filterNamaPasien" class="fp__qcf-in" placeholder="NamaPasien" />
             <button v-if="filterNamaPasien" class="fp__qcf-x" @click.stop="filterNamaPasien = ''">✕</button>
             <span v-else class="fp__qcf-ch">▾</span>
           </div>
 
-          <!-- Petugas -->
-          <div class="fp__qcf" :class="filterPetugas ? 'fp__qcf--on' : ''">
-            <select v-model="filterPetugas" class="fp__qcf-in fp__qcf-sel">
+          <!-- Petugas — native select (lebih reliable) -->
+          <div class="fp__qcf fp__qcf--sel-wrap" :class="filterPetugas ? 'fp__qcf--on' : ''">
+            <span class="fp__qcf-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </span>
+            <select v-model="filterPetugas" class="fp__qcf-in">
               <option value="">Petugas</option>
               <option v-for="p in petugasOptions" :key="p" :value="p">{{ p }}</option>
             </select>
             <span class="fp__qcf-ch">▾</span>
           </div>
 
-          <!-- NoMR -->
+          <!-- NoMR — text input -->
           <div class="fp__qcf" :class="filterNoMR ? 'fp__qcf--on' : ''">
+            <span class="fp__qcf-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="2" y="3" width="20" height="18" rx="2"/>
+                <line x1="8" y1="8" x2="16" y2="8"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+                <line x1="8" y1="16" x2="12" y2="16"/>
+              </svg>
+            </span>
             <input v-model="filterNoMR" class="fp__qcf-in" placeholder="NoMR" />
             <button v-if="filterNoMR" class="fp__qcf-x" @click.stop="filterNoMR = ''">✕</button>
             <span v-else class="fp__qcf-ch">▾</span>
           </div>
 
-          <!-- Status -->
-          <div class="fp__qcf" :class="filterStatus ? 'fp__qcf--on' : ''">
-            <select v-model="filterStatus" class="fp__qcf-in fp__qcf-sel">
+          <!-- Status — native select -->
+          <div class="fp__qcf fp__qcf--sel-wrap" :class="filterStatus ? 'fp__qcf--on' : ''">
+            <span class="fp__qcf-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </span>
+            <select v-model="filterStatus" class="fp__qcf-in">
               <option value="">Status</option>
               <option value="Edukasi">Edukasi</option>
               <option value="Edukasi lanjutan">Edukasi lanjutan</option>
@@ -242,12 +307,12 @@ const kpiCards = computed(() => [
           </div>
 
           <button
-            v-if="filterNamaPasien || filterPetugas || filterNoMR || filterStatus"
+            v-if="hasActiveFilter"
             class="fp__reset"
             @click="clearFilters"
           >✕ Reset Filter</button>
 
-           <!-- Mini stats -->
+          <!-- Mini stats -->
           <div class="fp__stats">
             <div class="fp__stat">
               <span class="fp__stat-num">{{ (stats.totalEdukasi ?? 0).toLocaleString('id-ID') }}</span>
@@ -618,17 +683,18 @@ const kpiCards = computed(() => [
 .fp__divider { border: none; border-top: 1px solid #E1E7E5; margin: 14px 0; }
 
 /* ── 4 QC column filter pills ──────────────────────────────────────────────── */
-/* Struktur: background hijau gradient, pill shape, input transparan di dalam */
 .fp__qcf {
   display: flex;
   align-items: center;
   background: linear-gradient(135deg, #00C896 0%, #009E6B 100%);
   border-radius: 50px;
-  padding: 10px 14px 10px 16px;
+  padding: 9px 12px 9px 14px;
   margin-bottom: 8px;
   box-shadow: 0 2px 8px rgba(0,180,126,0.2);
   transition: box-shadow 0.15s;
   position: relative;
+  cursor: pointer;
+  gap: 8px;
 }
 .fp__qcf:hover { box-shadow: 0 3px 12px rgba(0,180,126,0.35); }
 .fp__qcf--on {
@@ -636,7 +702,16 @@ const kpiCards = computed(() => [
   box-shadow: 0 3px 12px rgba(0,100,70,0.32);
 }
 
-/* Input/select di dalam pill */
+/* Icon kiri */
+.fp__qcf-icon {
+  color: rgba(26,31,30,0.75);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+/* Input transparan di dalam pill */
 .fp__qcf-in {
   flex: 1;
   background: transparent;
@@ -647,22 +722,28 @@ const kpiCards = computed(() => [
   font-weight: 600;
   min-width: 0;
   padding: 0;
-  appearance: none;
-  -webkit-appearance: none;
+  cursor: pointer;
+  /* JANGAN pakai appearance:none untuk select agar native dropdown bisa muncul */
 }
-.fp__qcf-in::placeholder { color: rgba(26,31,30,0.8); }
+.fp__qcf-in::placeholder { color: rgba(26,31,30,0.75); }
 
-.fp__qcf-sel { cursor: pointer; }
-.fp__qcf-sel option { color: #1A1F1E; background: #fff; font-weight: 400; }
+/* Select khusus — perlu z-index agar bisa diklik di atas overlay */
+.fp__qcf--sel-wrap { cursor: pointer; }
+.fp__qcf--sel-wrap .fp__qcf-in {
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
 
-/* Chevron & X */
+/* Chevron */
 .fp__qcf-ch {
   font-size: 0.65rem;
   color: rgba(26,31,30,0.7);
   flex-shrink: 0;
-  margin-left: 6px;
   pointer-events: none;
 }
+
+/* X button */
 .fp__qcf-x {
   background: rgba(26,31,30,0.15);
   border: none;
@@ -673,8 +754,9 @@ const kpiCards = computed(() => [
   color: #1A1F1E;
   cursor: pointer;
   flex-shrink: 0;
-  margin-left: 6px;
   transition: background 0.15s;
+  z-index: 2;
+  position: relative;
 }
 .fp__qcf-x:hover { background: rgba(26,31,30,0.28); }
 

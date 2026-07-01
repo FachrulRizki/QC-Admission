@@ -255,6 +255,7 @@ onMounted(() => doRefresh())
         hover
         :items-per-page="perPage"
         hide-default-footer
+        class="activity-table"
       >
         <template #item.created_at="{ item }">
           <span class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</span>

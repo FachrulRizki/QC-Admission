@@ -139,23 +139,23 @@ function durasiToMenit(d) {
 </script>
 
 <style scoped>
-.qc-table-scroll { overflow-x: auto; max-height: 340px; overflow-y: auto; }
-.ds-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+.qc-table-scroll { overflow-x: auto; max-height: 340px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.ds-table { width: 100%; border-collapse: collapse; }
 .ds-th {
   background: #F0F4F3; color: #5C6B67;
   font-size: 0.7rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.04em;
-  padding: 8px 12px; white-space: nowrap;
+  padding: 8px 10px; white-space: nowrap;
   border-bottom: 1px solid #E1E7E5;
   position: sticky; top: 0; z-index: 2;
 }
 .ds-td {
-  padding: 7px 12px; font-size: 0.82rem;
+  padding: 7px 10px; font-size: 0.82rem;
   color: #1A1F1E; border-bottom: 1px solid #E1E7E5;
   vertical-align: top;
 }
 .ds-tr:hover td { background: #F4FBF8; }
-.note-cell { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #5C6B67; }
+.note-cell { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #5C6B67; }
 
 /* Status badges — persis dari design.md */
 .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
