@@ -18,13 +18,15 @@ return new class extends Migration
     {
         // Lepas ENUM → string bebas dulu
         Schema::table('batal_ranaps', function (Blueprint $table) {
-            $table->string('status_ok', 20)->default('Pending')->change();
+            $table->string('status_ok', 20)->nullable()->default(null)->change();
         });
 
-        // Pasang ENUM baru yang lengkap
+        // Pasang ENUM baru: hanya Bedah dan Non Bedah (sesuai requirement)
+        // Status awal null (belum diverifikasi)
         Schema::table('batal_ranaps', function (Blueprint $table) {
-            $table->enum('status_ok', ['OK','Pending','Ditolak','Bedah','Non Bedah'])
-                  ->default('Pending')
+            $table->enum('status_ok', ['Bedah', 'Non Bedah'])
+                  ->nullable()
+                  ->default(null)
                   ->change();
         });
     }

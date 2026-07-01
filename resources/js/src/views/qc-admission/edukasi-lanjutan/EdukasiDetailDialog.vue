@@ -1,7 +1,8 @@
 <script setup>
-import SignaturePad from '@/components/SignaturePad.vue'
+import SignaturePad               from '@/components/SignaturePad.vue'
 import { useEdukasiLanjutanStore } from '@/stores/useEdukasiLanjutanStore'
-import { usePegawaiStore } from '@/stores/usePegawaiStore'
+import { usePegawaiStore }         from '@/stores/usePegawaiStore'
+import { usePasienStore }          from '@/stores/usePasienStore'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -12,187 +13,348 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 
 const store        = useEdukasiLanjutanStore()
 const pegawaiStore = usePegawaiStore()
+const pasienStore  = usePasienStore()
 
-const isEdit     = ref(false)
-const form       = ref({})
+const tabView = ref('riwayat')   // 'riwayat' | 'baru'
+const form    = ref({})
+const history = ref([])
 const errorMsg   = ref('')
 const successMsg = ref('')
 
-const noteOptions   = ['Pasien mengerti','Keluarga hadir','Sudah menjelaskan kelas','Dirujuk','Menunggu kamar']
-const statusOptions = ['Menunggu','Selesai']
+// ── Opsi sama persis dengan QCFormDialog ──────────────────────────────────────
+const noteOptions = [
+  'Kelas 1 Bedah Laki-laki','Kelas 2 Bedah Laki-laki','Kelas 3 Bedah Laki-laki',
+  'Kelas 1 Bedah Perempuan','Kelas 2 Bedah Perempuan','Kelas 3 Bedah Perempuan',
+  'Kelas 1 Internis Laki-laki','Kelas 2 Internis Laki-laki','Kelas 3 Internis Laki-laki',
+  'Kelas 1 Internis Perempuan','Kelas 2 Internis Perempuan','Kelas 3 Internis Perempuan',
+  'Kelas 1 Onkologi Laki-laki','Kelas 2 Onkologi Laki-laki','Kelas 3 Onkologi Laki-laki',
+  'Kelas 1 Onkologi Perempuan','Kelas 2 Onkologi Perempuan','Kelas 3 Onkologi Perempuan',
+  'Kelas 1 Kebidanan','Kelas 2 Kebidanan','Kelas 3 Kebidanan',
+  'Kelas 1 Anak','Kelas 2 Anak','Kelas 3 Anak','Kelas VIP',
+]
 
-watch(() => props.modelValue, (open) => {
+watch(() => props.modelValue, async (open) => {
   if (open && props.patient) {
-    form.value       = { ...props.patient }
-    isEdit.value     = props.mode === 'edit'
+    tabView.value    = props.mode === 'edit' ? 'baru' : 'riwayat'
     errorMsg.value   = ''
     successMsg.value = ''
+    resetForm()
     pegawaiStore.fetch()
+    loadHistory()
   }
 })
-watch(() => props.mode, m => { isEdit.value = m === 'edit' })
+watch(() => props.mode, m => { if (m === 'edit') tabView.value = 'baru' })
+
+function resetForm() {
+  const now = new Date()
+  const bulanMap = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI',
+    'JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER']
+  const p = n => String(n).padStart(2, '0')
+  const fmt = d => `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
+  const fmtTime = d => `${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
+
+  form.value = {
+    no_mr:        props.patient?.no_mr        ?? '',
+    no_reg:       props.patient?.no_reg       ?? '',
+    nama_pasien:  props.patient?.nama_pasien  ?? '',
+    jaminan:      props.patient?.jaminan      ?? '',
+    tanggal:      fmt(now),
+    jam_input:    fmtTime(now),
+    bulan:        bulanMap[now.getMonth()],
+    edukasi_kamar: props.patient?.edukasi_kamar ?? '',
+    note:          null,
+    petugas:       null,
+    keluarga_pasien:     props.patient?.keluarga_pasien ?? '',
+    ttd_keluarga_pasien: '',
+    status:        'Menunggu',
+    quality_control_id:  props.patient?.quality_control_id ?? null,
+  }
+}
+
+function loadHistory() {
+  if (!props.patient?.no_mr) { history.value = []; return }
+  const all = store.records ?? []
+  history.value = [...all.filter(r => r.no_mr === props.patient.no_mr)]
+    .sort((a, b) => new Date(b.created_at ?? 0) - new Date(a.created_at ?? 0))
+}
+
+const sesiCount = computed(() => history.value.length)
 
 async function handleSave() {
   errorMsg.value = ''
-  if (!form.value.petugas)                { errorMsg.value = 'Petugas wajib dipilih.'; return }
+  if (!form.value.petugas)                 { errorMsg.value = 'Petugas wajib dipilih.'; return }
   if (!form.value.keluarga_pasien?.trim()) { errorMsg.value = 'Nama keluarga pasien wajib diisi.'; return }
 
-  const result = form.value.id
-    ? await store.update(form.value.id, form.value)
-    : { success: true }
+  // Selalu CREATE baris baru — setiap edukasi lanjutan = sesi baru
+  const result = await store.store(form.value)
 
-  if (result?.success ?? true) {
-    successMsg.value = 'Data berhasil disimpan!'
-    emit('saved', { ...form.value })
-    setTimeout(() => close(), 500)
+  if (result?.success) {
+    successMsg.value = 'Edukasi lanjutan baru berhasil dicatat!'
+    emit('saved')
+    setTimeout(() => close(), 700)
   } else {
     errorMsg.value = result?.message ?? 'Gagal menyimpan.'
   }
 }
 
 function close() { emit('update:modelValue', false) }
+
+function statusColor(s) {
+  return { Selesai: 'success', Menunggu: 'warning' }[s] ?? 'secondary'
+}
+function fmtDate(d) {
+  if (!d) return '—'
+  try { return new Date(d).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) }
+  catch { return d }
+}
 </script>
 
 <template>
-  <VDialog :model-value="modelValue" max-width="560" persistent scrollable @update:model-value="close">
-    <VCard v-if="patient" rounded="lg">
+  <VDialog :model-value="modelValue" max-width="620" persistent scrollable @update:model-value="close">
+    <VCard v-if="patient" rounded="xl">
       <!-- Header -->
       <div class="dialog-header d-flex align-center gap-3 px-5 py-4">
-        <VAvatar color="warning" variant="tonal" size="40" rounded="lg">
-          <VIcon icon="ri-book-open-line" size="20" />
+        <VAvatar color="warning" variant="tonal" size="42" rounded="lg">
+          <VIcon icon="ri-book-open-line" size="22" />
         </VAvatar>
         <div class="flex-grow-1 min-width-0">
-          <p class="text-subtitle-1 font-weight-bold mb-0 text-truncate">
-            {{ isEdit ? 'Edit Edukasi Lanjutan' : 'Detail Edukasi Lanjutan' }}
+          <p class="text-subtitle-1 font-weight-bold mb-0 text-truncate">Edukasi Lanjutan</p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            {{ patient.nama_pasien }} · No. MR {{ patient.no_mr }}
           </p>
-          <p class="text-caption text-medium-emphasis mb-0">Trigger dari data QC · {{ patient.bulan }}</p>
         </div>
+        <VChip color="warning" variant="tonal" size="x-small" class="me-2 flex-shrink-0">
+          {{ sesiCount }} sesi
+        </VChip>
         <VBtn icon variant="text" size="small" @click="close"><VIcon icon="ri-close-line" /></VBtn>
       </div>
       <VDivider />
 
+      <!-- Tabs -->
+      <VTabs v-model="tabView" color="warning" density="compact" class="px-4 pt-2">
+        <VTab value="riwayat">
+          <VIcon icon="ri-history-line" size="15" class="me-1" />Riwayat ({{ sesiCount }})
+        </VTab>
+        <VTab value="baru">
+          <VIcon icon="ri-add-circle-line" size="15" class="me-1" />Edukasi Lanjutan Baru
+        </VTab>
+      </VTabs>
+      <VDivider />
+
       <VCardText class="pa-5">
         <VAlert v-if="errorMsg"   type="error"   variant="tonal" density="compact" class="mb-4" closable @click:close="errorMsg=''">{{ errorMsg }}</VAlert>
-        <VAlert v-if="successMsg" type="success" variant="tonal" density="compact" class="mb-4">
-          <VIcon icon="ri-check-line" class="me-1" />{{ successMsg }}
-        </VAlert>
+        <VAlert v-if="successMsg" type="success" variant="tonal" density="compact" class="mb-4">{{ successMsg }}</VAlert>
 
-        <!-- Info pasien (readonly, dari QC) -->
-        <div class="info-box pa-3 rounded-lg mb-4">
-          <p class="text-caption font-weight-bold text-medium-emphasis text-uppercase mb-2">
-            <VIcon icon="ri-user-heart-line" size="13" class="me-1" />Data Pasien (dari Quality Control)
-          </p>
-          <VRow dense>
-            <VCol cols="6">
-              <p class="field-label">Tanggal</p>
-              <p class="field-value">{{ form.tanggal || '—' }}</p>
-            </VCol>
-            <VCol cols="6">
-              <p class="field-label">Bulan</p>
-              <p class="field-value">{{ form.bulan || '—' }}</p>
-            </VCol>
-            <VCol cols="4">
-              <p class="field-label">No. MR</p>
-              <p class="field-value font-weight-bold text-primary">{{ form.no_mr || '—' }}</p>
-            </VCol>
-            <VCol cols="8">
-              <p class="field-label">No. Reg</p>
-              <p class="field-value">{{ form.no_reg || '—' }}</p>
-            </VCol>
-            <VCol cols="12">
-              <p class="field-label">Nama Pasien</p>
-              <p class="field-value font-weight-semibold">{{ form.nama_pasien || '—' }}</p>
-            </VCol>
-            <VCol cols="6">
-              <p class="field-label">Jaminan</p>
-              <p class="field-value">{{ form.jaminan || '—' }}</p>
-            </VCol>
-            <VCol cols="6">
-              <p class="field-label">Status</p>
-              <VChip :color="form.status === 'Selesai' ? 'success' : 'warning'" size="x-small" variant="tonal">
-                {{ form.status || 'Menunggu' }}
-              </VChip>
-            </VCol>
-          </VRow>
-        </div>
-
-        <VForm @submit.prevent="handleSave">
-          <!-- Edukasi Kamar -->
-          <div class="mb-3">
-            <VTextField v-model="form.edukasi_kamar" label="Edukasi Kamar / Ruangan" variant="outlined" density="compact" prepend-inner-icon="ri-hospital-line" :readonly="!isEdit" />
+        <!-- ══ TAB: RIWAYAT ══════════════════════════════════════════════════ -->
+        <template v-if="tabView === 'riwayat'">
+          <!-- Info pasien -->
+          <div class="info-box pa-3 rounded-xl mb-4">
+            <p class="sec-label mb-2">Data Pasien</p>
+            <VRow dense>
+              <VCol cols="4" sm="3">
+                <p class="field-label">No. MR</p>
+                <p class="field-value font-weight-bold text-primary">{{ patient.no_mr || '—' }}</p>
+              </VCol>
+              <VCol cols="4" sm="3">
+                <p class="field-label">No. Reg</p>
+                <p class="field-value">{{ patient.no_reg || '—' }}</p>
+              </VCol>
+              <VCol cols="12" sm="6">
+                <p class="field-label">Nama Pasien</p>
+                <p class="field-value font-weight-semibold">{{ patient.nama_pasien || '—' }}</p>
+              </VCol>
+              <VCol cols="6">
+                <p class="field-label">Jaminan</p>
+                <p class="field-value">{{ patient.jaminan || '—' }}</p>
+              </VCol>
+              <VCol cols="6">
+                <p class="field-label">Total Sesi Edukasi</p>
+                <VChip color="warning" variant="tonal" size="x-small">{{ sesiCount }} kali diedukasi</VChip>
+              </VCol>
+            </VRow>
           </div>
 
-          <!-- Note -->
-          <div class="mb-3">
-            <VSelect v-model="form.note" :items="noteOptions" label="Note" variant="outlined" density="compact" prepend-inner-icon="ri-sticky-note-line" clearable :readonly="!isEdit" />
-          </div>
-
-          <!-- Petugas — dari KPI API -->
-          <div class="mb-3">
-            <VAutocomplete
-              v-model="form.petugas"
-              :items="pegawaiStore.namaList"
-              label="Petugas *"
-              variant="outlined"
-              density="compact"
-              prepend-inner-icon="ri-nurse-line"
-              clearable
-              :readonly="!isEdit"
-              :loading="pegawaiStore.loading"
-              no-data-text="Memuat petugas..."
-            />
-          </div>
-
-          <!-- Status toggle (edit only) -->
-          <div v-if="isEdit" class="mb-4">
-            <p class="text-caption font-weight-semibold text-medium-emphasis mb-2">Status Edukasi</p>
-            <VBtnToggle v-model="form.status" mandatory rounded="lg" color="warning" density="compact" class="w-100">
-              <VBtn value="Menunggu" class="flex-grow-1" variant="outlined">
-                <VIcon icon="ri-time-line" size="14" class="me-1" />Edukasi
-              </VBtn>
-              <VBtn value="Selesai" class="flex-grow-1" variant="outlined">
-                <VIcon icon="ri-check-double-line" size="14" class="me-1" />Edukasi Lanjutan
-              </VBtn>
-            </VBtnToggle>
-          </div>
-
-          <VDivider class="mb-4" />
-
-          <!-- Keluarga Pasien -->
-          <div class="mb-3">
-            <VTextField v-model="form.keluarga_pasien" label="Nama Keluarga Pasien *" variant="outlined" density="compact" prepend-inner-icon="ri-group-line" :readonly="!isEdit" />
-          </div>
-
-          <!-- TTD -->
-          <template v-if="isEdit">
-            <SignaturePad v-model="form.ttd_keluarga_pasien" label="Tanda Tangan Keluarga Pasien" :height="160" />
-          </template>
-          <template v-else>
-            <div class="ttd-section pa-3 rounded-lg">
-              <p class="text-caption font-weight-semibold text-medium-emphasis mb-2">
-                <VIcon icon="ri-pen-nib-line" size="13" class="me-1" />Tanda Tangan Keluarga Pasien
-              </p>
-              <div v-if="form.ttd_keluarga_pasien" class="rounded-lg overflow-hidden border">
-                <img :src="form.ttd_keluarga_pasien" alt="TTD" style="width:100%;max-height:120px;object-fit:contain;background:#fff;" />
+          <!-- Timeline riwayat -->
+          <template v-if="history.length">
+            <p class="sec-label mb-3">Riwayat Edukasi Lanjutan</p>
+            <div
+              v-for="(h, idx) in history"
+              :key="h.id"
+              class="history-item pa-3 rounded-xl mb-3"
+              :class="idx === 0 ? 'history-item--latest' : ''"
+            >
+              <div class="d-flex align-center justify-space-between mb-2">
+                <div class="d-flex align-center gap-2 flex-wrap">
+                  <VChip color="warning" variant="tonal" size="x-small">#{{ history.length - idx }}</VChip>
+                  <span class="text-caption font-weight-semibold">{{ h.tanggal }}</span>
+                  <span class="text-caption text-medium-emphasis">· {{ h.bulan }}</span>
+                </div>
+                <VChip :color="statusColor(h.status)" size="x-small" variant="tonal">{{ h.status }}</VChip>
               </div>
-              <div v-else class="ttd-empty text-center py-4">
-                <VIcon icon="ri-pen-nib-line" size="28" color="secondary" class="mb-1" />
-                <p class="text-caption text-medium-emphasis mb-0">Belum ada tanda tangan</p>
-              </div>
+              <VRow dense>
+                <VCol cols="6">
+                  <p class="field-label">Petugas</p>
+                  <p class="field-value">{{ h.petugas || '—' }}</p>
+                </VCol>
+                <VCol cols="6">
+                  <p class="field-label">Ruangan Edukasi</p>
+                  <p class="field-value">{{ h.edukasi_kamar || '—' }}</p>
+                </VCol>
+                <VCol cols="12">
+                  <p class="field-label">Note</p>
+                  <p class="field-value">{{ h.note || '—' }}</p>
+                </VCol>
+                <VCol cols="6">
+                  <p class="field-label">Keluarga Pasien</p>
+                  <p class="field-value">{{ h.keluarga_pasien || '—' }}</p>
+                </VCol>
+                <VCol cols="6">
+                  <p class="field-label">TTD</p>
+                  <img v-if="h.ttd_keluarga_pasien" :src="h.ttd_keluarga_pasien" alt="TTD" style="height:32px;border:1px solid #eee;border-radius:4px;margin-top:2px" />
+                  <p v-else class="field-value text-medium-emphasis">—</p>
+                </VCol>
+                <VCol cols="12">
+                  <p class="field-label">Waktu Input</p>
+                  <p class="field-value text-caption text-medium-emphasis">{{ fmtDate(h.created_at) }}</p>
+                </VCol>
+              </VRow>
             </div>
           </template>
-        </VForm>
+          <div v-else class="text-center py-8 text-medium-emphasis">
+            <VIcon icon="ri-book-open-line" size="44" class="mb-2 opacity-40" />
+            <p class="text-body-2 mb-3">Belum ada riwayat edukasi lanjutan</p>
+            <VBtn color="warning" variant="tonal" size="small" rounded="lg" @click="tabView = 'baru'">
+              <VIcon icon="ri-add-line" class="me-1" />Mulai Edukasi Lanjutan
+            </VBtn>
+          </div>
+        </template>
+
+        <!-- ══ TAB: FORM BARU — identik dengan QCFormDialog ════════════════ -->
+        <template v-else>
+          <VAlert type="info" variant="tonal" density="compact" border="start" class="mb-4">
+            <div class="text-caption">
+              Setiap klik <strong>Simpan</strong> akan membuat <strong>catatan sesi baru</strong>.
+              Riwayat semua sesi bisa dilihat di tab Riwayat.
+            </div>
+          </VAlert>
+
+          <!-- Waktu -->
+          <div class="form-section mb-4">
+            <p class="sec-label mb-2">Waktu Input</p>
+            <VRow dense>
+              <VCol cols="7">
+                <VTextField v-model="form.tanggal" label="Tanggal" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-calendar-line" />
+              </VCol>
+              <VCol cols="5">
+                <VTextField v-model="form.jam_input" label="Jam" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-time-line" />
+              </VCol>
+            </VRow>
+          </div>
+
+          <!-- Data Pasien (readonly, dari QC) -->
+          <div class="form-section mb-4">
+            <p class="sec-label mb-2">Data Pasien (dari QC)</p>
+            <VRow dense>
+              <VCol cols="4">
+                <VTextField v-model="form.no_mr" label="No. MR" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" />
+              </VCol>
+              <VCol cols="8">
+                <VTextField v-model="form.nama_pasien" label="Nama Pasien" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" />
+              </VCol>
+            </VRow>
+            <VRow dense class="mt-2">
+              <VCol cols="5">
+                <VTextField v-model="form.jaminan" label="Jaminan" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" />
+              </VCol>
+              <VCol cols="7">
+                <VTextField v-model="form.bulan" label="Bulan" variant="outlined" density="compact" readonly bg-color="grey-lighten-5" />
+              </VCol>
+            </VRow>
+          </div>
+
+          <!-- Data Edukasi — SAMA PERSIS dengan QCFormDialog -->
+          <div class="form-section mb-4">
+            <p class="sec-label mb-2">Data Edukasi Lanjutan</p>
+
+            <VTextField
+              v-model="form.edukasi_kamar"
+              label="Edukasi Kamar / Ruangan"
+              variant="outlined" density="compact"
+              prepend-inner-icon="ri-hospital-line"
+              class="mb-3"
+            />
+
+            <VRow dense>
+              <VCol cols="6">
+                <!-- Note dropdown persis seperti QCFormDialog -->
+                <VSelect
+                  v-model="form.note"
+                  :items="noteOptions"
+                  label="Note Kamar"
+                  variant="outlined" density="compact"
+                  clearable
+                />
+              </VCol>
+              <VCol cols="6">
+                <VAutocomplete
+                  v-model="form.petugas"
+                  :items="pegawaiStore.namaList"
+                  label="Petugas *"
+                  variant="outlined" density="compact"
+                  prepend-inner-icon="ri-nurse-line"
+                  clearable
+                  :loading="pegawaiStore.loading"
+                  no-data-text="Memuat petugas..."
+                />
+              </VCol>
+            </VRow>
+
+            <!-- Status toggle — Edukasi / Edukasi Lanjutan -->
+            <div class="mt-3">
+              <p class="text-caption font-weight-semibold text-medium-emphasis mb-2">Status Edukasi</p>
+              <VBtnToggle v-model="form.status" mandatory rounded="lg" color="warning" density="compact" class="w-100">
+                <VBtn value="Menunggu" class="flex-grow-1" variant="outlined">
+                  <VIcon icon="ri-book-line" size="15" class="me-1" />Edukasi
+                </VBtn>
+                <VBtn value="Selesai" class="flex-grow-1" variant="outlined">
+                  <VIcon icon="ri-check-double-line" size="15" class="me-1" />Edukasi Lanjutan
+                </VBtn>
+              </VBtnToggle>
+            </div>
+          </div>
+
+          <!-- Keluarga & TTD — sama dengan QCFormDialog -->
+          <div class="form-section">
+            <p class="sec-label mb-2">Keluarga & Tanda Tangan</p>
+            <VTextField
+              v-model="form.keluarga_pasien"
+              label="Nama Keluarga Pasien *"
+              variant="outlined" density="compact"
+              prepend-inner-icon="ri-group-line"
+              class="mb-3"
+            />
+            <SignaturePad v-model="form.ttd_keluarga_pasien" label="Tanda Tangan Keluarga Pasien" :height="150" />
+          </div>
+        </template>
       </VCardText>
 
       <VDivider />
       <div class="d-flex gap-3 px-5 py-4">
-        <template v-if="isEdit">
-          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="isEdit = false">Batal</VBtn>
-          <VBtn color="warning" rounded="lg" class="flex-grow-1" prepend-icon="ri-save-line" :loading="store.loading" @click="handleSave">Simpan</VBtn>
+        <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="close">Tutup</VBtn>
+        <template v-if="tabView === 'riwayat'">
+          <VBtn color="warning" variant="tonal" rounded="lg" prepend-icon="ri-add-circle-line" @click="tabView = 'baru'">
+            Tambah Sesi
+          </VBtn>
         </template>
         <template v-else>
-          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="close">Tutup</VBtn>
-          <VBtn color="warning" rounded="lg" class="flex-grow-1" prepend-icon="ri-pencil-line" @click="isEdit = true">Edit / Isi TTD</VBtn>
+          <VBtn
+            color="warning" rounded="xl" class="flex-grow-1"
+            prepend-icon="ri-save-line"
+            :loading="store.loading"
+            @click="handleSave"
+          >
+            Simpan Sesi Edukasi Baru
+          </VBtn>
         </template>
       </div>
     </VCard>
@@ -202,8 +364,10 @@ function close() { emit('update:modelValue', false) }
 <style scoped>
 .dialog-header { background: rgba(var(--v-theme-warning), 0.05); }
 .info-box { background: rgba(var(--v-theme-on-surface), 0.03); border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
-.field-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); margin-bottom: 1px; }
+.form-section { padding: 12px; border-radius: 10px; background: rgba(var(--v-theme-on-surface), 0.02); border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
+.sec-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(var(--v-theme-on-surface), 0.5); margin-bottom: 4px; }
+.field-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(var(--v-theme-on-surface), 0.5); margin-bottom: 1px; }
 .field-value { font-size: 0.875rem; margin-bottom: 0; }
-.ttd-section { background: rgba(var(--v-theme-on-surface), 0.03); }
-.ttd-empty { border: 1.5px dashed rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 8px; }
+.history-item { background: rgba(var(--v-theme-on-surface), 0.02); border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
+.history-item--latest { border-color: rgba(var(--v-theme-warning), 0.45) !important; background: rgba(var(--v-theme-warning), 0.04) !important; }
 </style>

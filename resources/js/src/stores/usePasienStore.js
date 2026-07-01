@@ -4,22 +4,18 @@ import axios from 'axios'
 /**
  * usePasienStore
  * Search pasien rawat inap dari DB RSUS (via Laravel backend).
- * Mendukung:
- *   - search(query)  — ketik min 2 karakter untuk cari No_Reg / No_MR / Nama
- *   - lookup(no_reg) — ambil satu pasien untuk autofill form
  */
 export const usePasienStore = defineStore('pasien', {
   state: () => ({
-    results:     [],   // hasil search terakhir
-    loading:     false,
-    source:      null, // 'rsus_db' | 'mock' | 'mock_fallback'
-    lastQuery:   '',
+    results:   [],
+    loading:   false,
+    source:    null,
   }),
 
   getters: {
     // Format untuk VAutocomplete :items
     optionList: (state) => state.results.map(p => ({
-      title: p.label ?? (p.no_reg + ' — ' + p.nama_pasien),
+      title: (p.no_reg ?? '') + ' — ' + (p.nama_pasien ?? ''),
       value: p.no_reg,
       data:  p,
     })),
@@ -28,25 +24,21 @@ export const usePasienStore = defineStore('pasien', {
   actions: {
     /**
      * Cari pasien berdasarkan teks bebas.
-     * Debounce dilakukan di komponen (watch + setTimeout).
+     * Tidak ada guard lastQuery — boleh search ulang kapan saja.
      */
     async search(query) {
       const q = (query ?? '').trim()
       if (q.length < 2) {
-        this.results   = []
-        this.lastQuery = ''
+        this.results = []
         return
       }
-      if (q === this.lastQuery) return
-
-      this.loading   = true
-      this.lastQuery = q
+      this.loading = true
       try {
         const { data } = await axios.get('/api/pasien', { params: { search: q } })
         this.results = data.data ?? []
         this.source  = data.source ?? 'mock'
       } catch (err) {
-        console.warn('[usePasienStore] search gagal:', err.message)
+        console.warn('[usePasienStore] search error:', err.message)
         this.results = []
       } finally {
         this.loading = false
@@ -54,23 +46,20 @@ export const usePasienStore = defineStore('pasien', {
     },
 
     /**
-     * Ambil satu pasien berdasarkan No_Reg — untuk autofill form.
-     * Return objek pasien atau null.
+     * Ambil satu pasien berdasarkan No_Reg untuk autofill form.
      */
     async lookup(noReg) {
       if (!noReg) return null
       try {
         const { data } = await axios.get('/api/pasien', { params: { no_reg: noReg } })
-        const list = data.data ?? []
-        return list[0] ?? null
+        return (data.data ?? [])[0] ?? null
       } catch {
         return null
       }
     },
 
     clear() {
-      this.results   = []
-      this.lastQuery = ''
+      this.results = []
     },
   },
 })

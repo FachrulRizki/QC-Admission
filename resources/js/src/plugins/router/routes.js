@@ -34,11 +34,21 @@ export const routes = [
       {
         path: 'view-data-input',
         component: () => import('@/pages/qc_admission/view-data-input.vue'),
-        meta: { roles: ['admin', 'qc_admission'] },
+        meta: { roles: ['admin', 'qc_admission', 'kasir'] },
       },
       {
         path: 'activity-log',
         component: () => import('@/pages/qc_admission/activity-log.vue'),
+        meta: { roles: ['admin'] },
+      },
+      {
+        path: 'master-data',
+        component: () => import('@/pages/qc_admission/master-data.vue'),
+        meta: { roles: ['admin'] },
+      },
+      {
+        path: 'user-management',
+        component: () => import('@/pages/qc_admission/user-management.vue'),
         meta: { roles: ['admin'] },
       },
       // Kasir — view only batal ranap

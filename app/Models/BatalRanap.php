@@ -17,7 +17,7 @@ class BatalRanap extends Model
         'no_reg',
         'nama_pasien',
         'keterangan_batal',
-        'status_ok',
+        'status_ok',          // null = belum diverifikasi, 'Bedah' | 'Non Bedah'
         'ketersediaan_kamar',
         'diagnosa',
         'note',

@@ -27,7 +27,7 @@ onMounted(async () => {
 /** Redirect ke halaman default sesuai role */
 function redirectByRole(role) {
   if (role === 'kasir') {
-    router.push('/batal-ranap-view')
+    router.push('/view-data-input')
   } else {
     router.push('/dashboard')
   }
@@ -142,7 +142,7 @@ function loginWithSSO() {
               </VListItem>
               <VListItem prepend-icon="ri-money-dollar-circle-line">
                 <VListItemTitle class="text-caption font-weight-bold">Kasir</VListItemTitle>
-                <VListItemSubtitle class="text-caption"><code>kasir / Kasir@1234</code> — view batal ranap</VListItemSubtitle>
+                <VListItemSubtitle class="text-caption"><code>kasir / Kasir@1234</code> — view data input</VListItemSubtitle>
               </VListItem>
             </VList>
           </VExpansionPanelText>

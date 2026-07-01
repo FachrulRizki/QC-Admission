@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\QcAdmission;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\EdukasiLanjutan;
 use App\Models\QualityControl;
 use App\Services\QcAdmission\EdukasiLanjutanService;
@@ -65,6 +66,9 @@ class EdukasiLanjutanController extends Controller
 
         $record = $this->service->create($validated);
 
+        ActivityLog::record('edukasi-lanjutan', 'create',
+            "Edukasi Lanjutan {$record->nama_pasien} ({$record->no_mr})");
+
         return response()->json(['data' => $record, 'message' => 'Data berhasil disimpan.'], 201);
     }
 
@@ -87,6 +91,9 @@ class EdukasiLanjutanController extends Controller
 
         $record = $this->service->update($id, $validated);
 
+        ActivityLog::record('edukasi-lanjutan', 'update',
+            "Edukasi Lanjutan diupdate — {$record->nama_pasien} ({$record->no_mr})");
+
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }
 
@@ -103,6 +110,10 @@ class EdukasiLanjutanController extends Controller
 
     public function destroy(int $id): JsonResponse
     {
+        $record = $this->service->findOrFail($id);
+        ActivityLog::record('edukasi-lanjutan', 'delete',
+            "Edukasi Lanjutan dihapus — {$record->nama_pasien} ({$record->no_mr})");
+
         $this->service->delete($id);
 
         return response()->json(['message' => 'Data berhasil dihapus.']);

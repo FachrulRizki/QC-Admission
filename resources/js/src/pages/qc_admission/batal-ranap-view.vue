@@ -1,24 +1,16 @@
 <script setup>
-/**
- * Batal Ranap View — halaman khusus kasir.
- * Hanya bisa melihat data, tidak ada tombol input/edit/hapus.
- */
-import { useBatalRanapStore } from '@/stores/useBatalRanapStore'
+import { useBatalRanapStore }  from '@/stores/useBatalRanapStore'
+import BatalRanapDetailDialog  from '@/views/qc-admission/batal-ranap/BatalRanapDetailDialog.vue'
 
 const store      = useBatalRanapStore()
 const search     = ref('')
 const dateFrom   = ref('')
 const dateTo     = ref('')
 const loading    = ref(false)
+const showDetail   = ref(false)
+const selectedItem = ref(null)
 
-// Gunakan data dari store, fallback ke mock
-const records = computed(() => store.records?.length ? store.records : mockRecords.value)
-
-const mockRecords = ref([
-  { id:1, tanggal:'29/06/2026, 19.43.45', no_reg:'REG001BR', nama_pasien:'ELLY MAYA, NY',    keterangan_batal:'Kamar Penuh',   status_ok:'Pending', diagnosa:'Hipertensi', petugas:'Nurul',  ruangan:'Ruang Mawar' },
-  { id:2, tanggal:'28/06/2026, 10.20.00', no_reg:'REG003BR', nama_pasien:'RUSMINI, NY',       keterangan_batal:'Pasien Menolak',status_ok:'Bedah',   diagnosa:'Diabetes',   petugas:'Reskim', ruangan:'Ruang Anggrek' },
-  { id:3, tanggal:'27/06/2026, 09.15.00', no_reg:'REG005BR', nama_pasien:'BUDI SANTOSO, TN',  keterangan_batal:'DPJP Tidak Setuju',status_ok:'Pending', diagnosa:'Stroke',  petugas:'Nurul',  ruangan:'ICU' },
-])
+const records = computed(() => store.records ?? [])
 
 const headers = [
   { title: 'Tanggal',          key: 'tanggal',          sortable: true },
@@ -27,63 +19,91 @@ const headers = [
   { title: 'Keterangan Batal', key: 'keterangan_batal', sortable: true },
   { title: 'Ruangan',          key: 'ruangan',          sortable: true },
   { title: 'Status',           key: 'status_ok',        sortable: true, align: 'center' },
-  { title: 'Diagnosa',         key: 'diagnosa',         sortable: true },
   { title: 'Petugas',          key: 'petugas',          sortable: true },
 ]
 
 function statusColor(s) {
-  return { Bedah: 'success', 'Non Bedah': 'info', Pending: 'warning', Ditolak: 'error' }[s] ?? 'secondary'
+  return { Bedah: 'success', 'Non Bedah': 'info' }[s] ?? 'secondary'
 }
 
 const filtered = computed(() => {
   let d = records.value
   const q = search.value.toLowerCase().trim()
-  if (q) d = d.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q)))
+  if (q) d = d.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q)))
+  if (dateFrom.value) d = d.filter(r => r.tanggal >= dateFrom.value)
+  if (dateTo.value)   d = d.filter(r => r.tanggal <= dateTo.value)
   return d
 })
 
 const stats = computed(() => ({
-  total:   records.value.length,
-  pending: records.value.filter(r => r.status_ok === 'Pending').length,
-  bedah:   records.value.filter(r => r.status_ok === 'Bedah').length,
+  total:    records.value.length,
+  belum:    records.value.filter(r => !r.status_ok).length,
+  bedah:    records.value.filter(r => r.status_ok === 'Bedah').length,
+  nonBedah: records.value.filter(r => r.status_ok === 'Non Bedah').length,
 }))
 
-onMounted(async () => {
+function openDetail(item) {
+  selectedItem.value = item
+  showDetail.value   = true
+}
+
+async function doRefresh() {
   loading.value = true
-  try { await store.fetchRecords?.() } catch {}
-  loading.value = false
-})
+  try { await store.fetchRecords({ per_page: 200 }) }
+  catch (e) { console.error(e) }
+  finally { loading.value = false }
+}
+
+onMounted(() => doRefresh())
 </script>
 
 <template>
   <div>
-    <!-- Header -->
-    <div class="d-flex align-center justify-space-between flex-wrap gap-3 mb-5">
-      <div>
-        <h4 class="page-title">Batal Ranap</h4>
-        <p class="text-body-2 text-medium-emphasis mb-0">Data pasien pembatalan rawat inap</p>
+    <!-- Hero -->
+    <div class="page-hero page-hero--batal mb-5">
+      <div class="page-hero__content">
+        <div class="page-hero__badge">
+          <VIcon icon="ri-eye-line" size="13" />
+          Kasir · View Only
+        </div>
+        <h1 class="page-hero__title">Data Batal Ranap</h1>
+        <p class="page-hero__subtitle">Monitoring pembatalan rawat inap · Klik baris untuk detail</p>
       </div>
-      <VChip color="warning" variant="tonal" prepend-icon="ri-eye-line" size="small">View Only</VChip>
+      <div class="d-flex gap-2 align-center" style="position:relative;z-index:2">
+        <VChip color="white" variant="elevated" size="small" prepend-icon="ri-eye-line" style="color:#f093fb">
+          View Only
+        </VChip>
+        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="doRefresh">
+          <VIcon icon="ri-refresh-line" />
+        </VBtn>
+      </div>
+      <VIcon icon="ri-close-circle-line" class="page-hero__icon" />
     </div>
 
     <!-- Stats -->
     <VRow dense class="mb-4">
-      <VCol cols="4">
+      <VCol cols="6" sm="3">
         <VCard elevation="0" border rounded="lg" class="text-center pa-3">
           <p class="text-h5 font-weight-bold text-primary mb-0">{{ stats.total }}</p>
           <p class="text-caption text-medium-emphasis mb-0">Total</p>
         </VCard>
       </VCol>
-      <VCol cols="4">
+      <VCol cols="6" sm="3">
         <VCard elevation="0" border rounded="lg" class="text-center pa-3">
-          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">{{ stats.pending }}</p>
-          <p class="text-caption text-medium-emphasis mb-0">Pending</p>
+          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">{{ stats.belum }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Belum Diverifikasi</p>
         </VCard>
       </VCol>
-      <VCol cols="4">
+      <VCol cols="6" sm="3">
         <VCard elevation="0" border rounded="lg" class="text-center pa-3">
           <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-success))">{{ stats.bedah }}</p>
           <p class="text-caption text-medium-emphasis mb-0">Bedah</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VCard elevation="0" border rounded="lg" class="text-center pa-3">
+          <p class="text-h5 font-weight-bold text-info mb-0">{{ stats.nonBedah }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Non Bedah</p>
         </VCard>
       </VCol>
     </VRow>
@@ -92,8 +112,13 @@ onMounted(async () => {
     <VCard elevation="0" border rounded="lg" class="mb-4">
       <VCardText class="py-3">
         <VRow dense align="center">
-          <VCol cols="12" sm="6">
-            <VTextField v-model="search" placeholder="Cari nama pasien, no reg, petugas..." prepend-inner-icon="ri-search-line" variant="outlined" density="compact" hide-details clearable />
+          <VCol cols="12" sm="7">
+            <VTextField
+              v-model="search"
+              placeholder="Cari nama pasien, no reg, petugas..."
+              prepend-inner-icon="ri-search-line"
+              variant="outlined" density="compact" hide-details clearable
+            />
           </VCol>
           <VCol cols="6" sm="2">
             <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
@@ -102,7 +127,7 @@ onMounted(async () => {
             <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
           </VCol>
           <VCol cols="auto">
-            <VBtn icon variant="text" size="small" color="secondary" @click="search='';dateFrom='';dateTo=''">
+            <VBtn icon variant="text" size="small" color="secondary" @click="search = ''; dateFrom = ''; dateTo = ''">
               <VIcon icon="ri-refresh-line" />
             </VBtn>
           </VCol>
@@ -110,7 +135,13 @@ onMounted(async () => {
       </VCardText>
     </VCard>
 
-    <!-- Table -->
+    <!-- Count -->
+    <div class="d-flex align-center gap-2 mb-3">
+      <VChip size="small" color="primary" variant="tonal">{{ filtered.length }} data</VChip>
+      <span class="text-caption text-disabled">dari {{ records.length }} total</span>
+    </div>
+
+    <!-- Table — klik baris buka modal detail -->
     <VCard elevation="0" border rounded="lg">
       <VDataTable
         :headers="headers"
@@ -119,23 +150,35 @@ onMounted(async () => {
         hover
         :loading="loading"
         :items-per-page="15"
+        class="batal-table"
+        @click:row="(_, { item }) => openDetail(item)"
       >
         <template #item.status_ok="{ item }">
           <VChip :color="statusColor(item.status_ok)" size="small" variant="tonal" label>
-            {{ item.status_ok || 'Pending' }}
+            {{ item.status_ok || 'Belum Diverifikasi' }}
           </VChip>
         </template>
+
+        <template #item.nama_pasien="{ item }">
+          <div class="d-flex align-center gap-2 py-1">
+            <VAvatar color="error" variant="tonal" size="28" rounded="lg">
+              <span style="font-size:11px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
+            </VAvatar>
+            <span class="text-body-2 font-weight-medium">{{ item.nama_pasien }}</span>
+          </div>
+        </template>
+
         <template #no-data>
           <div class="text-center py-10 text-medium-emphasis">
             <VIcon icon="ri-inbox-line" size="40" class="mb-2 opacity-40" />
-            <p class="mb-0">Tidak ada data</p>
+            <p class="mb-1 font-weight-medium">Tidak ada data</p>
+            <p class="text-caption mb-0">Belum ada data batal ranap yang masuk</p>
           </div>
         </template>
       </VDataTable>
     </VCard>
+
+    <!-- Detail dialog — view only untuk kasir -->
+    <BatalRanapDetailDialog v-model="showDetail" :item="selectedItem" @verified="doRefresh" />
   </div>
 </template>
-
-<style scoped>
-.page-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 2px; }
-</style>

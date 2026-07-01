@@ -1,46 +1,38 @@
 <script setup>
 import axios from 'axios'
 
-const loading   = ref(false)
-const records   = ref([])
-const search    = ref('')
-const filterModule  = ref('')
-const filterAction  = ref('')
+const loading        = ref(false)
+const records        = ref([])
+const search         = ref('')
+const filterModule   = ref('')
+const filterAction   = ref('')
+const filterUser     = ref('')
 const filterDateFrom = ref('')
 const filterDateTo   = ref('')
-const page      = ref(1)
-const perPage   = ref(30)
-const total     = ref(0)
+const page           = ref(1)
+const perPage        = ref(30)
+const total          = ref(0)
+const lastPage       = ref(1)
 
 const MODULE_OPTIONS = [
-  { title: 'Semua Modul', value: '' },
+  { title: 'Semua Modul',      value: '' },
   { title: 'Quality Control',  value: 'quality-control' },
   { title: 'Edukasi Lanjutan', value: 'edukasi-lanjutan' },
   { title: 'Batal Ranap',      value: 'batal-ranap' },
   { title: 'Up Selling',       value: 'up-selling' },
-  { title: 'Auth',             value: 'auth' },
+  { title: 'Master Data',      value: 'master-data' },
   { title: 'User',             value: 'user' },
+  { title: 'Auth',             value: 'auth' },
 ]
 
 const ACTION_OPTIONS = [
-  { title: 'Semua Aksi', value: '' },
-  { title: 'Login',   value: 'login' },
-  { title: 'Logout',  value: 'logout' },
-  { title: 'Create',  value: 'create' },
-  { title: 'Update',  value: 'update' },
-  { title: 'Delete',  value: 'delete' },
-]
-
-// Mock data saat API belum terhubung
-const mockData = [
-  { id:1, user_name:'Administrator', user_role:'admin',       module:'auth',            action:'login',  subject:'Login berhasil', ip_address:'127.0.0.1', created_at:'2026-06-30T16:05:00Z' },
-  { id:2, user_name:'Petugas QC',    user_role:'qc_admission',module:'quality-control', action:'create', subject:'QC ELLY MAYA, NY (REG001)', ip_address:'127.0.0.1', created_at:'2026-06-30T16:10:00Z' },
-  { id:3, user_name:'Petugas QC',    user_role:'qc_admission',module:'batal-ranap',     action:'create', subject:'Batal Ranap REG003BR', ip_address:'127.0.0.1', created_at:'2026-06-30T16:22:00Z' },
-  { id:4, user_name:'Administrator', user_role:'admin',       module:'user',            action:'create', subject:'User kasir dibuat', ip_address:'127.0.0.1', created_at:'2026-06-30T16:30:00Z' },
-  { id:5, user_name:'Petugas QC',    user_role:'qc_admission',module:'up-selling',      action:'create', subject:'Up Selling REG004UP', ip_address:'127.0.0.1', created_at:'2026-06-30T16:45:00Z' },
-  { id:6, user_name:'Kasir RSUD',    user_role:'kasir',       module:'auth',            action:'login',  subject:'Login berhasil', ip_address:'127.0.0.1', created_at:'2026-06-30T17:00:00Z' },
-  { id:7, user_name:'Petugas QC',    user_role:'qc_admission',module:'quality-control', action:'update', subject:'QC diupdate — IDH SUBINGSEN (REG002)', ip_address:'127.0.0.1', created_at:'2026-06-30T17:15:00Z' },
-  { id:8, user_name:'Administrator', user_role:'admin',       module:'auth',            action:'logout', subject:'Logout', ip_address:'127.0.0.1', created_at:'2026-06-30T17:30:00Z' },
+  { title: 'Semua Aksi',   value: '' },
+  { title: 'Login',        value: 'login' },
+  { title: 'Logout',       value: 'logout' },
+  { title: 'Create',       value: 'create' },
+  { title: 'Update',       value: 'update' },
+  { title: 'Delete',       value: 'delete' },
+  { title: 'Verifikasi',   value: 'verifikasi' },
 ]
 
 const headers = [
@@ -53,43 +45,52 @@ const headers = [
   { title: 'IP',          key: 'ip_address',  sortable: false, width: '110px' },
 ]
 
-const filtered = computed(() => {
-  let d = mockData
-  if (search.value.trim()) {
-    const q = search.value.toLowerCase()
-    d = d.filter(r =>
-      r.user_name?.toLowerCase().includes(q) ||
-      r.subject?.toLowerCase().includes(q) ||
-      r.module?.toLowerCase().includes(q)
-    )
-  }
-  if (filterModule.value) d = d.filter(r => r.module === filterModule.value)
-  if (filterAction.value) d = d.filter(r => r.action === filterAction.value)
-  return d
-})
-
 function actionColor(a) {
-  return { login:'success', logout:'secondary', create:'primary', update:'warning', delete:'error' }[a] ?? 'default'
+  return { login:'success', logout:'secondary', create:'primary', update:'warning', delete:'error', verifikasi:'info' }[a] ?? 'default'
 }
 function actionIcon(a) {
-  return { login:'ri-login-circle-line', logout:'ri-logout-circle-line', create:'ri-add-circle-line', update:'ri-pencil-line', delete:'ri-delete-bin-line' }[a] ?? 'ri-circle-line'
+  return {
+    login:      'ri-login-circle-line',
+    logout:     'ri-logout-circle-line',
+    create:     'ri-add-circle-line',
+    update:     'ri-pencil-line',
+    delete:     'ri-delete-bin-line',
+    verifikasi: 'ri-check-double-line',
+  }[a] ?? 'ri-circle-line'
 }
 function moduleColor(m) {
-  return { 'quality-control':'primary','edukasi-lanjutan':'warning','batal-ranap':'error','up-selling':'success','auth':'secondary','user':'info' }[m] ?? 'default'
+  return {
+    'quality-control':  'primary',
+    'edukasi-lanjutan': 'warning',
+    'batal-ranap':      'error',
+    'up-selling':       'success',
+    'master-data':      'info',
+    'auth':             'secondary',
+    'user':             'deep-purple',
+  }[m] ?? 'default'
 }
 function formatDate(d) {
-  return new Date(d).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+  return new Date(d).toLocaleString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 function roleColor(r) {
-  return { admin:'error', qc_admission:'primary', kasir:'warning' }[r] ?? 'default'
+  return { admin: 'error', qc_admission: 'primary', kasir: 'warning' }[r] ?? 'default'
+}
+function roleLabel(r) {
+  return { admin: 'Admin', qc_admission: 'QC Admission', kasir: 'Kasir' }[r] ?? r
 }
 
 function resetFilters() {
-  search.value = ''
-  filterModule.value = ''
-  filterAction.value = ''
+  search.value         = ''
+  filterModule.value   = ''
+  filterAction.value   = ''
+  filterUser.value     = ''
   filterDateFrom.value = ''
-  filterDateTo.value = ''
+  filterDateTo.value   = ''
+  page.value           = 1
+  doRefresh()
 }
 
 async function doRefresh() {
@@ -97,22 +98,42 @@ async function doRefresh() {
   try {
     const { data } = await axios.get('/api/activity-log', {
       params: {
-        search: search.value || undefined,
-        module: filterModule.value || undefined,
-        action: filterAction.value || undefined,
+        search:    search.value       || undefined,
+        module:    filterModule.value || undefined,
+        action:    filterAction.value || undefined,
+        user:      filterUser.value   || undefined,
         date_from: filterDateFrom.value || undefined,
         date_to:   filterDateTo.value   || undefined,
-        page: page.value, per_page: perPage.value,
-      }
+        page:      page.value,
+        per_page:  perPage.value,
+      },
     })
-    records.value = data.data ?? []
-    total.value   = data.meta?.total ?? data.total ?? 0
-  } catch {
-    // Pakai mock jika API belum ready
+    records.value = data.data           ?? []
+    total.value   = data.meta?.total    ?? data.total ?? 0
+    lastPage.value = data.meta?.last_page ?? 1
+  } catch (e) {
+    console.error('Activity log error', e)
   } finally {
     loading.value = false
   }
 }
+
+// Stats derived from current page
+const stats = computed(() => ({
+  total:   total.value,
+  today:   records.value.filter(r => {
+    const d = new Date(r.created_at)
+    const n = new Date()
+    return d.getDate() === n.getDate() && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear()
+  }).length,
+  logins:  records.value.filter(r => r.action === 'login').length,
+  creates: records.value.filter(r => r.action === 'create').length,
+}))
+
+watch([filterModule, filterAction, filterUser, search, filterDateFrom, filterDateTo], () => {
+  page.value = 1
+  doRefresh()
+}, { debounce: 400 })
 
 onMounted(() => doRefresh())
 </script>
@@ -124,28 +145,66 @@ onMounted(() => doRefresh())
       <div class="page-hero__content">
         <div class="page-hero__badge">
           <VIcon icon="ri-history-line" size="13" />
-          Hiro · Log Aktivitas
+          Admin · Log Aktivitas
         </div>
         <h1 class="page-hero__title">Log Aktivitas</h1>
-        <p class="page-hero__subtitle">Rekam jejak semua aktivitas pengguna di sistem</p>
+        <p class="page-hero__subtitle">Rekam jejak semua aktivitas pengguna di sistem · Real-time dari database</p>
       </div>
       <div style="position:relative;z-index:2">
-        <VBtn color="white" variant="elevated" rounded="lg" size="small" prepend-icon="ri-refresh-line" style="color:#4facfe" :loading="loading" @click="doRefresh">
+        <VBtn color="white" variant="elevated" rounded="lg" size="small"
+          prepend-icon="ri-refresh-line" style="color:#4facfe"
+          :loading="loading" @click="doRefresh">
           Refresh
         </VBtn>
       </div>
       <VIcon icon="ri-history-line" class="page-hero__icon" />
     </div>
 
+    <!-- Stats cards -->
+    <VRow dense class="mb-4">
+      <VCol cols="6" sm="3">
+        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
+          <p class="text-h5 font-weight-bold text-primary mb-0">{{ stats.total }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Total Log</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
+          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-success))">{{ stats.today }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Hari Ini</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
+          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-info))">{{ stats.logins }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Login</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
+          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">{{ stats.creates }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Input Data</p>
+        </VCard>
+      </VCol>
+    </VRow>
+
     <!-- Filter bar -->
     <VCard elevation="0" border rounded="lg" class="mb-4">
       <VCardText class="py-3">
         <VRow dense align="center">
-          <VCol cols="12" sm="4">
+          <VCol cols="12" sm="3">
             <VTextField
               v-model="search"
               placeholder="Cari user, keterangan, modul..."
               prepend-inner-icon="ri-search-line"
+              variant="outlined" density="compact" hide-details clearable
+            />
+          </VCol>
+          <VCol cols="12" sm="2">
+            <VTextField
+              v-model="filterUser"
+              placeholder="Nama user..."
+              prepend-inner-icon="ri-user-line"
               variant="outlined" density="compact" hide-details clearable
             />
           </VCol>
@@ -167,34 +226,35 @@ onMounted(() => doRefresh())
               placeholder="Aksi"
             />
           </VCol>
-          <VCol cols="6" sm="2">
+          <VCol cols="6" sm="1">
             <VTextField v-model="filterDateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
           </VCol>
-          <VCol cols="6" sm="2">
+          <VCol cols="6" sm="1">
             <VTextField v-model="filterDateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
           </VCol>
+          <VCol cols="auto">
+            <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
+          </VCol>
         </VRow>
-        <div class="d-flex justify-end gap-2 mt-2">
-          <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
-        </div>
       </VCardText>
     </VCard>
 
     <!-- Count -->
     <div class="d-flex align-center gap-2 mb-3">
-      <VChip size="small" color="primary" variant="tonal">{{ filtered.length }} aktivitas</VChip>
-      <span class="text-caption text-disabled">ditampilkan</span>
+      <VChip size="small" color="primary" variant="tonal">{{ total }} aktivitas</VChip>
+      <span class="text-caption text-disabled">total log tersimpan</span>
     </div>
 
     <!-- Table -->
     <VCard elevation="0" border rounded="lg">
       <VDataTable
         :headers="headers"
-        :items="filtered"
+        :items="records"
         :loading="loading"
         density="compact"
         hover
-        :items-per-page="30"
+        :items-per-page="perPage"
+        hide-default-footer
       >
         <template #item.created_at="{ item }">
           <span class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</span>
@@ -203,21 +263,21 @@ onMounted(() => doRefresh())
         <template #item.user_name="{ item }">
           <div class="d-flex align-center gap-2">
             <VAvatar :color="roleColor(item.user_role)" variant="tonal" size="26" rounded="lg">
-              <span style="font-size:10px;font-weight:700">{{ item.user_name?.charAt(0) }}</span>
+              <span style="font-size:10px;font-weight:700">{{ item.user_name?.charAt(0)?.toUpperCase() }}</span>
             </VAvatar>
-            <span class="text-body-2 font-weight-medium">{{ item.user_name }}</span>
+            <span class="text-body-2 font-weight-medium">{{ item.user_name || '—' }}</span>
           </div>
         </template>
 
         <template #item.user_role="{ item }">
-          <VChip :color="roleColor(item.user_role)" size="x-small" variant="tonal" class="text-capitalize">
-            {{ item.user_role }}
+          <VChip :color="roleColor(item.user_role)" size="x-small" variant="tonal">
+            {{ roleLabel(item.user_role) }}
           </VChip>
         </template>
 
         <template #item.module="{ item }">
           <VChip :color="moduleColor(item.module)" size="x-small" variant="tonal">
-            {{ item.module }}
+            {{ item.module || '—' }}
           </VChip>
         </template>
 
@@ -239,7 +299,32 @@ onMounted(() => doRefresh())
         <template #no-data>
           <div class="text-center py-10 text-medium-emphasis">
             <VIcon icon="ri-history-line" size="40" class="mb-2 opacity-40" />
-            <p class="mb-0">Belum ada log aktivitas</p>
+            <p class="mb-1 font-weight-medium">Belum ada log aktivitas</p>
+            <p class="text-caption mb-0">Log akan muncul ketika ada aktivitas di sistem</p>
+          </div>
+        </template>
+
+        <template #bottom>
+          <div class="d-flex align-center justify-space-between pa-3 flex-wrap gap-2">
+            <span class="text-caption text-medium-emphasis">
+              Halaman {{ page }} dari {{ lastPage }} ({{ total }} total)
+            </span>
+            <div class="d-flex gap-2">
+              <VBtn
+                icon size="small" variant="tonal"
+                :disabled="page <= 1 || loading"
+                @click="page--; doRefresh()"
+              >
+                <VIcon icon="ri-arrow-left-s-line" />
+              </VBtn>
+              <VBtn
+                icon size="small" variant="tonal"
+                :disabled="page >= lastPage || loading"
+                @click="page++; doRefresh()"
+              >
+                <VIcon icon="ri-arrow-right-s-line" />
+              </VBtn>
+            </div>
           </div>
         </template>
       </VDataTable>

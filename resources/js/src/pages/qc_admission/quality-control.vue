@@ -13,7 +13,6 @@ const loading           = ref(false)
 const lastRefresh       = ref(null)
 
 // ── Filters ────────────────────────────────────────────────────────────────────
-// Status: hanya Edukasi dan Edukasi Lanjutan
 const STATUS_OPTIONS = [
   { title: 'Semua Status',      value: null },
   { title: 'Edukasi',           value: 'Edukasi' },
@@ -25,19 +24,21 @@ const filterDateFrom = ref('')
 const filterDateTo   = ref('')
 const filterPetugas  = ref('')
 
-// ── Mock data ──────────────────────────────────────────────────────────────────
-const records = ref([
-  { id:1, tanggal:'29/06/2026, 19.41.58', no_mr:'813500', no_reg:'REG001', nama_pasien:'ELLY MAYA, NY',     jaminan:'BPJS',     durasi_tunggu:'01:17:19', status:'Edukasi',         petugas:'Nurul',           edukasi_kamar:'',            note:'Pasien mengerti', keluarga_pasien:'Bambang' },
-  { id:2, tanggal:'29/06/2026, 18.05.22', no_mr:'575360', no_reg:'REG002', nama_pasien:'IDH SUBINGSEN, NY', jaminan:'BPJS',     durasi_tunggu:'02:32:10', status:'Edukasi lanjutan',petugas:'Reskim',          edukasi_kamar:'Ruang Mawar', note:'Keluarga hadir',  keluarga_pasien:'Siti' },
-  { id:3, tanggal:'28/06/2026, 14.10.00', no_mr:'816302', no_reg:'REG004', nama_pasien:'PUSPA SARI, AN',    jaminan:'BPJS',     durasi_tunggu:'03:20:10', status:'Edukasi lanjutan',petugas:'AYU Putri Anisa', edukasi_kamar:'ICU',         note:'',                keluarga_pasien:'Rini' },
-  { id:4, tanggal:'28/06/2026, 09.00.00', no_mr:'712405', no_reg:'REG005', nama_pasien:'BUDI SANTOSO, TN',  jaminan:'Asuransi', durasi_tunggu:'01:05:00', status:'Edukasi',         petugas:'Mulbagus Koyum',  edukasi_kamar:'',            note:'',                keluarga_pasien:'' },
-  { id:5, tanggal:'27/06/2026, 16.30.00', no_mr:'654321', no_reg:'REG006', nama_pasien:'SRI WAHYUNI, NY',   jaminan:'BPJS',     durasi_tunggu:'00:45:00', status:'Edukasi',         petugas:'Abdul Hayyi',     edukasi_kamar:'',            note:'',                keluarga_pasien:'' },
-])
+// ── Data dari store/API ────────────────────────────────────────────────────────
+const records = computed(() => store.records ?? [])
 
-// ── Computed ───────────────────────────────────────────────────────────────────
+const stats = computed(() => ({
+  total:           records.value.length,
+  edukasi:         records.value.filter(r => r.status === 'Edukasi').length,
+  edukasiLanjutan: records.value.filter(r => r.status === 'Edukasi lanjutan').length,
+  lanjutanPct: records.value.length
+    ? Math.round((records.value.filter(r => r.status === 'Edukasi lanjutan').length / records.value.length) * 100)
+    : 0,
+}))
+
 const filtered = computed(() => {
   let data = records.value
-  if (filterStatus.value)        data = data.filter(r => r.status === filterStatus.value)
+  if (filterStatus.value)         data = data.filter(r => r.status === filterStatus.value)
   if (filterPetugas.value.trim()) data = data.filter(r => r.petugas?.toLowerCase().includes(filterPetugas.value.toLowerCase()))
   if (filterSearch.value.trim()) {
     const q = filterSearch.value.toLowerCase()
@@ -52,49 +53,55 @@ const filtered = computed(() => {
   return data
 })
 
-const stats = computed(() => ({
-  total:           records.value.length,
-  edukasi:         records.value.filter(r => r.status === 'Edukasi').length,
-  edukasiLanjutan: records.value.filter(r => r.status === 'Edukasi lanjutan').length,
-  lanjutanPct: records.value.length
-    ? Math.round((records.value.filter(r => r.status === 'Edukasi lanjutan').length / records.value.length) * 100)
-    : 0,
-}))
-
 // ── Handlers ──────────────────────────────────────────────────────────────────
 function openAdd()        { editItem.value = null;        showDialog.value = true }
 function openEdit(item)   { editItem.value = { ...item }; showDialog.value = true }
 function openDelete(item) { deleteTarget.value = item;    showDeleteConfirm.value = true }
 
-function confirmDelete() {
-  records.value = records.value.filter(r => r.id !== deleteTarget.value.id)
-  showDeleteConfirm.value = false
-  deleteTarget.value = null
+async function confirmDelete() {
+  if (!deleteTarget.value) return
+  loading.value = true
+  try {
+    await store.destroy(deleteTarget.value.id)
+  } catch (e) {
+    console.error('Delete error', e)
+  } finally {
+    loading.value = false
+    showDeleteConfirm.value = false
+    deleteTarget.value = null
+  }
 }
 
-function onSaved(data) {
-  if (editItem.value) {
-    const idx = records.value.findIndex(r => r.id === editItem.value.id)
-    if (idx !== -1) records.value.splice(idx, 1, { ...editItem.value, ...data })
-  } else {
-    records.value.unshift({ id: Date.now(), ...data })
-  }
+async function onSaved() {
   showDialog.value = false
+  await doRefresh()
 }
 
 function resetFilters() {
-  filterStatus.value = null
-  filterSearch.value = ''
+  filterStatus.value   = null
+  filterSearch.value   = ''
   filterDateFrom.value = ''
-  filterDateTo.value = ''
-  filterPetugas.value = ''
+  filterDateTo.value   = ''
+  filterPetugas.value  = ''
 }
 
 async function doRefresh() {
   loading.value = true
-  await new Promise(r => setTimeout(r, 500))
-  lastRefresh.value = new Date()
-  loading.value = false
+  try {
+    await store.fetchRecords({
+      search:    filterSearch.value   || undefined,
+      status:    filterStatus.value   || undefined,
+      petugas:   filterPetugas.value  || undefined,
+      date_from: filterDateFrom.value || undefined,
+      date_to:   filterDateTo.value   || undefined,
+      per_page:  200,
+    })
+    lastRefresh.value = new Date()
+  } catch (e) {
+    console.error('Fetch QC error', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => doRefresh())
@@ -107,7 +114,7 @@ onMounted(() => doRefresh())
       <div class="page-hero__content">
         <div class="page-hero__badge">
           <VIcon icon="ri-shield-check-line" size="13" />
-          Hiro · Quality Control
+          QC Admission · Quality Control
         </div>
         <h1 class="page-hero__title">Quality Control Admisi</h1>
         <p class="page-hero__subtitle">Monitoring dan pencatatan data QC rawat inap · Durasi &ge; 2 jam → auto Edukasi Lanjutan</p>
@@ -216,7 +223,6 @@ onMounted(() => doRefresh())
             <VTextField v-model="filterDateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
           </VCol>
         </VRow>
-
         <div class="d-flex justify-end gap-2 mt-2">
           <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
           <VBtn size="small" variant="tonal" color="primary" prepend-icon="ri-loop-left-line" :loading="loading" @click="doRefresh">Refresh</VBtn>
@@ -256,7 +262,7 @@ onMounted(() => doRefresh())
         </VCardText>
         <VCardActions class="px-6 pb-5 d-flex gap-2 pt-0">
           <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showDeleteConfirm = false">Batal</VBtn>
-          <VBtn color="error" rounded="lg" class="flex-grow-1" prepend-icon="ri-delete-bin-line" @click="confirmDelete">Hapus</VBtn>
+          <VBtn color="error" rounded="lg" class="flex-grow-1" prepend-icon="ri-delete-bin-line" :loading="loading" @click="confirmDelete">Hapus</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>

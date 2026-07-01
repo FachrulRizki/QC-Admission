@@ -12,8 +12,12 @@ const initials = computed(() => {
 })
 
 const roleLabel = computed(() => {
-  const map = { admin: 'Administrator', supervisor: 'Supervisor', petugas: 'Petugas' }
-  return map[user.value?.role] ?? 'Petugas'
+  const map = {
+    admin:        'Administrator',
+    qc_admission: 'QC Admission',
+    kasir:        'Kasir',
+  }
+  return map[user.value?.role] ?? 'Pengguna'
 })
 
 async function handleLogout() {

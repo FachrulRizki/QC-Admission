@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\QcAdmission;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Services\QcAdmission\QualityControlService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -51,6 +52,9 @@ class QualityControlController extends Controller
 
         $record = $this->service->create($validated);
 
+        ActivityLog::record('quality-control', 'create',
+            "QC {$record->nama_pasien} ({$record->no_reg})");
+
         return response()->json(['data' => $record, 'message' => 'Data berhasil disimpan.'], 201);
     }
 
@@ -86,6 +90,9 @@ class QualityControlController extends Controller
 
         $record = $this->service->update($id, $validated);
 
+        ActivityLog::record('quality-control', 'update',
+            "QC diupdate — {$record->nama_pasien} ({$record->no_reg})");
+
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }
 
@@ -94,6 +101,10 @@ class QualityControlController extends Controller
      */
     public function destroy(int $id): JsonResponse
     {
+        $record = $this->service->findOrFail($id);
+        ActivityLog::record('quality-control', 'delete',
+            "QC dihapus — {$record->nama_pasien} ({$record->no_reg})");
+
         $this->service->delete($id);
 
         return response()->json(['message' => 'Data berhasil dihapus.']);

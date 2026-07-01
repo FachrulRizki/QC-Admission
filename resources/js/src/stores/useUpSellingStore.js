@@ -45,6 +45,22 @@ export const useUpSellingStore = defineStore('upSelling', {
       }
     },
 
+    async update(id, payload) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await axios.put(`/api/up-selling/${id}`, payload)
+        const idx = this.records.findIndex(r => r.id === id)
+        if (idx !== -1) this.records.splice(idx, 1, response.data.data ?? { ...this.records[idx], ...payload })
+        return { success: true, data: response.data }
+      } catch (err) {
+        this.error = err.response?.data?.message ?? 'Gagal update data'
+        return { success: false, message: this.error }
+      } finally {
+        this.loading = false
+      }
+    },
+
     async destroy(id) {
       try {
         await axios.delete(`/api/up-selling/${id}`)

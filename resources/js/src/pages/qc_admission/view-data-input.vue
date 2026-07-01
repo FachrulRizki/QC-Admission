@@ -1,44 +1,46 @@
 <script setup>
-// View Data Input — Summary/History per pasien dari semua modul
+import axios from 'axios'
 
-const activeTab = ref('summary')
-
-const tabs = [
-  { key: 'summary',          label: 'Summary Pasien',   icon: 'ri-user-heart-line',       color: 'primary' },
-  { key: 'quality-control',  label: 'Quality Control',  icon: 'ri-shield-check-line',     color: 'primary' },
-  { key: 'batal-ranap',      label: 'Batal Ranap',      icon: 'ri-close-circle-line',     color: 'error' },
-  { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', icon: 'ri-book-open-line',        color: 'warning' },
-  { key: 'up-selling',       label: 'Up Selling',       icon: 'ri-arrow-up-circle-line',  color: 'success' },
-]
-
-const search    = ref('')
-const dateFrom  = ref('')
-const dateTo    = ref('')
+const activeTab  = ref('summary')
+const loading    = ref(false)
+const search     = ref('')
+const dateFrom   = ref('')
+const dateTo     = ref('')
 const noMrFilter = ref('')
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-const qcData = ref([
-  { id: 1, tanggal: '29/06/2026, 19.41.58', no_mr: '813500', no_reg: 'REG001', nama_pasien: 'ELLY MAYA, NY',     jaminan: 'BPJS', status: 'Edukasi',          petugas: 'Nurul',  durasi_tunggu: '10:17:19', edukasi_kamar: '',            note: 'Pasien mengerti', keluarga_pasien: 'Bambang' },
-  { id: 2, tanggal: '29/06/2026, 18.05.22', no_mr: '575360', no_reg: 'REG002', nama_pasien: 'IDH SUBINGSEN, NY', jaminan: 'BPJS', status: 'Edukasi lanjutan', petugas: 'Reskim', durasi_tunggu: '01:32:10', edukasi_kamar: 'Ruang Mawar', note: 'Keluarga hadir',  keluarga_pasien: 'Siti'    },
-  { id: 3, tanggal: '29/06/2026, 17.44.00', no_mr: '087220', no_reg: 'REG003', nama_pasien: 'RUSMINI, NY',       jaminan: 'Umum', status: 'Masuk',             petugas: 'Nurul',  durasi_tunggu: '00:48:22', edukasi_kamar: 'Ruang Anggrek', note: 'Dirujuk',      keluarga_pasien: 'Andi'    },
-  { id: 4, tanggal: '28/06/2026, 14.10.00', no_mr: '816302', no_reg: 'REG004', nama_pasien: 'PUSPA SARI, AN',    jaminan: 'BPJS', status: 'Edukasi lanjutan', petugas: 'AYU Putri Anisa', durasi_tunggu: '03:20:10', edukasi_kamar: 'ICU', note: '', keluarga_pasien: 'Rini' },
-])
+const tabs = [
+  { key: 'summary',           label: 'Summary Pasien',   icon: 'ri-user-heart-line',       color: 'primary' },
+  { key: 'quality-control',   label: 'Quality Control',  icon: 'ri-shield-check-line',     color: 'primary' },
+  { key: 'batal-ranap',       label: 'Batal Ranap',      icon: 'ri-close-circle-line',     color: 'error' },
+  { key: 'edukasi-lanjutan',  label: 'Edukasi Lanjutan', icon: 'ri-book-open-line',        color: 'warning' },
+  { key: 'up-selling',        label: 'Up Selling',       icon: 'ri-arrow-up-circle-line',  color: 'success' },
+]
 
-const batalData = ref([
-  { id: 1, tanggal: '29/06/2026, 19.43.45', no_reg: 'REG001BR', nama_pasien: 'ELLY MAYA, NY',     keterangan_batal: 'Kamar Penuh', status_ok: 'Pending', diagnosa: 'Hipertensi', petugas: 'Nurul' },
-  { id: 2, tanggal: '28/06/2026, 10.20.00', no_reg: 'REG003BR', nama_pasien: 'RUSMINI, NY',       keterangan_batal: 'Pasien Menolak', status_ok: 'OK',    diagnosa: 'Diabetes',   petugas: 'Reskim' },
-])
+// ── Data dari API ─────────────────────────────────────────────────────────────
+const qcData        = ref([])
+const batalData     = ref([])
+const edukasiData   = ref([])
+const upSellingData = ref([])
 
-const edukasiData = ref([
-  { id: 1, tanggal: '29/06/2026', no_mr: '813500', nama_pasien: 'ELLY MAYA, NY',     bulan: 'JUNI', edukasi_kamar: 'Ruang Mawar',   petugas: 'Nurul',  status: 'Menunggu', keluarga_pasien: 'Bambang' },
-  { id: 2, tanggal: '29/06/2026', no_mr: '575360', nama_pasien: 'IDH SUBINGSEN, NY', bulan: 'JUNI', edukasi_kamar: 'Ruang Anggrek', petugas: 'Reskim', status: 'Selesai',  keluarga_pasien: 'Siti'    },
-  { id: 3, tanggal: '28/06/2026', no_mr: '087220', nama_pasien: 'RUSMINI, NY',       bulan: 'JUNI', edukasi_kamar: '',              petugas: 'AYU Putri Anisa', status: 'Menunggu', keluarga_pasien: '' },
-])
-
-const upSellingData = ref([
-  { id: 1, tanggal: '29/06/2026, 08.00.00', no_reg: 'REG001UP', nama_pasien: 'ELLY MAYA, NY',     rekomendasi_kelas: 'Kelas 1', kelas_diambil: 'Kelas 2', status: 'Tidak Berhasil', petugas: 'Nurul',  jaminan: 'BPJS' },
-  { id: 2, tanggal: '28/06/2026, 09.30.00', no_reg: 'REG004UP', nama_pasien: 'PUSPA SARI, AN',    rekomendasi_kelas: 'VIP',     kelas_diambil: 'Kelas 1', status: 'Berhasil',       petugas: 'Reskim', jaminan: 'BPJS' },
-])
+async function loadAll() {
+  loading.value = true
+  try {
+    const [qcRes, batalRes, eduRes, upRes] = await Promise.all([
+      axios.get('/api/quality-control',   { params: { per_page: 500 } }),
+      axios.get('/api/batal-ranap',       { params: { per_page: 500 } }),
+      axios.get('/api/edukasi-lanjutan',  { params: { per_page: 500 } }),
+      axios.get('/api/up-selling',        { params: { per_page: 500 } }),
+    ])
+    qcData.value        = qcRes.data.data       ?? []
+    batalData.value     = batalRes.data.data    ?? []
+    edukasiData.value   = eduRes.data.data      ?? []
+    upSellingData.value = upRes.data.data       ?? []
+  } catch (e) {
+    console.error('View data input load error', e)
+  } finally {
+    loading.value = false
+  }
+}
 
 // ── Summary — aggregate per No. MR ───────────────────────────────────────────
 const summaryData = computed(() => {
@@ -51,7 +53,7 @@ const summaryData = computed(() => {
       last_status: '', last_tanggal: '',
     }
     map[r.no_mr].qc_count++
-    map[r.no_mr].last_status = r.status
+    map[r.no_mr].last_status  = r.status
     map[r.no_mr].last_tanggal = r.tanggal
   })
 
@@ -64,71 +66,88 @@ const summaryData = computed(() => {
     map[r.no_mr].edukasi_count++
   })
 
+  batalData.value.forEach(r => {
+    const key = r.no_mr ?? r.no_reg
+    if (!map[key]) map[key] = {
+      no_mr: key, nama_pasien: r.nama_pasien, jaminan: '—',
+      qc_count: 0, edukasi_count: 0, batal_count: 0, up_count: 0,
+      last_status: '', last_tanggal: r.tanggal,
+    }
+    map[key].batal_count++
+  })
+
+  upSellingData.value.forEach(r => {
+    const key = r.no_mr ?? r.no_reg
+    if (!map[key]) map[key] = {
+      no_mr: key, nama_pasien: r.nama_pasien, jaminan: r.jaminan ?? '—',
+      qc_count: 0, edukasi_count: 0, batal_count: 0, up_count: 0,
+      last_status: '', last_tanggal: r.tanggal,
+    }
+    map[key].up_count++
+  })
+
   return Object.values(map)
 })
 
 // ── Headers ───────────────────────────────────────────────────────────────────
 const summaryHeaders = [
-  { title: 'No. MR',        key: 'no_mr',         sortable: true },
-  { title: 'Nama Pasien',   key: 'nama_pasien',   sortable: true },
-  { title: 'Jaminan',       key: 'jaminan',       sortable: true },
-  { title: 'QC',            key: 'qc_count',      sortable: true, align: 'center' },
-  { title: 'Edukasi',       key: 'edukasi_count', sortable: true, align: 'center' },
-  { title: 'Batal Ranap',   key: 'batal_count',   sortable: true, align: 'center' },
-  { title: 'Up Selling',    key: 'up_count',      sortable: true, align: 'center' },
-  { title: 'Status Terakhir', key: 'last_status', sortable: true },
-  { title: 'Tanggal',       key: 'last_tanggal',  sortable: true },
+  { title: 'No. MR',          key: 'no_mr',         sortable: true },
+  { title: 'Nama Pasien',     key: 'nama_pasien',   sortable: true },
+  { title: 'Jaminan',         key: 'jaminan',       sortable: true },
+  { title: 'QC',              key: 'qc_count',      sortable: true, align: 'center' },
+  { title: 'Edukasi',         key: 'edukasi_count', sortable: true, align: 'center' },
+  { title: 'Batal Ranap',     key: 'batal_count',   sortable: true, align: 'center' },
+  { title: 'Up Selling',      key: 'up_count',      sortable: true, align: 'center' },
+  { title: 'Status Terakhir', key: 'last_status',   sortable: true },
+  { title: 'Tanggal',         key: 'last_tanggal',  sortable: true },
 ]
-
 const qcHeaders = [
-  { title: 'Tanggal',       key: 'tanggal',       sortable: true },
-  { title: 'No. MR',        key: 'no_mr',         sortable: true },
-  { title: 'Nama Pasien',   key: 'nama_pasien',   sortable: true },
-  { title: 'Jaminan',       key: 'jaminan',       sortable: true },
-  { title: 'Status',        key: 'status',        sortable: true, align: 'center' },
-  { title: 'Petugas',       key: 'petugas',       sortable: true },
-  { title: 'Durasi',        key: 'durasi_tunggu', sortable: true, align: 'center' },
-  { title: 'Edukasi Kamar', key: 'edukasi_kamar', sortable: false },
+  { title: 'Tanggal',       key: 'tanggal',         sortable: true },
+  { title: 'No. MR',        key: 'no_mr',           sortable: true },
+  { title: 'No. Reg',       key: 'no_reg',          sortable: true },
+  { title: 'Nama Pasien',   key: 'nama_pasien',     sortable: true },
+  { title: 'Jaminan',       key: 'jaminan',         sortable: true },
+  { title: 'Status',        key: 'status',          sortable: true, align: 'center' },
+  { title: 'Petugas',       key: 'petugas',         sortable: true },
+  { title: 'Durasi',        key: 'durasi_tunggu',   sortable: true, align: 'center' },
+  { title: 'Edukasi Kamar', key: 'edukasi_kamar',   sortable: false },
   { title: 'Keluarga',      key: 'keluarga_pasien', sortable: false },
 ]
-
 const batalHeaders = [
-  { title: 'Tanggal',           key: 'tanggal',           sortable: true },
-  { title: 'No. Reg',           key: 'no_reg',            sortable: true },
-  { title: 'Nama Pasien',       key: 'nama_pasien',       sortable: true },
-  { title: 'Keterangan Batal',  key: 'keterangan_batal',  sortable: true },
-  { title: 'Status OK',         key: 'status_ok',         sortable: true, align: 'center' },
-  { title: 'Diagnosa',          key: 'diagnosa',          sortable: true },
-  { title: 'Petugas',           key: 'petugas',           sortable: true },
+  { title: 'Tanggal',          key: 'tanggal',          sortable: true },
+  { title: 'No. Reg',          key: 'no_reg',           sortable: true },
+  { title: 'Nama Pasien',      key: 'nama_pasien',      sortable: true },
+  { title: 'Keterangan Batal', key: 'keterangan_batal', sortable: true },
+  { title: 'Status OK',        key: 'status_ok',        sortable: true, align: 'center' },
+  { title: 'Diagnosa',         key: 'diagnosa',         sortable: true },
+  { title: 'Petugas',          key: 'petugas',          sortable: true },
 ]
-
 const edukasiHeaders = [
-  { title: 'Tanggal',       key: 'tanggal',       sortable: true },
-  { title: 'No. MR',        key: 'no_mr',         sortable: true },
-  { title: 'Nama Pasien',   key: 'nama_pasien',   sortable: true },
-  { title: 'Bulan',         key: 'bulan',         sortable: true },
-  { title: 'Edukasi Kamar', key: 'edukasi_kamar', sortable: false },
-  { title: 'Status',        key: 'status',        sortable: true, align: 'center' },
+  { title: 'Tanggal',       key: 'tanggal',         sortable: true },
+  { title: 'No. MR',        key: 'no_mr',           sortable: true },
+  { title: 'Nama Pasien',   key: 'nama_pasien',     sortable: true },
+  { title: 'Bulan',         key: 'bulan',           sortable: true },
+  { title: 'Edukasi Kamar', key: 'edukasi_kamar',   sortable: false },
+  { title: 'Status',        key: 'status',          sortable: true, align: 'center' },
   { title: 'Keluarga',      key: 'keluarga_pasien', sortable: false },
-  { title: 'Petugas',       key: 'petugas',       sortable: true },
+  { title: 'Petugas',       key: 'petugas',         sortable: true },
 ]
-
 const upSellingHeaders = [
-  { title: 'Tanggal',         key: 'tanggal',           sortable: true },
-  { title: 'No. Reg',         key: 'no_reg',            sortable: true },
-  { title: 'Nama Pasien',     key: 'nama_pasien',       sortable: true },
-  { title: 'Rek. Kelas',      key: 'rekomendasi_kelas', sortable: true, align: 'center' },
-  { title: 'Kelas Diambil',   key: 'kelas_diambil',     sortable: true, align: 'center' },
-  { title: 'Status',          key: 'status',            sortable: true, align: 'center' },
-  { title: 'Petugas',         key: 'petugas',           sortable: true },
+  { title: 'Tanggal',       key: 'tanggal',           sortable: true },
+  { title: 'No. Reg',       key: 'no_reg',            sortable: true },
+  { title: 'Nama Pasien',   key: 'nama_pasien',       sortable: true },
+  { title: 'Rek. Kelas',    key: 'rekomendasi_kelas', sortable: true, align: 'center' },
+  { title: 'Kelas Diambil', key: 'kelas_diambil',     sortable: true, align: 'center' },
+  { title: 'Status',        key: 'status',            sortable: true, align: 'center' },
+  { title: 'Petugas',       key: 'petugas',           sortable: true },
 ]
 
 const activeHeaders = computed(() => ({
-  summary:           summaryHeaders,
-  'quality-control': qcHeaders,
-  'batal-ranap':     batalHeaders,
+  summary:            summaryHeaders,
+  'quality-control':  qcHeaders,
+  'batal-ranap':      batalHeaders,
   'edukasi-lanjutan': edukasiHeaders,
-  'up-selling':      upSellingHeaders,
+  'up-selling':       upSellingHeaders,
 })[activeTab.value] ?? [])
 
 const activeData = computed(() => ({
@@ -141,25 +160,30 @@ const activeData = computed(() => ({
 
 const filteredData = computed(() => {
   let data = activeData.value
-  const q = search.value.toLowerCase().trim()
-  if (q) {
-    data = data.filter(r =>
-      Object.values(r).some(v => String(v).toLowerCase().includes(q))
-    )
-  }
+  const q  = search.value.toLowerCase().trim()
+  if (q) data = data.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q)))
   if (noMrFilter.value.trim()) {
     const mr = noMrFilter.value.trim()
-    data = data.filter(r =>
-      r.no_mr?.includes(mr) || r.no_reg?.includes(mr)
-    )
+    data = data.filter(r => r.no_mr?.includes(mr) || r.no_reg?.includes(mr))
   }
+  if (dateFrom.value) data = data.filter(r => r.tanggal >= dateFrom.value)
+  if (dateTo.value)   data = data.filter(r => r.tanggal <= dateTo.value)
   return data
 })
+
+// ── Grand stats ───────────────────────────────────────────────────────────────
+const grandStats = computed(() => ({
+  qc:      qcData.value.length,
+  batal:   batalData.value.length,
+  edukasi: edukasiData.value.length,
+  up:      upSellingData.value.length,
+}))
 
 function statusColor(s) {
   return ({
     'Edukasi': 'success', 'Edukasi lanjutan': 'warning', 'Masuk': 'info',
-    'OK': 'success', 'Pending': 'warning', 'Ditolak': 'error',
+    'OK': 'success', 'Bedah': 'success', 'Non Bedah': 'info',
+    'Pending': 'warning', 'Ditolak': 'error',
     'Berhasil': 'success', 'Tidak Berhasil': 'error',
     'Selesai': 'success', 'Menunggu': 'warning',
   })[s] ?? 'secondary'
@@ -170,35 +194,91 @@ function exportCSV() {
   const rows    = filteredData.value.map(row =>
     activeHeaders.value.map(h => `"${row[h.key] ?? ''}"`)
   )
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const csv  = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
   a.href     = url
-  a.download = `view-data-${activeTab.value}-${new Date().toISOString().slice(0,10)}.csv`
+  a.download = `view-data-${activeTab.value}-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
+
+onMounted(() => loadAll())
 </script>
 
 <template>
   <div>
     <!-- Page header -->
-    <div class="d-flex align-center justify-space-between flex-wrap gap-3 mb-5">
-      <div>
-        <h4 class="page-title">View Data Input</h4>
-        <p class="text-body-2 text-medium-emphasis mb-0">Summary & history semua data input per modul</p>
+    <div class="page-hero page-hero--view mb-5">
+      <div class="page-hero__content">
+        <div class="page-hero__badge">
+          <VIcon icon="ri-table-line" size="13" />
+          QC Admission · View Data Input
+        </div>
+        <h1 class="page-hero__title">View Data Input</h1>
+        <p class="page-hero__subtitle">Summary & history semua data input per modul · Data real-time dari database</p>
       </div>
-      <VBtn
-        variant="tonal"
-        color="success"
-        prepend-icon="ri-file-download-line"
-        size="small"
-        @click="exportCSV"
-      >
-        Export CSV
-      </VBtn>
+      <div class="d-flex gap-2 align-center" style="position:relative;z-index:2">
+        <VBtn icon variant="text" color="white" size="small" :loading="loading" title="Refresh" @click="loadAll">
+          <VIcon icon="ri-refresh-line" />
+        </VBtn>
+        <VBtn color="white" variant="elevated" rounded="lg" size="small"
+          prepend-icon="ri-file-download-line" style="color:#4facfe"
+          @click="exportCSV">
+          Export CSV
+        </VBtn>
+      </div>
+      <VIcon icon="ri-table-line" class="page-hero__icon" />
     </div>
+
+    <!-- Grand stats -->
+    <VRow dense class="mb-4">
+      <VCol cols="6" sm="3">
+        <VCard
+          elevation="0" border rounded="lg" class="pa-3 text-center cursor-pointer stat-tab"
+          :class="activeTab === 'quality-control' ? 'stat-tab-active' : ''"
+          @click="activeTab = 'quality-control'"
+        >
+          <VIcon icon="ri-shield-check-line" size="20" color="primary" class="mb-1" />
+          <p class="text-h5 font-weight-bold text-primary mb-0">{{ grandStats.qc }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Quality Control</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VCard
+          elevation="0" border rounded="lg" class="pa-3 text-center cursor-pointer stat-tab"
+          :class="activeTab === 'batal-ranap' ? 'stat-tab-active' : ''"
+          @click="activeTab = 'batal-ranap'"
+        >
+          <VIcon icon="ri-close-circle-line" size="20" color="error" class="mb-1" />
+          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-error))">{{ grandStats.batal }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Batal Ranap</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VCard
+          elevation="0" border rounded="lg" class="pa-3 text-center cursor-pointer stat-tab"
+          :class="activeTab === 'edukasi-lanjutan' ? 'stat-tab-active' : ''"
+          @click="activeTab = 'edukasi-lanjutan'"
+        >
+          <VIcon icon="ri-book-open-line" size="20" color="warning" class="mb-1" />
+          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">{{ grandStats.edukasi }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Edukasi Lanjutan</p>
+        </VCard>
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VCard
+          elevation="0" border rounded="lg" class="pa-3 text-center cursor-pointer stat-tab"
+          :class="activeTab === 'up-selling' ? 'stat-tab-active' : ''"
+          @click="activeTab = 'up-selling'"
+        >
+          <VIcon icon="ri-arrow-up-circle-line" size="20" color="success" class="mb-1" />
+          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-success))">{{ grandStats.up }}</p>
+          <p class="text-caption text-medium-emphasis mb-0">Up Selling</p>
+        </VCard>
+      </VCol>
+    </VRow>
 
     <!-- Module tabs -->
     <VCard elevation="0" border rounded="lg" class="mb-4">
@@ -214,57 +294,31 @@ function exportCSV() {
     <VCard elevation="0" border rounded="lg" class="mb-4">
       <VCardText class="py-3">
         <VRow align="center" dense>
-          <VCol cols="12" sm="5">
+          <VCol cols="12" sm="4">
             <VTextField
               v-model="search"
               placeholder="Cari nama, nomor, petugas..."
               prepend-inner-icon="ri-search-line"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
+              variant="outlined" density="compact" hide-details clearable
             />
           </VCol>
           <VCol v-if="activeTab !== 'batal-ranap' && activeTab !== 'up-selling'" cols="12" sm="3">
             <VTextField
               v-model="noMrFilter"
-              placeholder="Filter No. MR..."
+              placeholder="Filter No. MR / No. Reg..."
               prepend-inner-icon="ri-id-card-line"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
+              variant="outlined" density="compact" hide-details clearable
             />
           </VCol>
-          <VCol cols="12" sm="2">
-            <VTextField
-              v-model="dateFrom"
-              label="Dari"
-              type="date"
-              variant="outlined"
-              density="compact"
-              hide-details
-            />
+          <VCol cols="6" sm="2">
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
           </VCol>
-          <VCol cols="12" sm="2">
-            <VTextField
-              v-model="dateTo"
-              label="Sampai"
-              type="date"
-              variant="outlined"
-              density="compact"
-              hide-details
-            />
+          <VCol cols="6" sm="2">
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
           </VCol>
           <VCol class="d-flex justify-end" cols="auto">
-            <VBtn
-              icon
-              variant="text"
-              size="small"
-              color="secondary"
-              title="Reset filter"
-              @click="search = ''; dateFrom = ''; dateTo = ''; noMrFilter = ''"
-            >
+            <VBtn icon variant="text" size="small" color="secondary" title="Reset filter"
+              @click="search = ''; dateFrom = ''; dateTo = ''; noMrFilter = ''">
               <VIcon icon="ri-refresh-line" />
             </VBtn>
           </VCol>
@@ -274,12 +328,11 @@ function exportCSV() {
 
     <!-- Result count -->
     <div class="d-flex align-center gap-2 mb-3">
-      <VChip size="small" color="primary" variant="tonal">
-        {{ filteredData.length }} data
-      </VChip>
+      <VChip size="small" color="primary" variant="tonal">{{ filteredData.length }} data</VChip>
       <span class="text-caption text-medium-emphasis">
         {{ activeTab === 'summary' ? 'pasien terdaftar' : 'record ditemukan' }}
       </span>
+      <VProgressCircular v-if="loading" size="16" width="2" indeterminate color="primary" class="ms-1" />
     </div>
 
     <!-- Data table -->
@@ -289,6 +342,7 @@ function exportCSV() {
         :items="filteredData"
         density="compact"
         hover
+        :loading="loading"
         :items-per-page="15"
         class="view-table"
       >
@@ -338,7 +392,9 @@ function exportCSV() {
 </template>
 
 <style scoped>
-.page-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 2px; }
+.stat-tab { transition: box-shadow 0.2s, transform 0.15s; }
+.stat-tab:hover { box-shadow: 0 4px 16px rgba(var(--v-shadow-key-umbra-color), 0.1) !important; transform: translateY(-1px); }
+.stat-tab-active { border-color: rgb(var(--v-theme-primary)) !important; }
 .view-table :deep(.v-data-table__thead th) {
   font-size: 0.7rem !important;
   text-transform: uppercase;

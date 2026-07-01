@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\QcAdmission;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,8 @@ class AuthController extends Controller
 
         $user  = Auth::user();
         $token = $user->createToken('qc-admission')->plainTextToken;
+
+        ActivityLog::record('auth', 'login', "Login berhasil — {$user->name}");
 
         return response()->json([
             'user'  => $user,
@@ -114,6 +117,7 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
+        ActivityLog::record('auth', 'logout', "Logout — {$request->user()->name}");
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logout berhasil.']);

@@ -45,7 +45,7 @@ function _getStoredRole() {
 }
 
 function _defaultRouteForRole(role) {
-  if (role === 'kasir') return '/batal-ranap-view'
+  if (role === 'kasir') return '/view-data-input'
   return '/dashboard'
 }
 

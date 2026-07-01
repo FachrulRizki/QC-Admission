@@ -88,6 +88,12 @@
   &--upselling { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
   &--view      { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
   &--kasir     { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
+  &--master    { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+  &--user      {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    .page-hero__title, .page-hero__subtitle, .page-hero__badge { color: rgba(0,60,30,0.9) !important; }
+    .page-hero__icon { color: rgba(0,60,30,0.12) !important; }
+  }
 
   // Decorative circles
   &::before {
@@ -118,6 +124,7 @@
 .stat-active-warning { border-color: rgb(var(--v-theme-warning)) !important; background: rgba(var(--v-theme-warning),0.05) !important; }
 .stat-active-success { border-color: rgb(var(--v-theme-success)) !important; background: rgba(var(--v-theme-success),0.05) !important; }
 .stat-active-error   { border-color: rgb(var(--v-theme-error))   !important; background: rgba(var(--v-theme-error),0.05)   !important; }
+.stat-active-info    { border-color: rgb(var(--v-theme-info))    !important; background: rgba(var(--v-theme-info),0.05)    !important; }
 
 // ─── Filter Bar ──────────────────────────────────────────────────────────────
 .filter-bar {
@@ -146,3 +153,66 @@
 .chip-edukasi          { background-color: rgba(86,202,0,0.15) !important;   color: #3d8f00 !important; }
 .chip-edukasi-lanjutan { background-color: rgba(255,180,0,0.15) !important;  color: #b37d00 !important; }
 .chip-batal            { background-color: rgba(255,76,81,0.15) !important;  color: #c4282d !important; }
+
+// ─── Batal Ranap table — klik baris ──────────────────────────────────────────
+.batal-table :deep(tr) { cursor: pointer; }
+.batal-table :deep(tr:hover td) { background: rgba(var(--v-theme-error), 0.03); }
+
+// ─── Hero Banner — Mobile Responsive ─────────────────────────────────────────
+@media (max-width: 599px) {
+  .page-hero {
+    padding: 20px 18px;
+    min-height: 100px;
+    border-radius: 12px;
+
+    &__title { font-size: 1.25rem; }
+    &__subtitle { font-size: 0.8rem; }
+    &__icon { font-size: 5rem !important; right: 12px; }
+    &__badge { font-size: 0.65rem; padding: 3px 8px; }
+  }
+}
+
+// ─── Dialog — full screen on mobile ──────────────────────────────────────────
+@media (max-width: 599px) {
+  .v-dialog > .v-overlay__content { margin: 0 !important; }
+  .v-dialog > .v-overlay__content > .v-card {
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 95dvh;
+  }
+}
+
+// ─── Data table — horizontal scroll on mobile ────────────────────────────────
+@media (max-width: 767px) {
+  .v-data-table {
+    overflow-x: auto;
+    .v-data-table__thead th,
+    .v-data-table__tbody td { white-space: nowrap; }
+  }
+  // Hide less important columns on mobile via class
+  .hide-mobile { display: none !important; }
+}
+
+// ─── Page padding mobile ─────────────────────────────────────────────────────
+@media (max-width: 599px) {
+  .page-content-container { padding: 12px 10px !important; }
+}
+
+// ─── Stat cards — 2 column on mobile ─────────────────────────────────────────
+// already handled by Vuetify VCol cols="6" sm="3" / cols="4"
+// override card padding on mobile
+@media (max-width: 599px) {
+  .stat-card { padding: 10px 8px !important; }
+  .stat-card .text-h4 { font-size: 1.5rem !important; }
+  .stat-card .text-h5 { font-size: 1.25rem !important; }
+}
+
+// ─── Form section — full width on mobile ─────────────────────────────────────
+@media (max-width: 599px) {
+  .form-section { padding: 10px 10px !important; }
+}
+
+// ─── Nav section label ────────────────────────────────────────────────────────
+.nav-section-label {
+  margin-top: 4px;
+  padding-bottom: 2px;
+}
