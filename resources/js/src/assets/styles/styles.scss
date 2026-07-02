@@ -40,6 +40,49 @@ body { font-family: 'Inter', system-ui, sans-serif !important; }
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
 }
 
+// ─── Dark Mode overrides ──────────────────────────────────────────────────────
+// Vuetify sets .v-theme--dark on the root element when dark mode is active
+.v-theme--dark {
+  --qc-border:   rgba(255,255,255,0.10);
+  --qc-bg:       #1E1E2E;
+  --qc-surface:  #2A2A3E;
+  --qc-text:     rgba(255,255,255,0.87);
+  --qc-text-2:   rgba(255,255,255,0.50);
+
+  // Dashboard custom element dark overrides
+  .rqc-header, .rqc-table-wrap { background: #2A2A3E !important; color: rgba(255,255,255,0.87) !important; }
+  .rqc-col-item:hover { background: rgba(255,255,255,0.06) !important; }
+  .rqc-col-header { background: #1E1E2E !important; color: rgba(255,255,255,0.6) !important; border-bottom-color: rgba(255,255,255,0.08) !important; }
+  .rqc-col-cell, .rqc-cell-main { color: rgba(255,255,255,0.87) !important; border-bottom-color: rgba(255,255,255,0.07) !important; }
+  .rqc-search-wrap { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.12) !important; }
+  .rqc-search-wrap input { color: rgba(255,255,255,0.87) !important; background: transparent !important; }
+  .rqc-pg-btn { border-color: rgba(255,255,255,0.2) !important; color: rgba(255,255,255,0.7) !important; background: transparent !important; }
+  .rqc-pg-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08) !important; }
+  .ds-td { color: rgba(255,255,255,0.87) !important; border-bottom-color: rgba(255,255,255,0.07) !important; }
+  .ds-tr:hover td { background: rgba(255,255,255,0.05) !important; }
+  .ds-tr:hover .sticky-col { background: rgba(255,255,255,0.05) !important; }
+  .totals-row td { background: rgba(255,255,255,0.04) !important; border-top-color: rgba(255,255,255,0.1) !important; }
+  .petugas-avatar { background: rgba(14,165,233,0.2) !important; color: #38BDF8 !important; }
+  .ds-pg-btn { border-color: rgba(255,255,255,0.2) !important; color: rgba(255,255,255,0.7) !important; background: transparent !important; }
+  .ds-pg-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08) !important; }
+  .fp__qcf-in { color: #fff !important; }
+  .durasi-ok { background: rgba(14,165,233,0.15) !important; color: #38BDF8 !important; }
+  .db-topbar__title-main, .db-kpi-card__value { color: rgba(255,255,255,0.87) !important; }
+  .db-kpi-card__label, .db-subtitle-bar__time, .db-subtitle-bar__range { color: rgba(255,255,255,0.55) !important; }
+  .db-date-btn, .db-refresh-btn { background: #2A2A3E !important; color: rgba(255,255,255,0.87) !important; }
+  .db-date-btn:hover { background: rgba(255,255,255,0.08) !important; }
+  .db-date-panel, .db-date-input { background: #2A2A3E !important; color: rgba(255,255,255,0.87) !important; }
+  .db-date-input { border-color: rgba(255,255,255,0.15) !important; }
+  .db-date-field label { color: rgba(255,255,255,0.55) !important; }
+  .db-quick-btn { background: rgba(14,165,233,0.15) !important; color: #38BDF8 !important; border-color: #38BDF8 !important; }
+  .db-quick-btn:hover { background: #0EA5E9 !important; color: #fff !important; }
+  .fp { background: #2A2A3E !important; border-color: rgba(255,255,255,0.08) !important; }
+  .fp__title { color: rgba(255,255,255,0.87) !important; }
+  .fp__qcf-label span:last-child { color: rgba(255,255,255,0.6) !important; }
+  .fp__reset { color: rgba(255,255,255,0.5) !important; border-color: rgba(255,255,255,0.12) !important; }
+}
+}
+
 // ─── Cards ────────────────────────────────────────────────────────────────────
 .v-card:not(.v-card--elevated) { box-shadow: none !important; }
 .v-card[border] {

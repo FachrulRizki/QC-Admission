@@ -17,9 +17,17 @@ const todayFormatted = computed(() =>
   new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 )
 
-const dateFrom = ref(todayStr())
-const dateTo   = ref(todayStr())
+const dateFrom     = ref(todayStr())
+const dateTo       = ref(todayStr())
+const filterClosing = ref('')   // '' | 'Siap Closing' | 'Belum Siap Closing' | 'Belum Diverifikasi'
 const activeTab = ref('batal-ranap')
+
+const CLOSING_OPTIONS = [
+  { title: 'Semua Status',        value: '' },
+  { title: '👍 Siap Closing',     value: 'Siap Closing' },
+  { title: '⏳ Belum Siap',       value: 'Belum Siap Closing' },
+  { title: '❓ Belum Diverifikasi', value: null },
+]
 
 const isKasir = computed(() => auth.isKasir)
 
@@ -117,6 +125,15 @@ const filteredData = computed(() => {
       if (to   && tgl > to)   return false
       return true
     })
+  }
+  // Filter status closing — hanya aktif saat tab batal-ranap
+  if (activeTab.value === 'batal-ranap' && filterClosing.value !== '') {
+    if (filterClosing.value === null) {
+      // Belum Diverifikasi = tidak ada status_closing
+      d = d.filter(r => !r.status_closing)
+    } else {
+      d = d.filter(r => r.status_closing === filterClosing.value)
+    }
   }
   return d
 })
@@ -241,7 +258,24 @@ watch(() => auth.userRole, (role, prev) => {
             <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
           <VCol cols="auto">
-            <VBtn size="small" variant="text" color="secondary" @click="search='';dateFrom='';dateTo=''">Reset</VBtn>
+            <VBtn size="small" variant="text" color="secondary" @click="search='';dateFrom='';dateTo='';filterClosing=''">Reset</VBtn>
+          </VCol>
+        </VRow>
+        <!-- Filter Status Closing — muncul hanya saat tab batal-ranap -->
+        <VRow v-if="activeTab === 'batal-ranap'" dense class="mt-2" align="center">
+          <VCol cols="12" sm="auto">
+            <span class="text-caption font-weight-semibold" style="color:var(--qc-text-2)">Filter Closing:</span>
+          </VCol>
+          <VCol cols="12" sm="auto">
+            <div class="d-flex gap-2 flex-wrap">
+              <VChip
+                v-for="opt in CLOSING_OPTIONS" :key="String(opt.value)"
+                :color="filterClosing === opt.value ? (opt.value === 'Siap Closing' ? 'success' : opt.value === 'Belum Siap Closing' ? 'error' : opt.value === null ? 'warning' : 'primary') : 'default'"
+                :variant="filterClosing === opt.value ? 'elevated' : 'outlined'"
+                size="small" class="cursor-pointer"
+                @click="filterClosing = filterClosing === opt.value ? '' : opt.value"
+              >{{ opt.title }}</VChip>
+            </div>
           </VCol>
         </VRow>
       </VCardText>

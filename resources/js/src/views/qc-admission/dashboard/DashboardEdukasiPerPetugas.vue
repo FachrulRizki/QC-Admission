@@ -41,7 +41,7 @@ const endIdx     = computed(() => Math.min(page.value * perPage, props.items.len
                 <span class="font-weight-medium">{{ row.petugas }}</span>
               </div>
             </td>
-            <td class="ds-td text-end font-weight-bold" style="color:var(--qc-green)">
+            <td class="ds-td text-end font-weight-bold" style="color:rgb(var(--v-theme-primary))">
               {{ row.jumlah_edukasi?.toLocaleString('id-ID') }}
             </td>
           </tr>
@@ -60,33 +60,40 @@ const endIdx     = computed(() => Math.min(page.value * perPage, props.items.len
 .ds-table-wrap { overflow-x: auto; }
 .ds-table { width: 100%; border-collapse: collapse; }
 .ds-th {
-  background: #F0F4F3; color: #5C6B67;
-  font-size: 0.72rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.04em;
-  padding: 8px 16px; white-space: nowrap;
-  border-bottom: 1px solid #E1E7E5;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 8px 16px; white-space: nowrap;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.ds-td { padding: 8px 16px; font-size: 0.85rem; color: #1A1F1E; border-bottom: 1px solid #E1E7E5; }
-.ds-tr:hover td { background: var(--qc-green-light); }
+.ds-td {
+  padding: 8px 16px; font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.ds-tr:hover td { background: rgba(var(--v-theme-primary), 0.06); }
+.ds-tr:hover .sticky-col { background: rgba(var(--v-theme-primary), 0.06); }
 .petugas-avatar {
   width: 28px; height: 28px; border-radius: 8px;
-  background: var(--qc-green-light); color: var(--qc-green);
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
   font-size: 0.75rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .ds-pagination {
   display: flex; align-items: center; justify-content: flex-end;
-  gap: 6px; padding: 8px 16px; border-top: 1px solid #E1E7E5;
+  gap: 6px; padding: 8px 16px;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.ds-pagination__info { font-size: 0.75rem; color: #5C6B67; margin-right: 4px; }
+.ds-pagination__info { font-size: 0.75rem; color: rgba(var(--v-theme-on-surface), 0.55); margin-right: 4px; }
 .ds-pg-btn {
   width: 28px; height: 28px; border-radius: 50%;
-  border: 1.5px solid var(--qc-green); background: transparent;
-  color: var(--qc-green); font-size: 1rem; cursor: pointer;
+  border: 1.5px solid rgb(var(--v-theme-primary));
+  background: transparent; color: rgb(var(--v-theme-primary));
+  font-size: 1rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center; transition: background 0.15s;
 }
-.ds-pg-btn:hover:not(:disabled) { background: var(--qc-green-light); }
-.ds-pg-btn:disabled { border-color: #E1E7E5; color: #E1E7E5; cursor: default; }
+.ds-pg-btn:hover:not(:disabled) { background: rgba(var(--v-theme-primary), 0.1); }
+.ds-pg-btn:disabled { border-color: rgba(var(--v-theme-on-surface), 0.2); color: rgba(var(--v-theme-on-surface), 0.2); cursor: default; }
 </style>
 

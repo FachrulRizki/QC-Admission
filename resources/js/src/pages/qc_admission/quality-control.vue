@@ -105,6 +105,40 @@ function getCountdown(item) {
   return `${h}:${m}`
 }
 
+/**
+ * Hitung lama waktu pasien berada di QC.
+ * - Jika sudah pindah (durasi_tunggu terisi) → tampilkan nilai tersimpan
+ * - Jika masih aktif → hitung live dari created_at
+ */
+function getDurasi(item) {
+  // Sudah pindah ke Edukasi Lanjutan — durasi_tunggu tersimpan format HH:MM:SS
+  if (item.durasi_tunggu) {
+    const parts = item.durasi_tunggu.split(':').map(Number)
+    if (parts.length >= 2) {
+      const totalMnt = parts[0] * 60 + parts[1]
+      if (totalMnt >= 60) return `${parts[0]}j ${String(parts[1]).padStart(2,'0')}m`
+      return `${totalMnt} mnt`
+    }
+    return item.durasi_tunggu
+  }
+  // Masih aktif — hitung live
+  if (!item.created_at) return null
+  const elapsedSec = Math.floor((now.value - new Date(item.created_at).getTime()) / 1000)
+  const h = Math.floor(elapsedSec / 3600)
+  const m = Math.floor((elapsedSec % 3600) / 60)
+  if (h >= 1) return `${h}j ${String(m).padStart(2,'0')}m`
+  return `${m} mnt`
+}
+
+/** Warna durasi: merah jika sudah ≥2j (Edukasi Lanjutan), kuning jika hampir, hijau jika masih aman */
+function getDurasiColor(item) {
+  if (isLanjutan(item)) return 'error'
+  if (!item.created_at) return 'secondary'
+  const elapsedMin = Math.floor((now.value - new Date(item.created_at).getTime()) / 60000)
+  if (elapsedMin >= 90) return 'warning'   // < 30 mnt lagi pindah
+  return 'success'
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────────────
 function openAdd()         { editItem.value = null; showForm.value = true }
 function openRow(item)     { detailItem.value = item; showDetail.value = true }
@@ -252,7 +286,7 @@ watch([dateFrom, dateTo], () => load())
             <div class="d-flex align-center gap-2 flex-wrap">
               <span class="font-weight-semibold" style="font-size:0.9rem;color:var(--qc-text)">{{ item.nama_pasien }}</span>
               <VChip :color="isLanjutan(item) ? 'warning' : 'success'" size="x-small" variant="tonal">
-                {{ isLanjutan(item) ? '⏰ Siap Lanjutan' : '📚 Edukasi' }}
+                {{ isLanjutan(item) ? '⏰ Siap Edukasi Lanjutan' : '📚 Edukasi' }}
               </VChip>
             </div>
             <div class="d-flex align-center gap-3 mt-1 flex-wrap">
@@ -269,14 +303,19 @@ watch([dateFrom, dateTo], () => load())
           </div>
 
           <div class="text-end flex-shrink-0">
-            <p class="text-caption mb-0 font-mono" style="color:var(--qc-text-2)">{{ item.jam_input }}</p>
+            <!-- Durasi total sejak masuk QC -->
+            <div class="d-flex align-center gap-1 justify-end mb-1">
+              <VIcon icon="ri-time-line" size="11" :color="getDurasiColor(item)" />
+              <span class="text-caption font-mono font-weight-semibold"
+                :style="`color:${isLanjutan(item) ? 'rgb(var(--v-theme-error))' : 'rgba(var(--v-theme-on-surface),0.7)'}`">
+                {{ getDurasi(item) }}
+              </span>
+            </div>
+            <p class="text-caption mb-0" style="color:var(--qc-text-2);font-size:0.65rem">{{ item.jam_input }}</p>
+            <!-- Countdown pindah ke Edukasi Lanjutan -->
             <div v-if="!isLanjutan(item) && getCountdown(item)" class="d-flex align-center gap-1 justify-end mt-1">
               <VIcon icon="ri-timer-line" size="11" color="warning" />
-              <span class="text-caption font-mono" style="color:rgb(var(--v-theme-warning))">{{ getCountdown(item) }}</span>
-            </div>
-            <div v-else-if="isLanjutan(item)" class="d-flex align-center gap-1 justify-end mt-1">
-              <VIcon icon="ri-arrow-right-circle-line" size="11" color="warning" />
-              <span class="text-caption" style="color:rgb(var(--v-theme-warning))">Siap dipindah</span>
+              <span class="text-caption font-mono" style="color:rgb(var(--v-theme-warning))">-{{ getCountdown(item) }}</span>
             </div>
           </div>
         </div>
@@ -315,6 +354,11 @@ watch([dateFrom, dateTo], () => load())
               <VIcon icon="ri-timer-flash-line" size="12" class="me-1" />
               {{ getCountdown(detailItem) }} lagi
             </span>
+            <!-- Durasi total -->
+            <span class="qc-pill qc-pill--durasi">
+              <VIcon icon="ri-time-line" size="12" class="me-1" />
+              {{ getDurasi(detailItem) }}
+            </span>
           </div>
         </div>
 
@@ -324,6 +368,19 @@ watch([dateFrom, dateTo], () => load())
           <div class="qc-info-cell"><span class="qc-lbl">Jam Input</span><span class="qc-val">{{ detailItem.jam_input }}</span></div>
           <div class="qc-info-cell"><span class="qc-lbl">Jaminan</span><span class="qc-val">{{ detailItem.jaminan || '—' }}</span></div>
           <div class="qc-info-cell"><span class="qc-lbl">Petugas</span><span class="qc-val">{{ detailItem.petugas || '—' }}</span></div>
+          <!-- Durasi sejak masuk QC -->
+          <div class="qc-info-cell">
+            <span class="qc-lbl">⏱ Lama di QC</span>
+            <span class="qc-val font-weight-bold" :style="`color:${isLanjutan(detailItem)?'rgb(var(--v-theme-error))':'rgb(var(--v-theme-primary))'}`">
+              {{ getDurasi(detailItem) ?? '—' }}
+            </span>
+          </div>
+          <div class="qc-info-cell">
+            <span class="qc-lbl">Pindah ke Edukasi</span>
+            <span class="qc-val" :style="!isLanjutan(detailItem) && getCountdown(detailItem) ? 'color:rgb(var(--v-theme-warning))' : ''">
+              {{ isLanjutan(detailItem) ? 'Sudah siap' : (getCountdown(detailItem) ? `${getCountdown(detailItem)} lagi` : '—') }}
+            </span>
+          </div>
           <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Edukasi Kamar</span><span class="qc-val">{{ detailItem.edukasi_kamar || '—' }}</span></div>
           <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Note / Kamar</span><span class="qc-val">{{ detailItem.note || '—' }}</span></div>
           <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Keluarga Pasien</span><span class="qc-val">{{ detailItem.keluarga_pasien || '—' }}</span></div>
@@ -437,6 +494,7 @@ watch([dateFrom, dateTo], () => load())
 .qc-pill--ok    { background: rgba(255,255,255,0.2); color: #fff; }
 .qc-pill--warn  { background: rgba(255,180,0,0.28); color: #ffe066; }
 .qc-pill--timer { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
+.qc-pill--durasi { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.95); font-weight: 700; }
 
 /* ── Info grid ─────────────────────────────────────────────────────────────── */
 .qc-info-grid {

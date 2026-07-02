@@ -74,33 +74,34 @@ const STATUS_ROWS = ['Edukasi', 'Edukasi lanjutan']
 .matrix-scroll { overflow-x: auto; max-height: 280px; overflow-y: auto; }
 .ds-table { width: 100%; border-collapse: collapse; min-width: 480px; }
 .ds-th {
-  background: #F0F4F3;
-  color: #5C6B67;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 8px 12px;
-  white-space: nowrap;
-  border-bottom: 1px solid #E1E7E5;
-  position: sticky;
-  top: 0;
-  z-index: 2;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 8px 12px; white-space: nowrap;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  position: sticky; top: 0; z-index: 2;
 }
-.sticky-col { position: sticky; left: 0; z-index: 3; background: #F0F4F3; }
-.ds-tr .sticky-col { background: #fff; }
+.sticky-col {
+  position: sticky; left: 0; z-index: 3;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+.ds-tr .sticky-col {
+  background: rgb(var(--v-theme-surface));
+}
 .ds-td {
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  color: #1A1F1E;
-  border-bottom: 1px solid #E1E7E5;
+  padding: 8px 12px; font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   white-space: nowrap;
 }
-.ds-tr:hover td { background: var(--qc-green-light); }
-.ds-tr:hover .sticky-col { background: var(--qc-green-light); }
+.ds-tr:hover td { background: rgba(var(--v-theme-primary), 0.06); }
+.ds-tr:hover .sticky-col { background: rgba(var(--v-theme-primary), 0.06); }
 .petugas-header { max-width: 100px; white-space: normal; font-size: 0.72rem; line-height: 1.3; text-align: center; }
-.matrix-val { font-weight: 700; color: var(--qc-green); }
+.matrix-val { font-weight: 700; color: rgb(var(--v-theme-primary)); }
 .uppercase { text-transform: uppercase; }
-.totals-row td { background: #F0F4F3 !important; border-top: 2px solid #E1E7E5; }
+.totals-row td {
+  background: rgba(var(--v-theme-on-surface), 0.04) !important;
+  border-top: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
 </style>
 

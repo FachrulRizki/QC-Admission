@@ -9,6 +9,37 @@ const loading = ref(false)
 const syncing = ref(false)
 const snackbar = ref({ show: false, msg: '', color: 'success' })
 
+// ── Live clock untuk hitung durasi menunggu ───────────────────────────────────
+const now = ref(Date.now())
+let ticker = null
+onMounted(() => { ticker = setInterval(() => { now.value = Date.now() }, 30_000) })
+onUnmounted(() => clearInterval(ticker))
+
+/**
+ * Hitung lama pasien menunggu bed sejak created_at record Edukasi Lanjutan.
+ * Menampilkan "X jam Y mnt" — live update.
+ */
+function getWaktuMenunggu(patient) {
+  if (!patient.created_at) return null
+  const elapsedSec = Math.floor((now.value - new Date(patient.created_at).getTime()) / 1000)
+  if (elapsedSec < 0) return null
+  const h   = Math.floor(elapsedSec / 3600)
+  const m   = Math.floor((elapsedSec % 3600) / 60)
+  const day = Math.floor(h / 24)
+  if (day >= 1) return `${day}h ${h % 24}j`
+  if (h >= 1)   return `${h}j ${String(m).padStart(2,'0')}m`
+  return `${m} mnt`
+}
+
+/** Warna berdasarkan lama menunggu: > 4j = merah, > 2j = kuning, lainnya = primary */
+function getWaktuColor(patient) {
+  if (!patient.created_at) return 'secondary'
+  const elapsedMin = Math.floor((now.value - new Date(patient.created_at).getTime()) / 60000)
+  if (elapsedMin >= 240) return 'error'    // > 4 jam
+  if (elapsedMin >= 120) return 'warning'  // > 2 jam
+  return 'primary'
+}
+
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 const showDetail   = ref(false)
 const detailPatient = ref(null)
@@ -276,6 +307,13 @@ onMounted(load)
                 variant="tonal" size="x-small"
               >{{ patient.status }}</VChip>
               <span v-if="patient.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ patient.jaminan }}</span>
+              <!-- Lama menunggu bed — hanya jika masih Menunggu -->
+              <VChip
+                v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient)"
+                :color="getWaktuColor(patient)"
+                variant="tonal" size="x-small"
+                prepend-icon="ri-time-line"
+              >{{ getWaktuMenunggu(patient) }}</VChip>
             </div>
 
             <!-- Footer -->

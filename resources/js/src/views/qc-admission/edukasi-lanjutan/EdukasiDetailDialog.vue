@@ -23,6 +23,32 @@ const history    = ref([])
 const errorMsg   = ref('')
 const successMsg = ref('')
 
+// ── Live clock untuk hitung durasi per sesi ───────────────────────────────────
+const nowMs = ref(Date.now())
+let clockTimer = null
+
+/** Hitung lama menunggu bed sejak created_at record edukasi lanjutan */
+function getWaktuMenunggu(createdAt) {
+  if (!createdAt) return null
+  const elapsedSec = Math.floor((nowMs.value - new Date(createdAt).getTime()) / 1000)
+  if (elapsedSec < 0) return null
+  const day = Math.floor(elapsedSec / 86400)
+  const h   = Math.floor((elapsedSec % 86400) / 3600)
+  const m   = Math.floor((elapsedSec % 3600) / 60)
+  if (day >= 1) return `${day}h ${h}j ${String(m).padStart(2,'0')}m`
+  if (h >= 1)   return `${h}j ${String(m).padStart(2,'0')}m`
+  return `${m} mnt`
+}
+
+/** Warna berdasarkan lama: merah > 4j, kuning > 2j, hijau lainnya */
+function getWaktuColor(createdAt) {
+  if (!createdAt) return 'secondary'
+  const elapsedMin = Math.floor((nowMs.value - new Date(createdAt).getTime()) / 60000)
+  if (elapsedMin >= 240) return 'error'
+  if (elapsedMin >= 120) return 'warning'
+  return 'success'
+}
+
 watch(() => props.modelValue, async (open) => {
   if (open && props.patient) {
     tabView.value    = props.mode === 'edit' ? 'baru' : 'riwayat'
@@ -32,6 +58,9 @@ watch(() => props.modelValue, async (open) => {
     pegawaiStore.fetch()
     masterStore.fetch()
     loadHistory()
+    clockTimer = setInterval(() => { nowMs.value = Date.now() }, 30_000)
+  } else {
+    clearInterval(clockTimer)
   }
 })
 watch(() => props.mode, m => { if (m === 'edit') tabView.value = 'baru' })
@@ -100,7 +129,7 @@ function fmtDate(d) {
 
 <template>
   <VDialog :model-value="modelValue" max-width="620" persistent scrollable @update:model-value="close">
-    <VCard v-if="patient" rounded="xl" class="overflow-hidden">
+    <VCard v-if="patient" rounded="xl" class="overflow-hidden" style="max-width:100%;width:100%">
 
       <!-- ── Gradient Banner ──────────────────────────────────────────────── -->
       <div class="modal-banner">
@@ -120,15 +149,21 @@ function fmtDate(d) {
           </div>
           <!-- Badges di kanan atas, close di pojok -->
           <div class="banner-right">
-            <div class="banner-badges">
-              <span class="badge-pill badge-pill--sesi">{{ sesiCount }} sesi</span>
-              <span class="badge-pill mt-1" :class="patient.status === 'Selesai' ? 'badge-pill--success' : 'badge-pill--muted'">
-                {{ patient.status || 'Menunggu' }}
-              </span>
-            </div>
             <button class="banner-close" @click="close">
               <VIcon icon="ri-close-line" size="16" />
             </button>
+            <div class="banner-badges">
+              <span class="badge-pill badge-pill--sesi">{{ sesiCount }} sesi</span>
+              <span class="badge-pill" :class="patient.status === 'Selesai' ? 'badge-pill--success' : 'badge-pill--muted'">
+                {{ patient.status || 'Menunggu' }}
+              </span>
+              <!-- Lama menunggu — compact, 1 baris -->
+              <span
+                v-if="patient.status !== 'Selesai' && getWaktuMenunggu(patient.created_at)"
+                class="badge-pill"
+                :class="getWaktuColor(patient.created_at) === 'error' ? 'badge-pill--danger' : getWaktuColor(patient.created_at) === 'warning' ? 'badge-pill--warn' : 'badge-pill--ok'"
+              ><VIcon icon="ri-time-line" size="10" class="me-1" />{{ getWaktuMenunggu(patient.created_at) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -154,7 +189,7 @@ function fmtDate(d) {
         </button>
       </div>
 
-      <VCardText class="pa-5">
+      <VCardText class="pa-3 pa-sm-5">
         <VAlert v-if="errorMsg"   type="error"   variant="tonal" density="compact" class="mb-4" closable @click:close="errorMsg=''">{{ errorMsg }}</VAlert>
         <VAlert v-if="successMsg" type="success" variant="tonal" density="compact" class="mb-4">{{ successMsg }}</VAlert>
 
@@ -178,6 +213,29 @@ function fmtDate(d) {
               <span class="ic-lbl">Total Sesi</span>
               <VChip color="warning" variant="tonal" size="x-small" class="mt-1">{{ sesiCount }} kali</VChip>
             </div>
+            <!-- Lama menunggu bed — sejajar dengan Jaminan/Total Sesi -->
+            <div class="info-cell">
+              <span class="ic-lbl">⏱ Menunggu</span>
+              <div class="mt-1">
+                <VChip
+                  v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient.created_at)"
+                  :color="getWaktuColor(patient.created_at)"
+                  variant="tonal" size="x-small"
+                  prepend-icon="ri-time-line"
+                >{{ getWaktuMenunggu(patient.created_at) }}</VChip>
+                <VChip v-else-if="patient.status === 'Selesai'" color="success" variant="tonal" size="x-small" prepend-icon="ri-check-line">
+                  Dapat bed
+                </VChip>
+                <span v-else class="ic-val text-disabled">—</span>
+              </div>
+            </div>
+            <div class="info-cell">
+              <span class="ic-lbl">Status</span>
+              <VChip
+                :color="patient.status === 'Selesai' ? 'success' : 'warning'"
+                variant="tonal" size="x-small" class="mt-1"
+              >{{ patient.status || 'Menunggu' }}</VChip>
+            </div>
           </div>
 
           <!-- Timeline riwayat -->
@@ -194,7 +252,16 @@ function fmtDate(d) {
                   <span class="text-caption font-weight-semibold">{{ h.tanggal }}</span>
                   <span class="text-caption text-medium-emphasis">· {{ h.bulan }}</span>
                 </div>
-                <VChip :color="statusColor(h.status)" size="x-small" variant="tonal">{{ h.status }}</VChip>
+                <div class="d-flex align-center gap-2">
+                  <!-- Lama sesi ini menunggu -->
+                  <span v-if="h.status === 'Menunggu' && getWaktuMenunggu(h.created_at)"
+                    class="text-caption font-weight-semibold"
+                    :style="`color:${getWaktuColor(h.created_at) === 'error' ? 'rgb(var(--v-theme-error))' : getWaktuColor(h.created_at) === 'warning' ? 'rgb(var(--v-theme-warning))' : 'rgb(var(--v-theme-success))'}`"
+                  >
+                    <VIcon icon="ri-time-line" size="11" class="me-1" />{{ getWaktuMenunggu(h.created_at) }}
+                  </span>
+                  <VChip :color="statusColor(h.status)" size="x-small" variant="tonal">{{ h.status }}</VChip>
+                </div>
               </div>
               <div class="ig-grid">
                 <div class="ig-cell">
@@ -248,11 +315,11 @@ function fmtDate(d) {
           <div class="form-section mb-4">
             <p class="sec-label mb-2">Waktu Input</p>
             <VRow dense>
-              <VCol cols="7">
+              <VCol cols="12" sm="7">
                 <VTextField v-model="form.tanggal" label="Tanggal" variant="outlined" density="compact"
                   readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-calendar-line" />
               </VCol>
-              <VCol cols="5">
+              <VCol cols="12" sm="5">
                 <VTextField v-model="form.jam_input" label="Jam" variant="outlined" density="compact"
                   readonly bg-color="grey-lighten-5" prepend-inner-icon="ri-time-line" />
               </VCol>
@@ -262,21 +329,21 @@ function fmtDate(d) {
           <div class="form-section mb-4">
             <p class="sec-label mb-2">Data Pasien (dari QC)</p>
             <VRow dense>
-              <VCol cols="4">
+              <VCol cols="12" sm="4">
                 <VTextField v-model="form.no_mr" label="No. MR" variant="outlined" density="compact"
                   readonly bg-color="grey-lighten-5" />
               </VCol>
-              <VCol cols="8">
+              <VCol cols="12" sm="8">
                 <VTextField v-model="form.nama_pasien" label="Nama Pasien" variant="outlined" density="compact"
                   readonly bg-color="grey-lighten-5" />
               </VCol>
             </VRow>
             <VRow dense class="mt-2">
-              <VCol cols="5">
+              <VCol cols="12" sm="5">
                 <VTextField v-model="form.jaminan" label="Jaminan" variant="outlined" density="compact"
                   readonly bg-color="grey-lighten-5" />
               </VCol>
-              <VCol cols="7">
+              <VCol cols="12" sm="7">
                 <VTextField v-model="form.bulan" label="Bulan" variant="outlined" density="compact"
                   readonly bg-color="grey-lighten-5" />
               </VCol>
@@ -293,7 +360,7 @@ function fmtDate(d) {
               class="mb-3"
             />
             <VRow dense>
-              <VCol cols="6">
+              <VCol cols="12" sm="6">
                 <VSelect
                   v-model="form.note"
                   :items="masterStore.noteKamarList"
@@ -302,7 +369,7 @@ function fmtDate(d) {
                   clearable
                 />
               </VCol>
-              <VCol cols="6">
+              <VCol cols="12" sm="6">
                 <VAutocomplete
                   v-model="form.petugas"
                   :items="pegawaiStore.namaList"
@@ -362,8 +429,8 @@ function fmtDate(d) {
 /* ── Gradient Banner ──────────────────────────────────────────────────── */
 .modal-banner {
   position: relative;
-  background: linear-gradient(135deg, #0EA5E9 0%, #0EA5E9 55%, #0EA5E9 100%);
-  padding: 16px 16px 14px;
+  background: linear-gradient(135deg, #0369A1 0%, #0EA5E9 55%, #0EA5E9 100%);
+  padding: 14px 14px 12px;
   overflow: hidden;
 }
 .blob { position: absolute; border-radius: 50%; background: #fff; }
@@ -371,82 +438,90 @@ function fmtDate(d) {
 .blob-2 { width: 80px;  height: 80px;  opacity: 0.10; bottom: -25px; right: 70px; }
 .blob-3 { width: 50px;  height: 50px;  opacity: 0.07; top: 8px; left: 160px; }
 
-/* Banner row: avatar | info | badges+close */
+/* Banner row: avatar | info | right-col(close + badges) */
 .banner-inner {
   position: relative; z-index: 2;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: flex-start; gap: 10px;
 }
 .banner-avatar {
-  width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%;
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%;
   background: rgba(255,255,255,0.25); border: 2.5px solid rgba(255,255,255,0.5);
   display: flex; align-items: center; justify-content: center;
 }
-.banner-avatar__letter { font-size: 18px; font-weight: 800; color: #fff; }
+.banner-avatar__letter { font-size: 17px; font-weight: 800; color: #fff; }
 
 .banner-info { flex: 1; min-width: 0; overflow: hidden; }
 .banner-date  { font-size: 0.62rem; color: rgba(255,255,255,0.72); margin: 0 0 1px; }
 .banner-name  {
-  font-size: 0.92rem; font-weight: 800; color: #fff; margin: 0 0 2px;
+  font-size: 0.9rem; font-weight: 800; color: #fff; margin: 0 0 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.banner-sub   { font-size: 0.65rem; color: rgba(255,255,255,0.78); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.banner-sub   { font-size: 0.62rem; color: rgba(255,255,255,0.78); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Kanan: badges di atas, tombol close di bawah */
+/* Right: close di atas, badges di bawah, semua dalam flow — tidak overflow ke luar banner */
 .banner-right {
   flex-shrink: 0;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  max-width: 86px;
 }
+.banner-close {
+  background: rgba(255,255,255,0.2); border: none; cursor: pointer;
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; transition: background 0.15s; flex-shrink: 0;
+}
+.banner-close:hover { background: rgba(255,255,255,0.38); }
+
 .banner-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .badge-pill {
-  font-size: 0.6rem; font-weight: 700;
-  padding: 2px 7px; border-radius: 20px;
+  font-size: 0.58rem; font-weight: 700;
+  padding: 2px 6px; border-radius: 20px;
   background: rgba(255,255,255,0.22); color: #fff;
   display: inline-flex; align-items: center; white-space: nowrap;
+  max-width: 84px; overflow: hidden; text-overflow: ellipsis;
 }
 .badge-pill--success { background: rgba(16,185,129,0.85); }
 .badge-pill--muted   { background: rgba(0,0,0,0.18); }
 .badge-pill--sesi    { background: rgba(0,0,0,0.14); }
+.badge-pill--ok      { background: rgba(16,185,129,0.75); }
+.badge-pill--warn    { background: rgba(245,158,11,0.85); }
+.badge-pill--danger  { background: rgba(239,68,68,0.85); }
 
-.banner-close {
-  background: rgba(255,255,255,0.18); border: none; cursor: pointer;
-  width: 26px; height: 26px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; transition: background 0.15s;
-}
-.banner-close:hover { background: rgba(255,255,255,0.35); }
-
-/* ── Custom Tab Bar — responsif, tidak terpotong ────────────────────── */
+/* ── Custom Tab Bar — responsif, ukuran cukup ───────────────────────── */
 .modal-tab-bar {
   display: flex;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgb(var(--v-theme-surface));
   overflow-x: auto;
   scrollbar-width: none;
+  min-height: 44px;
 }
 .modal-tab-bar::-webkit-scrollbar { display: none; }
 .modal-tab {
-  flex: 1; min-width: 0;
+  flex: 1;
   display: flex; align-items: center; justify-content: center;
-  padding: 10px 12px; gap: 5px;
-  font-size: 0.8rem; font-weight: 600;
+  padding: 12px 12px; gap: 5px;
+  font-size: 0.85rem; font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.5);
   background: transparent; border: none;
-  border-bottom: 2.5px solid transparent;
+  border-bottom: 3px solid transparent;
   cursor: pointer; transition: all 0.15s;
   white-space: nowrap;
+  min-width: max-content;
+  min-height: 44px;
 }
 .modal-tab:hover { color: rgba(var(--v-theme-on-surface), 0.8); }
 .modal-tab--active {
   color: rgb(var(--v-theme-warning));
   border-bottom-color: rgb(var(--v-theme-warning));
-  background: rgba(var(--v-theme-warning), 0.04);
+  background: rgba(var(--v-theme-warning), 0.05);
 }
 .modal-tab__badge {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 10px;
-  font-size: 0.65rem; font-weight: 700;
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+  font-size: 0.7rem; font-weight: 700;
   background: rgba(var(--v-theme-warning), 0.15);
-  color: rgb(var(--v-theme-warning)); flex-shrink: 0;
+  color: rgb(var(--v-theme-warning));
 }
 .modal-tab--active .modal-tab__badge {
   background: rgb(var(--v-theme-warning)); color: #fff;

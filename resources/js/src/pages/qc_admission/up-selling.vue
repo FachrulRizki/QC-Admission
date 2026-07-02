@@ -24,9 +24,10 @@ const todayFormatted = computed(() =>
   new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 )
 
-const search   = ref('')
-const dateFrom = ref(todayStr())
-const dateTo   = ref(todayStr())
+const search      = ref('')
+const dateFrom    = ref(todayStr())
+const dateTo      = ref(todayStr())
+const filterAlasan = ref('')   // '' | 'Naik Kelas' | 'Perubahan Jaminan'
 
 const records = computed(() => store.records ?? [])
 
@@ -38,6 +39,9 @@ const stats = computed(() => ({
 
 const filtered = computed(() => {
   let d = records.value
+  if (filterAlasan.value) {
+    d = d.filter(r => r.alasan === filterAlasan.value)
+  }
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r =>
@@ -47,7 +51,6 @@ const filtered = computed(() => {
       r.note?.toLowerCase().includes(q)
     )
   }
-  // Date filter sudah dilakukan server-side di load()
   return d
 })
 
@@ -73,7 +76,7 @@ async function doDel() {
   await load()
 }
 
-function resetFilter() { search.value = ''; dateFrom.value = todayStr(); dateTo.value = todayStr() }
+function resetFilter() { search.value = ''; filterAlasan.value = ''; dateFrom.value = todayStr(); dateTo.value = todayStr() }
 
 async function load() {
   loading.value = true
@@ -141,6 +144,30 @@ onMounted(load)
             <VBtn size="small" variant="text" color="secondary" @click="resetFilter; load()">Reset</VBtn>
           </VCol>
         </VRow>
+        <!-- Filter Keterangan Up Selling -->
+        <div class="d-flex gap-2 mt-3 flex-wrap align-center">
+          <span class="text-caption font-weight-semibold" style="color:var(--qc-text-2)">Keterangan:</span>
+          <VChip
+            :color="filterAlasan === '' ? 'primary' : 'default'"
+            :variant="filterAlasan === '' ? 'elevated' : 'outlined'"
+            size="small" class="cursor-pointer"
+            @click="filterAlasan = ''"
+          >Semua</VChip>
+          <VChip
+            :color="filterAlasan === 'Naik Kelas' ? 'success' : 'default'"
+            :variant="filterAlasan === 'Naik Kelas' ? 'elevated' : 'outlined'"
+            size="small" class="cursor-pointer"
+            prepend-icon="ri-building-line"
+            @click="filterAlasan = filterAlasan === 'Naik Kelas' ? '' : 'Naik Kelas'"
+          >Naik Kelas</VChip>
+          <VChip
+            :color="filterAlasan === 'Perubahan Jaminan' ? 'info' : 'default'"
+            :variant="filterAlasan === 'Perubahan Jaminan' ? 'elevated' : 'outlined'"
+            size="small" class="cursor-pointer"
+            prepend-icon="ri-exchange-line"
+            @click="filterAlasan = filterAlasan === 'Perubahan Jaminan' ? '' : 'Perubahan Jaminan'"
+          >Perubahan Jaminan</VChip>
+        </div>
       </VCardText>
     </VCard>
 

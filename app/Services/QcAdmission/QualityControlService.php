@@ -45,10 +45,18 @@ class QualityControlService
         return QualityControl::findOrFail($id);
     }
 
-    public function update(int $id, array $data): QualityControl
+    // public function update(int $id, array $data): QualityControl
+    // {
+    //     $record = $this->findOrFail($id);
+    //     $data['status'] = 'Edukasi'; // tidak bisa diubah manual
+    //     $record->update($data);
+    //     return $record->fresh();
+    // }
+
+     public function update(int $id, array $data): QualityControl
     {
         $record = $this->findOrFail($id);
-        $data['status'] = 'Edukasi'; // tidak bisa diubah manual
+        unset($data['status']);
         $record->update($data);
         return $record->fresh();
     }

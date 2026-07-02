@@ -4,79 +4,64 @@ namespace App\Console\Commands;
 
 use App\Models\EdukasiLanjutan;
 use App\Models\QualityControl;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ProcessEdukasiLanjutan extends Command
 {
-    protected $signature   = 'qc:process-edukasi-lanjutan';
-    protected $description = 'Auto-pindahkan pasien QC yang sudah >= 2 jam ke Edukasi Lanjutan';
+    protected $signature = 'qc:process-edukasi-lanjutan';
+
+    protected $description = 'Pindahkan data QC berstatus Edukasi yang sudah >= 2 jam ke tabel edukasi_lanjutans';
 
     public function handle(): int
     {
-        $threshold = Carbon::now()->subHours(2);
+        $cutoff = now()->subHours(2);
 
-        // Ambil semua QC dengan status Edukasi, dibuat >= 2 jam lalu,
-        // yang belum punya record Edukasi Lanjutan
-        $candidates = QualityControl::where('status', 'Edukasi')
-            ->where('created_at', '<=', $threshold)
+        $records = QualityControl::query()
+            ->where('status', 'Edukasi')
+            ->where('created_at', '<=', $cutoff)
+            // jaga-jaga kalau command sempat jalan dobel sebelum status sempat berubah
             ->whereDoesntHave('edukasiLanjutans')
             ->get();
 
-        if ($candidates->isEmpty()) {
-            $this->info('Tidak ada pasien yang perlu dipindahkan.');
+        if ($records->isEmpty()) {
+            $this->info('Tidak ada data yang perlu dipindah.');
             return self::SUCCESS;
         }
 
-        $bulanMap = [
-            1 => 'JANUARI',  2 => 'FEBRUARI', 3 => 'MARET',    4 => 'APRIL',
-            5 => 'MEI',      6 => 'JUNI',     7 => 'JULI',     8 => 'AGUSTUS',
-            9 => 'SEPTEMBER',10 => 'OKTOBER', 11 => 'NOVEMBER',12 => 'DESEMBER',
-        ];
+        $moved = 0;
 
-        $count = 0;
-        foreach ($candidates as $qc) {
-            try {
-                $now = Carbon::now();
-
-                // Hitung durasi sesungguhnya sejak created_at
-                $durasiDetik = $qc->created_at->diffInSeconds($now);
-                $h = str_pad(floor($durasiDetik / 3600), 2, '0', STR_PAD_LEFT);
-                $m = str_pad(floor(($durasiDetik % 3600) / 60), 2, '0', STR_PAD_LEFT);
-                $s = str_pad($durasiDetik % 60, 2, '0', STR_PAD_LEFT);
-                $durasi = "{$h}:{$m}:{$s}";
-
-                // Update durasi_tunggu di QC record
-                $qc->update(['durasi_tunggu' => $durasi]);
-
+        foreach ($records as $record) {
+            DB::transaction(function () use ($record, &$moved) {
                 EdukasiLanjutan::create([
-                    'tanggal'             => $now->format('d/m/Y'),
-                    'no_mr'               => $qc->no_mr,
-                    'no_reg'              => $qc->no_reg,
-                    'nama_pasien'         => $qc->nama_pasien,
-                    'jaminan'             => $qc->jaminan,
-                    'bulan'               => $bulanMap[$now->month],
-                    'edukasi_kamar'       => $qc->edukasi_kamar,
-                    'note'                => $qc->note,
-                    'petugas'             => $qc->petugas,
-                    'keluarga_pasien'     => $qc->keluarga_pasien,
-                    'ttd_keluarga_pasien' => $qc->ttd_keluarga_pasien,
+                    'tanggal'             => $record->tanggal,
+                    'no_mr'               => $record->no_mr ?: $record->no_reg,
+                    'no_reg'              => $record->no_reg,
+                    'nama_pasien'         => $record->nama_pasien,
+                    'jaminan'             => $record->jaminan,
+                    'bulan'               => now()->translatedFormat('F'),
+                    'edukasi_kamar'       => $record->edukasi_kamar,
+                    'note'                => $record->note,
+                    'petugas'             => $record->petugas,
+                    'keluarga_pasien'     => $record->keluarga_pasien,
+                    'ttd_keluarga_pasien' => $record->ttd_keluarga_pasien,
                     'status'              => 'Menunggu',
-                    'quality_control_id'  => $qc->id,
+                    'quality_control_id'  => $record->id,
                 ]);
 
-                $count++;
-                $this->info("✓ {$qc->nama_pasien} ({$qc->no_reg}) — durasi: {$durasi}");
-                Log::info("[Edukasi Lanjutan] Auto-created — QC #{$qc->id} {$qc->nama_pasien}, durasi: {$durasi}");
+                // record asli TETAP ADA di quality_controls (riwayat terjaga),
+                // hanya statusnya berubah supaya hilang dari menu "Edukasi"
+                $record->update(['status' => 'Edukasi lanjutan']);
 
-            } catch (\Exception $e) {
-                $this->error("✗ QC #{$qc->id}: " . $e->getMessage());
-                Log::error("[Edukasi Lanjutan] Gagal create — QC #{$qc->id}: " . $e->getMessage());
-            }
+                $moved++;
+            });
         }
 
-        $this->info("Selesai. {$count} pasien dipindahkan ke Edukasi Lanjutan.");
+        // Kalimat ini sengaja mengandung "pasien dipindahkan" — route
+        // POST /quality-control/process-edukasi-lanjutan di api.php
+        // mem-parsing angka dari output ini lewat regex.
+        $this->info("{$moved} pasien dipindahkan ke Edukasi Lanjutan.");
+
         return self::SUCCESS;
     }
 }

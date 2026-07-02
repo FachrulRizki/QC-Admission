@@ -323,8 +323,8 @@ function close() {
           <div class="mt-3 d-flex align-center gap-2 px-3 py-2 rounded-lg" style="background:rgba(var(--v-theme-primary),0.05)">
             <VIcon icon="ri-book-line" size="16" color="primary" />
             <span class="text-caption text-medium-emphasis">Status QC:</span>
-            <VChip color="primary" variant="tonal" size="small" label>Edukasi</VChip>
-            <span class="text-caption text-disabled">· auto pindah ke Edukasi Lanjutan setelah 2 jam</span>
+            <VChip color="primary" variant="tonal" size="large" label>Edukasi</VChip>
+            <span class="text-caption text-disabled"> auto pindah ke Edukasi Lanjutan setelah 2 jam</span>
           </div>
         </div>
 
