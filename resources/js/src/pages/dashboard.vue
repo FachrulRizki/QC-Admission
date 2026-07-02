@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { useDashboardStore } from '@/stores/useDashboardStore'
 import { useAuthStore }      from '@/stores/useAuthStore'
 import { usePegawaiStore }   from '@/stores/usePegawaiStore'

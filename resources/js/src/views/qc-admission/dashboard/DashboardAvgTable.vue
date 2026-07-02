@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 const props = defineProps({
   items:   { type: Array,   default: () => [] },
   loading: { type: Boolean, default: false },
@@ -37,7 +37,7 @@ const pageCount = computed(() => Math.ceil(props.items.length / perPage))
         <tbody v-if="loading">
           <tr>
             <td colspan="3" class="text-center py-6 text-medium-emphasis">
-              <VProgressCircular indeterminate size="24" color="#00B37E" />
+              <VProgressCircular indeterminate size="24" color="var(--qc-green)" />
             </td>
           </tr>
         </tbody>
@@ -92,7 +92,7 @@ const pageCount = computed(() => Math.ceil(props.items.length / perPage))
   color: #1A1F1E;
   border-bottom: 1px solid #E1E7E5;
 }
-.ds-tr:hover td { background: #D7F5EA; }
+.ds-tr:hover td { background: var(--qc-green-light); }
 .ds-pagination {
   display: flex;
   align-items: center;
@@ -105,14 +105,15 @@ const pageCount = computed(() => Math.ceil(props.items.length / perPage))
 .ds-pg-btn {
   width: 28px; height: 28px;
   border-radius: 50%;
-  border: 1.5px solid #00B37E;
+  border: 1.5px solid var(--qc-green);
   background: transparent;
-  color: #00B37E;
+  color: var(--qc-green);
   font-size: 1rem;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s;
 }
-.ds-pg-btn:hover:not(:disabled) { background: #D7F5EA; }
+.ds-pg-btn:hover:not(:disabled) { background: var(--qc-green-light); }
 .ds-pg-btn:disabled { border-color: #E1E7E5; color: #E1E7E5; cursor: default; }
 </style>
+

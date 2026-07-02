@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 const props = defineProps({
   items:   { type: Array,   default: () => [] },
   loading: { type: Boolean, default: false },
@@ -27,7 +27,7 @@ const endIdx     = computed(() => Math.min(page.value * perPage, props.items.len
           </tr>
         </thead>
         <tbody v-if="loading">
-          <tr><td colspan="3" class="text-center py-6"><VProgressCircular indeterminate size="24" color="#00B37E" /></td></tr>
+          <tr><td colspan="3" class="text-center py-6"><VProgressCircular indeterminate size="24" color="var(--qc-green)" /></td></tr>
         </tbody>
         <tbody v-else-if="!paginated.length">
           <tr><td colspan="3" class="ds-td text-center py-6 text-medium-emphasis">Belum ada data</td></tr>
@@ -41,7 +41,7 @@ const endIdx     = computed(() => Math.min(page.value * perPage, props.items.len
                 <span class="font-weight-medium">{{ row.petugas }}</span>
               </div>
             </td>
-            <td class="ds-td text-end font-weight-bold" style="color:#00B37E">
+            <td class="ds-td text-end font-weight-bold" style="color:var(--qc-green)">
               {{ row.jumlah_edukasi?.toLocaleString('id-ID') }}
             </td>
           </tr>
@@ -67,10 +67,10 @@ const endIdx     = computed(() => Math.min(page.value * perPage, props.items.len
   border-bottom: 1px solid #E1E7E5;
 }
 .ds-td { padding: 8px 16px; font-size: 0.85rem; color: #1A1F1E; border-bottom: 1px solid #E1E7E5; }
-.ds-tr:hover td { background: #D7F5EA; }
+.ds-tr:hover td { background: var(--qc-green-light); }
 .petugas-avatar {
   width: 28px; height: 28px; border-radius: 8px;
-  background: #D7F5EA; color: #00B37E;
+  background: var(--qc-green-light); color: var(--qc-green);
   font-size: 0.75rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
@@ -82,10 +82,11 @@ const endIdx     = computed(() => Math.min(page.value * perPage, props.items.len
 .ds-pagination__info { font-size: 0.75rem; color: #5C6B67; margin-right: 4px; }
 .ds-pg-btn {
   width: 28px; height: 28px; border-radius: 50%;
-  border: 1.5px solid #00B37E; background: transparent;
-  color: #00B37E; font-size: 1rem; cursor: pointer;
+  border: 1.5px solid var(--qc-green); background: transparent;
+  color: var(--qc-green); font-size: 1rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center; transition: background 0.15s;
 }
-.ds-pg-btn:hover:not(:disabled) { background: #D7F5EA; }
+.ds-pg-btn:hover:not(:disabled) { background: var(--qc-green-light); }
 .ds-pg-btn:disabled { border-color: #E1E7E5; color: #E1E7E5; cursor: default; }
 </style>
+

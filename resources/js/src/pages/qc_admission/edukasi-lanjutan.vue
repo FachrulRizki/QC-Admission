@@ -2,6 +2,7 @@
 import { useEdukasiLanjutanStore } from '@/stores/useEdukasiLanjutanStore'
 import EdukasiDetailDialog         from '@/views/qc-admission/edukasi-lanjutan/EdukasiDetailDialog.vue'
 import SummaryCards                from '@/components/SummaryCards.vue'
+import PageHero                    from '@/components/PageHero.vue'
 
 const store   = useEdukasiLanjutanStore()
 const loading = ref(false)
@@ -19,8 +20,8 @@ function todayStr() {
 }
 
 const search   = ref('')
-const dateFrom = ref('')   // default kosong = tampilkan semua, user filter sendiri
-const dateTo   = ref('')
+const dateFrom = ref(todayStr())   // default hari ini — tampil data up to date
+const dateTo   = ref(todayStr())   // default hari ini
 const statusFilter = ref('All')
 
 const records = computed(() => store.records ?? [])
@@ -76,8 +77,8 @@ function toast(msg, color='success') { snackbar.value = { show: true, msg, color
 function resetFilter() {
   search.value = ''
   statusFilter.value = 'All'
-  dateFrom.value = ''
-  dateTo.value = ''
+  dateFrom.value = todayStr()   // kembali ke hari ini, bukan kosong
+  dateTo.value   = todayStr()
   load()
 }
 
@@ -105,8 +106,8 @@ async function load() {
   finally { loading.value = false }
 }
 
-// Watch date filter — re-fetch dari API saat tanggal berubah
-watch([dateFrom, dateTo], () => load())
+// Watch filter — re-fetch dari API saat tanggal atau status berubah
+watch([dateFrom, dateTo, statusFilter], () => load())
 
 onMounted(load)
 </script>
@@ -114,23 +115,25 @@ onMounted(load)
 <template>
   <div>
     <!-- Header -->
-    <div class="page-hero page-hero--edukasi">
-      <div class="page-hero__content">
-        <div class="page-hero__badge"><VIcon icon="ri-book-open-line" size="12" />Edukasi Lanjutan</div>
-        <h1 class="page-hero__title">Edukasi Lanjutan</h1>
-        <p class="page-hero__subtitle">Auto dari QC ≥ 2 jam · Klik pasien untuk tambah sesi</p>
-      </div>
-      <div class="page-hero__actions">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="load">
-          <VIcon icon="ri-refresh-line" />
-        </VBtn>
-        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#065F46;font-weight:700"
+    <PageHero
+      icon="ri-book-open-line"
+      badge="Edukasi Lanjutan"
+      title="Edukasi Lanjutan"
+      subtitle="Auto dari QC ≥ 2 jam · Klik pasien untuk tambah sesi"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
+        { icon: 'ri-book-open-line', text: `${stats.total} pasien` },
+        { icon: 'ri-time-line', text: `${stats.menunggu} menunggu bed` },
+      ]"
+    >
+      <template #actions>
+        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
           :loading="syncing" @click="syncRsus">
           <VIcon icon="ri-refresh-line" size="15" class="me-1" />Sync SIMRS
         </VBtn>
-      </div>
-      <VIcon icon="ri-book-open-line" class="page-hero__icon" />
-    </div>
+      </template>
+    </PageHero>
 
     <!-- Stats -->
     <SummaryCards
@@ -138,7 +141,7 @@ onMounted(load)
       :cards="[
         { value: stats.total,    label: 'Total Pasien',    color: 'primary', icon: 'ri-book-open-line',    filterValue: 'All' },
         { value: stats.menunggu, label: 'Menunggu Bed',    color: 'warning', icon: 'ri-time-line',         filterValue: 'Menunggu' },
-        { value: stats.selesai,  label: 'Sudah Dapat Bed', color: 'success', icon: 'ri-check-double-line', filterValue: 'Selesai', pct: stats.pct },
+        { value: stats.selesai,  label: 'Sudah Dapat Bed', color: 'success', icon: 'ri-check-double-line', filterValue: 'Selesai', },
       ]"
     />
 
@@ -170,21 +173,41 @@ onMounted(load)
             @click="statusFilter = s"
           >{{ s === 'All' ? 'Semua Status' : s }}</VChip>
           <VDivider vertical class="mx-1" style="height:20px" />
+          <!-- Chip untuk lihat semua data historis (hapus filter tanggal) -->
           <VChip
-            color="secondary" variant="outlined" size="small"
-            class="cursor-pointer"
+            :color="(!dateFrom && !dateTo) ? 'secondary' : 'default'"
+            :variant="(!dateFrom && !dateTo) ? 'elevated' : 'outlined'"
+            size="small" class="cursor-pointer"
             @click="dateFrom = ''; dateTo = ''; load()"
           >
-            <VIcon icon="ri-calendar-line" size="11" class="me-1" />Semua Tanggal
+            <VIcon icon="ri-history-line" size="11" class="me-1" />Semua Riwayat
+          </VChip>
+          <!-- Chip untuk kembali ke hari ini -->
+          <VChip
+            v-if="!dateFrom && !dateTo"
+            color="primary" variant="tonal" size="small" class="cursor-pointer"
+            @click="dateFrom = todayStr(); dateTo = todayStr()"
+          >
+            <VIcon icon="ri-calendar-check-line" size="11" class="me-1" />Hari Ini
           </VChip>
         </div>
       </VCardText>
     </VCard>
 
-    <!-- Count -->
+    <!-- Count + info periode -->
     <div class="d-flex align-center gap-3 mb-4 flex-wrap">
       <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ filtered.length }} pasien</VChip>
-      <span class="text-caption" style="color:var(--qc-text-2)">Klik untuk lihat riwayat & tambah sesi</span>
+      <span class="text-caption" style="color:var(--qc-text-2)">
+        <template v-if="dateFrom && dateTo && dateFrom === dateTo">
+          Data hari ini ({{ new Date(dateFrom + 'T00:00:00').toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }) }})
+        </template>
+        <template v-else-if="dateFrom || dateTo">
+          Periode {{ dateFrom || '—' }} s/d {{ dateTo || '—' }}
+        </template>
+        <template v-else>
+          Semua riwayat · gunakan filter tanggal untuk mempersempit
+        </template>
+      </span>
     </div>
 
     <!-- Loading -->
@@ -195,11 +218,25 @@ onMounted(load)
     <!-- Empty -->
     <div v-else-if="!filtered.length" class="text-center py-16" style="color:var(--qc-text-2)">
       <VIcon icon="ri-book-open-line" size="52" class="mb-3 opacity-30" />
-      <p class="text-body-1 font-weight-semibold mb-1">Tidak ada data</p>
-      <p class="text-caption mb-4">Data masuk otomatis dari QC setelah ≥ 2 jam</p>
-      <VBtn variant="tonal" color="success" rounded="lg" size="small" @click="syncRsus" :loading="syncing">
-        Sync SIMRS
-      </VBtn>
+      <p class="text-body-1 font-weight-semibold mb-1">
+        {{ (dateFrom || dateTo) ? 'Tidak ada data pada periode ini' : 'Belum ada data' }}
+      </p>
+      <p class="text-caption mb-4">
+        <template v-if="dateFrom === todayStr() || dateTo === todayStr()">
+          Belum ada edukasi lanjutan hari ini · Data masuk otomatis dari QC setelah ≥ 2 jam
+        </template>
+        <template v-else>
+          Coba filter ke tanggal lain atau klik "Semua Riwayat" untuk melihat semua data
+        </template>
+      </p>
+      <div class="d-flex gap-2 justify-center flex-wrap">
+        <VBtn variant="tonal" color="primary" rounded="lg" size="small" @click="dateFrom = ''; dateTo = ''; load()">
+          <VIcon icon="ri-history-line" size="14" class="me-1" />Lihat Semua Riwayat
+        </VBtn>
+        <VBtn variant="tonal" color="success" rounded="lg" size="small" :loading="syncing" @click="syncRsus">
+          <VIcon icon="ri-refresh-line" size="14" class="me-1" />Sync SIMRS
+        </VBtn>
+      </div>
     </div>
 
     <!-- Cards grid -->

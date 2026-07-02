@@ -2,6 +2,7 @@
 import { useQualityControlStore } from '@/stores/useQualityControlStore'
 import { usePegawaiStore }        from '@/stores/usePegawaiStore'
 import { usePasienStore }         from '@/stores/usePasienStore'
+import { useMasterDataStore }     from '@/stores/useMasterDataStore'
 import SignaturePad               from '@/components/SignaturePad.vue'
 
 const props = defineProps({
@@ -13,6 +14,7 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const store        = useQualityControlStore()
 const pegawaiStore = usePegawaiStore()
 const pasienStore  = usePasienStore()
+const masterStore  = useMasterDataStore()
 
 const form     = ref(initialForm())
 const errorMsg = ref('')
@@ -57,17 +59,8 @@ watch(() => form.value.no_reg, async (val) => {
   }
 })
 
-// ── Master options ────────────────────────────────────────────────────────────
-const noteOptions = [
-  'Kelas 1 Bedah Laki-laki','Kelas 2 Bedah Laki-laki','Kelas 3 Bedah Laki-laki',
-  'Kelas 1 Bedah Perempuan','Kelas 2 Bedah Perempuan','Kelas 3 Bedah Perempuan',
-  'Kelas 1 Internis Laki-laki','Kelas 2 Internis Laki-laki','Kelas 3 Internis Laki-laki',
-  'Kelas 1 Internis Perempuan','Kelas 2 Internis Perempuan','Kelas 3 Internis Perempuan',
-  'Kelas 1 Onkologi Laki-laki','Kelas 2 Onkologi Laki-laki','Kelas 3 Onkologi Laki-laki',
-  'Kelas 1 Onkologi Perempuan','Kelas 2 Onkologi Perempuan','Kelas 3 Onkologi Perempuan',
-  'Kelas 1 Kebidanan','Kelas 2 Kebidanan','Kelas 3 Kebidanan',
-  'Kelas 1 Anak','Kelas 2 Anak','Kelas 3 Anak','Kelas VIP',
-]
+// ── Master options (dari useMasterDataStore, bukan hardcoded) ─────────────────
+// noteOptions diakses langsung via masterStore.noteKamarList di template
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 watch(() => props.modelValue, (open) => {
@@ -77,6 +70,7 @@ watch(() => props.modelValue, (open) => {
     pasienStore.clear()
     noRegSearch.value = ''
     pegawaiStore.fetch()
+    masterStore.fetch()
     tickClock()
     clockTimer = setInterval(tickClock, 1000)
   } else {
@@ -305,7 +299,7 @@ function close() {
             <VCol cols="6">
               <VSelect
                 v-model="form.note"
-                :items="noteOptions"
+                :items="masterStore.noteKamarList"
                 label="Note / Kamar"
                 variant="outlined" density="compact"
                 clearable hide-details="auto"

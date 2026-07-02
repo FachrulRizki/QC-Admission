@@ -85,10 +85,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('quality-control/process-edukasi-lanjutan', function () {
             try {
                 \Illuminate\Support\Facades\Artisan::call('qc:process-edukasi-lanjutan');
-                $output = \Illuminate\Support\Facades\Artisan::output();
-                return response()->json(['success' => true, 'output' => trim($output)]);
+                $output = trim(\Illuminate\Support\Facades\Artisan::output());
+                // Hitung berapa yang dipindahkan dari output command
+                $count = 0;
+                if (preg_match('/(\d+)\s+pasien\s+dipindahkan/', $output, $m)) {
+                    $count = (int) $m[1];
+                }
+                return response()->json(['success' => true, 'output' => $output, 'count' => $count]);
             } catch (\Exception $e) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'count' => 0], 500);
             }
         });
     });

@@ -273,7 +273,7 @@ function loginWithSSO() {
 // ── Wrap ──────────────────────────────────────────────────────────────────────
 .login-wrap {
   min-height: 100dvh;
-  background: linear-gradient(135deg, #004d30 0%, #00B37E 60%, #00C896 100%);
+  background: linear-gradient(135deg, #0369A1 0%, #0EA5E9 60%, #38BDF8 100%);
   display: flex;
   align-items: stretch;
   position: relative;

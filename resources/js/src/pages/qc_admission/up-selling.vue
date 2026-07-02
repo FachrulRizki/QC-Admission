@@ -2,6 +2,7 @@
 import { useUpSellingStore }  from '@/stores/useUpSellingStore'
 import UpSellingFormDialog    from '@/views/qc-admission/up-selling/UpSellingFormDialog.vue'
 import SummaryCards           from '@/components/SummaryCards.vue'
+import PageHero               from '@/components/PageHero.vue'
 
 const store = useUpSellingStore()
 
@@ -18,6 +19,10 @@ function todayStr() {
   const d = new Date(), p = n => String(n).padStart(2,'0')
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
 }
+
+const todayFormatted = computed(() =>
+  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+)
 
 const search   = ref('')
 const dateFrom = ref(todayStr())
@@ -92,22 +97,24 @@ onMounted(load)
 <template>
   <div>
     <!-- Header -->
-    <div class="page-hero page-hero--upselling">
-      <div class="page-hero__content">
-        <div class="page-hero__badge"><VIcon icon="ri-arrow-up-circle-line" size="12" />Up Selling</div>
-        <h1 class="page-hero__title">Up Selling</h1>
-        <p class="page-hero__subtitle">Penawaran upgrade kelas kamar rawat inap</p>
-      </div>
-      <div class="page-hero__actions">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="load">
-          <VIcon icon="ri-refresh-line" />
+    <PageHero
+      icon="ri-arrow-up-circle-line"
+      badge="Up Selling"
+      title="Up Selling"
+      subtitle="Penawaran upgrade kelas kamar rawat inap"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
+        { icon: 'ri-calendar-line', text: todayFormatted },
+        { icon: 'ri-database-line', text: `${stats.total} data` },
+      ]"
+    >
+      <template #actions>
+        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700" @click="openAdd">
+          <VIcon icon="ri-add-line" size="16" class="me-1" />Input Up Selling
         </VBtn>
-        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#1E3A5F;font-weight:700" @click="openAdd">
-          <VIcon icon="ri-add-line" size="16" class="me-1" />Input
-        </VBtn>
-      </div>
-      <VIcon icon="ri-arrow-up-circle-line" class="page-hero__icon" />
-    </div>
+      </template>
+    </PageHero>
 
     <!-- Stats -->
     <SummaryCards :cards="[
@@ -286,15 +293,6 @@ onMounted(load)
     </VSnackbar>
   </div>
 </template>
-
-<style scoped>
-.us-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; cursor: pointer; transition: background 0.12s;
-}
-.us-row:hover { background: rgba(59,130,246,0.04); }
-.us-row--bordered { border-bottom: 1px solid var(--qc-border); }
-</style>
 
 <style scoped>
 .us-row {

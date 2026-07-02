@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import VueApexCharts from 'vue3-apexcharts'
 
 const props = defineProps({
@@ -44,7 +44,7 @@ const chartOptions = computed(() => ({
     labels: { style: { fontSize: '11px', colors: '#5C6B67' } },
     title: { text: 'Jumlah Pasien', style: { fontSize: '11px', color: '#5C6B67' } },
   },
-  colors: ['#00C896'],
+  colors: ['var(--qc-green)'],
   grid: {
     borderColor: '#E1E7E5',
     strokeDashArray: 4,
@@ -55,7 +55,7 @@ const chartOptions = computed(() => ({
     type: 'gradient',
     gradient: {
       shade: 'light', type: 'vertical',
-      gradientToColors: ['#009E6B'],
+      gradientToColors: ['var(--qc-green-dark)'],
       stops: [0, 100],
     },
   },
@@ -66,7 +66,7 @@ const chartOptions = computed(() => ({
   legend: {
     show: true,
     labels: { colors: '#5C6B67' },
-    markers: { fillColors: ['#00C896'] },
+    markers: { fillColors: ['var(--qc-green)'] },
   },
 }))
 
@@ -98,3 +98,4 @@ const series = computed(() => [{
     </VCardText>
   </VCard>
 </template>
+

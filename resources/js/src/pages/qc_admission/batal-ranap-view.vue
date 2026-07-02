@@ -1,6 +1,7 @@
 <script setup>
 import { useBatalRanapStore }  from '@/stores/useBatalRanapStore'
 import BatalRanapDetailDialog  from '@/views/qc-admission/batal-ranap/BatalRanapDetailDialog.vue'
+import PageHero                from '@/components/PageHero.vue'
 
 const store      = useBatalRanapStore()
 const search     = ref('')
@@ -10,7 +11,9 @@ const loading    = ref(false)
 const showDetail   = ref(false)
 const selectedItem = ref(null)
 
-const records = computed(() => store.records ?? [])
+const todayFormatted = computed(() =>
+  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+)
 
 const headers = [
   { title: 'Tanggal',          key: 'tanggal',          sortable: true },
@@ -26,12 +29,35 @@ function statusColor(s) {
   return { Bedah: 'success', 'Non Bedah': 'info' }[s] ?? 'secondary'
 }
 
+/**
+ * Konversi berbagai format tanggal ke Date object.
+ * Format dari DB: 'DD/MM/YYYY, HH.mm.ss' | 'YYYY-MM-DD' | ISO
+ */
+function parseTanggal(str) {
+  if (!str) return null
+  const dmyMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+  if (dmyMatch) return new Date(`${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`)
+  const d = new Date(str)
+  return isNaN(d) ? null : d
+}
+
+const records = computed(() => store.records ?? [])
+
 const filtered = computed(() => {
   let d = records.value
   const q = search.value.toLowerCase().trim()
   if (q) d = d.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q)))
-  if (dateFrom.value) d = d.filter(r => r.tanggal >= dateFrom.value)
-  if (dateTo.value)   d = d.filter(r => r.tanggal <= dateTo.value)
+  if (dateFrom.value || dateTo.value) {
+    const from = dateFrom.value ? new Date(dateFrom.value + 'T00:00:00') : null
+    const to   = dateTo.value   ? new Date(dateTo.value   + 'T23:59:59') : null
+    d = d.filter(r => {
+      const tgl = parseTanggal(r.tanggal || '')
+      if (!tgl) return true
+      if (from && tgl < from) return false
+      if (to   && tgl > to)   return false
+      return true
+    })
+  }
   return d
 })
 
@@ -60,25 +86,24 @@ onMounted(() => doRefresh())
 <template>
   <div>
     <!-- Hero -->
-    <div class="page-hero page-hero--batal mb-5">
-      <div class="page-hero__content">
-        <div class="page-hero__badge">
-          <VIcon icon="ri-eye-line" size="13" />
-          Kasir · View Only
-        </div>
-        <h1 class="page-hero__title">Data Batal Ranap</h1>
-        <p class="page-hero__subtitle">Monitoring pembatalan rawat inap · Klik baris untuk detail</p>
-      </div>
-      <div class="d-flex gap-2 align-center" style="position:relative;z-index:2">
-        <VChip color="white" variant="elevated" size="small" prepend-icon="ri-eye-line" style="color:#f093fb">
+    <PageHero
+      icon="ri-close-circle-line"
+      badge="Kasir · View Only"
+      title="Data Batal Ranap"
+      subtitle="Monitoring pembatalan rawat inap · Klik baris untuk detail"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
+        { icon: 'ri-calendar-line', text: todayFormatted },
+        { icon: 'ri-database-line', text: `${stats.total} data` },
+      ]"
+    >
+      <template #actions>
+        <VChip color="white" variant="elevated" size="small" prepend-icon="ri-eye-line" style="color:#9F1239">
           View Only
         </VChip>
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="doRefresh">
-          <VIcon icon="ri-refresh-line" />
-        </VBtn>
-      </div>
-      <VIcon icon="ri-close-circle-line" class="page-hero__icon" />
-    </div>
+      </template>
+    </PageHero>
 
     <!-- Stats -->
     <VRow dense class="mb-4">

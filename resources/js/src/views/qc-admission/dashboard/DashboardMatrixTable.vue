@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 const props = defineProps({
   items:   { type: Array,   default: () => [] }, // [{ petugas, Edukasi, 'Edukasi lanjutan', total }]
   loading: { type: Boolean, default: false },
@@ -32,7 +32,7 @@ const STATUS_ROWS = ['Edukasi', 'Edukasi lanjutan']
         <tbody v-if="loading">
           <tr>
             <td :colspan="petugasList.length + 2" class="text-center py-6">
-              <VProgressCircular indeterminate size="24" color="#00B37E" />
+              <VProgressCircular indeterminate size="24" color="var(--qc-green)" />
             </td>
           </tr>
         </tbody>
@@ -96,10 +96,11 @@ const STATUS_ROWS = ['Edukasi', 'Edukasi lanjutan']
   border-bottom: 1px solid #E1E7E5;
   white-space: nowrap;
 }
-.ds-tr:hover td { background: #D7F5EA; }
-.ds-tr:hover .sticky-col { background: #D7F5EA; }
+.ds-tr:hover td { background: var(--qc-green-light); }
+.ds-tr:hover .sticky-col { background: var(--qc-green-light); }
 .petugas-header { max-width: 100px; white-space: normal; font-size: 0.72rem; line-height: 1.3; text-align: center; }
-.matrix-val { font-weight: 700; color: #00B37E; }
+.matrix-val { font-weight: 700; color: var(--qc-green); }
 .uppercase { text-transform: uppercase; }
 .totals-row td { background: #F0F4F3 !important; border-top: 2px solid #E1E7E5; }
 </style>
+

@@ -1,5 +1,6 @@
 <script setup>
 import axios from 'axios'
+import PageHero from '@/components/PageHero.vue'
 
 const loading      = ref(false)
 const saving       = ref(false)
@@ -43,6 +44,26 @@ const groups = computed(() => {
     g[cfg.group].push({ key, ...cfg, items: masterData.value[key] ?? [] })
   })
   return g
+})
+
+const todayFormatted = computed(() =>
+  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+)
+
+const searchCat   = ref('')
+const activeGroup = ref('All')
+
+const groupNames = computed(() => ['All', ...new Set(Object.values(CATEGORY_CONFIG).map(c => c.group))])
+
+const visibleGroups = computed(() => {
+  const filtered = {}
+  Object.entries(groups.value).forEach(([name, items]) => {
+    if (activeGroup.value !== 'All' && name !== activeGroup.value) return
+    const q = searchCat.value.toLowerCase()
+    const filtItems = q ? items.filter(i => i.label.toLowerCase().includes(q) || i.key.includes(q)) : items
+    if (filtItems.length) filtered[name] = filtItems
+  })
+  return filtered
 })
 
 function notify(message, color = 'success') {
@@ -142,32 +163,40 @@ onMounted(() => loadMasterData())
 <template>
   <div>
     <!-- Hero -->
-    <div class="page-hero page-hero--master mb-5">
-      <div class="page-hero__content">
-        <div class="page-hero__badge">
-          <VIcon icon="ri-database-2-line" size="13" />
-          Admin · Master Data
-        </div>
-        <h1 class="page-hero__title">Master Data</h1>
-        <p class="page-hero__subtitle">Kelola data referensi untuk semua dropdown aplikasi QC Admission</p>
-      </div>
-      <div style="position:relative;z-index:2">
-        <VBtn color="white" variant="elevated" rounded="lg" size="small"
-          prepend-icon="ri-refresh-line" style="color:#667eea"
-          :loading="loading" @click="loadMasterData">
-          Refresh
-        </VBtn>
-      </div>
-      <VIcon icon="ri-database-2-line" class="page-hero__icon" />
-    </div>
+    <PageHero
+      icon="ri-database-2-line"
+      badge="Admin · Master Data"
+      title="Master Data"
+      subtitle="Kelola data referensi untuk semua dropdown aplikasi QC Admission"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
+        { icon: 'ri-calendar-line', text: todayFormatted },
+        { icon: 'ri-list-check', text: `${Object.keys(CATEGORY_CONFIG).length} kategori` },
+      ]"
+    >
+    </PageHero>
 
     <!-- Info -->
-    <VAlert type="info" variant="tonal" border="start" density="compact" class="mb-5" closable>
+    <VAlert type="info" variant="tonal" border="start" density="compact" class="mb-4" closable>
       <div class="text-caption">
         <strong>Master Data</strong> adalah data referensi yang digunakan pada dropdown di seluruh formulir.
         Perubahan akan langsung berlaku di semua form yang menggunakan data tersebut.
       </div>
     </VAlert>
+
+    <!-- Category filter bar -->
+    <div class="d-flex gap-2 mb-4 flex-wrap align-center">
+      <VTextField v-model="searchCat" label="Cari kategori..." prepend-inner-icon="ri-search-line"
+        variant="outlined" density="compact" hide-details clearable rounded="lg" style="max-width:220px" />
+      <VChip
+        v-for="g in groupNames" :key="g"
+        :color="activeGroup === g ? 'primary' : 'default'"
+        :variant="activeGroup === g ? 'elevated' : 'outlined'"
+        size="small" class="cursor-pointer"
+        @click="activeGroup = g"
+      >{{ g }}</VChip>
+    </div>
 
     <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-4" rounded />
 
@@ -345,9 +374,3 @@ onMounted(() => loadMasterData())
     </VSnackbar>
   </div>
 </template>
-
-<style scoped>
-.page-hero--master {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-</style>

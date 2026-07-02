@@ -1,7 +1,8 @@
 <script setup>
-import { useBatalRanapStore } from '@/stores/useBatalRanapStore'
-import { usePegawaiStore }    from '@/stores/usePegawaiStore'
-import { usePasienStore }     from '@/stores/usePasienStore'
+import { useBatalRanapStore }  from '@/stores/useBatalRanapStore'
+import { usePegawaiStore }     from '@/stores/usePegawaiStore'
+import { usePasienStore }      from '@/stores/usePasienStore'
+import { useMasterDataStore }  from '@/stores/useMasterDataStore'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -12,6 +13,7 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const store        = useBatalRanapStore()
 const pegawaiStore = usePegawaiStore()
 const pasienStore  = usePasienStore()
+const masterStore  = useMasterDataStore()
 
 const form     = ref(initialForm())
 const errorMsg = ref('')
@@ -27,12 +29,7 @@ function tickClock() {
 }
 
 // ── Opsi ─────────────────────────────────────────────────────────────────────
-const keteranganOpts = [
-  'APS Alih RS Lain', 'APS Rawat Jalan', 'Saran Alih RS Lain', 'Saran Konsul Poli',
-  'Sisrute Tidak Dapat Kamar', 'Batal Rawat', 'Kamar Penuh',
-  'Pasien Menolak', 'DPJP Tidak Setuju', 'Keluarga Menolak', 'Kondisi Membaik',
-]
-const statusOkOpts = ['Bedah', 'Non Bedah']
+// keteranganOpts & statusOkOpts diambil dari masterStore (bukan hardcoded)
 const statusClosingOpts = [
   { title: '👍 Siap Closing',        value: 'Siap Closing',        color: 'success' },
   { title: '⏳ Belum Siap Closing',  value: 'Belum Siap Closing',  color: 'error'   },
@@ -75,6 +72,7 @@ watch(() => props.modelValue, (open) => {
     pasienStore.clear()
     noRegSearch.value = ''
     pegawaiStore.fetch()
+    masterStore.fetch()
     tickClock()
     clockTimer = setInterval(tickClock, 1000)
   } else {
@@ -297,7 +295,7 @@ function statusClosingColor(v) {
           <!-- Keterangan_Batal -->
           <VSelect
             v-model="form.keterangan_batal"
-            :items="keteranganOpts"
+            :items="masterStore.keteranganBatalList"
             label="Keterangan_Batal *"
             variant="outlined" density="compact"
             prepend-inner-icon="ri-close-circle-line"
@@ -307,7 +305,7 @@ function statusClosingColor(v) {
           <!-- Status OK -->
           <VSelect
             v-model="form.status_ok"
-            :items="statusOkOpts"
+            :items="masterStore.statusOkList"
             label="Status OK"
             variant="outlined" density="compact"
             clearable class="mb-3" hide-details="auto"

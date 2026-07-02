@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -146,7 +146,7 @@ function toggleCol(key) {
     <div class="rqc-table-wrap">
       <!-- Loading -->
       <div v-if="loading" class="rqc-empty">
-        <VProgressCircular indeterminate size="28" color="#00B37E" />
+        <VProgressCircular indeterminate size="28" color="var(--qc-green)" />
         <span>Memuat data...</span>
       </div>
 
@@ -237,7 +237,7 @@ function toggleCol(key) {
   align-items: center;
   gap: 12px;
   padding: 14px 18px;
-  background: linear-gradient(135deg, #005C42, #00B37E);
+  background: linear-gradient(135deg, var(--qc-green-dark), var(--qc-green));
   flex-wrap: wrap;
 }
 .rqc-avatar {
@@ -330,7 +330,7 @@ function toggleCol(key) {
 }
 .rqc-col-item:hover { background: #F0F4F3; }
 .rqc-col-check {
-  accent-color: #00B37E;
+  accent-color: var(--qc-green);
   width: 15px; height: 15px;
   cursor: pointer;
 }
@@ -397,7 +397,7 @@ function toggleCol(key) {
   width: 26px; height: 26px;
   border-radius: 7px;
   background: rgba(0,179,126,0.12);
-  color: #005C42;
+  color: var(--qc-green-dark);
   font-size: 0.7rem;
   font-weight: 800;
   display: flex; align-items: center; justify-content: center;
@@ -423,13 +423,13 @@ function toggleCol(key) {
   font-size: 0.7rem;
   font-weight: 700;
   background: #fff;
-  color: #00B37E;
-  border: 1.5px solid #00B37E;
+  color: var(--qc-green);
+  border: 1.5px solid var(--qc-green);
   white-space: nowrap;
 }
 
 /* Durasi badges */
-.durasi-ok   { display:inline-block; padding:2px 7px; border-radius:10px; font-size:0.72rem; font-weight:700; background:#D7F5EA; color:#005C42; }
+.durasi-ok   { display:inline-block; padding:2px 7px; border-radius:10px; font-size:0.72rem; font-weight:700; background:var(--qc-green-light); color:var(--qc-green-dark); }
 .durasi-warn { display:inline-block; padding:2px 7px; border-radius:10px; font-size:0.72rem; font-weight:700; background:#FFF3CD; color:#856404; }
 
 /* ── Responsive — hide columns on small screens ──────────────────────────────── */
@@ -455,15 +455,15 @@ function toggleCol(key) {
 .rqc-pg-btn {
   width: 28px; height: 28px;
   border-radius: 8px;
-  border: 1.5px solid #00B37E;
+  border: 1.5px solid var(--qc-green);
   background: transparent;
-  color: #00B37E;
+  color: var(--qc-green);
   font-size: 1rem;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.12s;
 }
-.rqc-pg-btn:hover:not(:disabled) { background: #D7F5EA; }
+.rqc-pg-btn:hover:not(:disabled) { background: var(--qc-green-light); }
 .rqc-pg-btn:disabled { border-color: #E1E7E5; color: #E1E7E5; cursor: default; }
 
 /* ── Column menu transition ──────────────────────────────────────────────────── */
@@ -473,3 +473,4 @@ function toggleCol(key) {
 /* Text align right helper */
 .text-end { text-align: right !important; }
 </style>
+

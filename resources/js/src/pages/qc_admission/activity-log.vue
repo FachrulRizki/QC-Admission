@@ -1,6 +1,7 @@
 <script setup>
 import axios from 'axios'
 import SummaryCards from '@/components/SummaryCards.vue'
+import PageHero from '@/components/PageHero.vue'
 
 const loading   = ref(false)
 const records   = ref([])
@@ -25,9 +26,10 @@ const ACTION_OPTIONS = [
 const headers = [
   { title: 'Waktu',      key: 'created_at', width: '155px' },
   { title: 'User',       key: 'user_name' },
-  { title: 'Role',       key: 'user_role',  align: 'center', width: '110px' },
-  { title: 'Modul',      key: 'module',     align: 'center', width: '140px' },
-  { title: 'Aksi',       key: 'action',     align: 'center', width: '110px' },
+  { title: 'Role',       key: 'user_role',   align: 'center', width: '110px' },
+  { title: 'IP Address', key: 'ip_address',  align: 'center', width: '130px' },
+  { title: 'Modul',      key: 'module',      align: 'center', width: '140px' },
+  { title: 'Aksi',       key: 'action',      align: 'center', width: '110px' },
   { title: 'Keterangan', key: 'subject' },
 ]
 
@@ -42,6 +44,10 @@ const statCards = computed(() => [
   { value: records.value.filter(r=>r.action==='create').length, label: 'Input Data', color: 'info', icon: 'ri-add-circle-line' },
   { value: records.value.filter(r=>r.action==='delete').length, label: 'Hapus Data', color: 'error', icon: 'ri-delete-bin-line' },
 ])
+
+const todayFormatted = computed(() =>
+  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+)
 
 async function load() {
   loading.value = true
@@ -72,19 +78,19 @@ onMounted(load)
 <template>
   <div>
     <!-- Header -->
-    <div class="page-hero page-hero--activity">
-      <div class="page-hero__content">
-        <div class="page-hero__badge"><VIcon icon="ri-history-line" size="12" />Admin · Log Aktivitas</div>
-        <h1 class="page-hero__title">Log Aktivitas</h1>
-        <p class="page-hero__subtitle">Rekam jejak semua aktivitas pengguna di sistem</p>
-      </div>
-      <div class="page-hero__actions">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="load">
-          <VIcon icon="ri-refresh-line" />
-        </VBtn>
-      </div>
-      <VIcon icon="ri-history-line" class="page-hero__icon" />
-    </div>
+    <PageHero
+      icon="ri-history-line"
+      badge="Admin · Log Aktivitas"
+      title="Log Aktivitas"
+      subtitle="Rekam jejak semua aktivitas pengguna di sistem"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
+        { icon: 'ri-calendar-line', text: todayFormatted },
+        { icon: 'ri-database-line', text: `${total} log` },
+      ]"
+    >
+    </PageHero>
 
     <!-- Stats -->
     <SummaryCards :cards="statCards" />
@@ -148,6 +154,11 @@ onMounted(load)
         </template>
         <template #item.user_role="{ item }">
           <VChip :color="roleColor(item.user_role)" size="x-small" variant="tonal">{{ item.user_role }}</VChip>
+        </template>
+        <template #item.ip_address="{ item }">
+          <span class="text-caption font-weight-medium" style="color:var(--qc-text-2);font-family:monospace">
+            {{ item.ip_address || '—' }}
+          </span>
         </template>
         <template #item.module="{ item }">
           <VChip :color="moduleColor(item.module)" size="x-small" variant="tonal">{{ item.module || '—' }}</VChip>

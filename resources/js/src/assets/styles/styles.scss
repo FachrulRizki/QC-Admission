@@ -21,9 +21,9 @@ body { font-family: 'Inter', system-ui, sans-serif !important; }
 
 // ─── CSS Variables ────────────────────────────────────────────────────────────
 :root {
-  --qc-green:       #00B37E;
-  --qc-green-dark:  #009E6B;
-  --qc-green-light: #E8F8F2;
+  --qc-green:       #0EA5E9;
+  --qc-green-dark:  #0369A1;
+  --qc-green-light: #E0F2FE;
   --qc-blue:        #6366F1;
   --qc-border:      #F1F5F9;
   --qc-bg:          #F8FAFC;
@@ -208,16 +208,74 @@ body { font-family: 'Inter', system-ui, sans-serif !important; }
   }
 
   // Variants
-  &--qc        { background: linear-gradient(135deg, #0F4C35 0%, #00B37E 100%); }
-  &--edukasi   { background: linear-gradient(135deg, #065F46 0%, #10B981 100%); }
-  &--batal     { background: linear-gradient(135deg, #7F1D1D 0%, #EF4444 100%); }
-  &--upselling { background: linear-gradient(135deg, #1E3A5F 0%, #3B82F6 100%); }
+  &--qc {
+    background: linear-gradient(135deg, #0F4C35 0%, #00B37E 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
+  &--edukasi {
+    background: linear-gradient(135deg, #065F46 0%, #10B981 60%, #34D399 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
+  &--batal {
+    background: linear-gradient(135deg, #7F1D1D 0%, #DC2626 60%, #F87171 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
+  &--upselling {
+    background: linear-gradient(135deg, #1E3A5F 0%, #1D4ED8 60%, #60A5FA 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
+  &--view {
+    background: linear-gradient(135deg, #312E81 0%, #6366F1 60%, #A5B4FC 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
+  &--master {
+    background: linear-gradient(135deg, #4C1D95 0%, #7C3AED 60%, #A78BFA 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
+  &--activity {
+    background: linear-gradient(135deg, #1C1917 0%, #92400E 60%, #F59E0B 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
+  &--user {
+    background: linear-gradient(135deg, #0C4A6E 0%, #0369A1 60%, #38BDF8 100%);
+    &::before { background: rgba(255,255,255,0.10); }
+  }
   &--dashboard { background: linear-gradient(135deg, #1E1B4B 0%, #6366F1 100%); }
-  &--view      { background: linear-gradient(135deg, #0F4C35 0%, #00B37E 100%); }
-  &--master    { background: linear-gradient(135deg, #1E293B 0%, #475569 100%); }
-  &--activity  { background: linear-gradient(135deg, #1C1917 0%, #44403C 100%); }
-  &--user      { background: linear-gradient(135deg, #0C4A6E 0%, #0EA5E9 100%); }
+
+  // Stat pill inside hero (date/count info)
+  &__stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
 }
+
+// ─── Hero decoration ────────────────────────────────────────────────────────
+.hero-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+.hero-deco__circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+}
+.hero-deco__circle--1 { width: 180px; height: 180px; top: -60px; right: -30px; }
+.hero-deco__circle--2 { width: 100px; height: 100px; bottom: -40px; right: 120px; background: rgba(255,255,255,0.05); }
+.hero-deco__circle--3 { width: 60px;  height: 60px;  top: 10px; right: 200px; background: rgba(255,255,255,0.06); }
+// make sure content is above deco
+.page-hero__content, .page-hero__actions, .page-hero__icon { position: relative; z-index: 2; }
 
 // ─── Stat / Summary Cards ─────────────────────────────────────────────────────
 .stat-card {

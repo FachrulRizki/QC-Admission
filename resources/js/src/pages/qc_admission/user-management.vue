@@ -1,5 +1,6 @@
 <script setup>
 import axios from 'axios'
+import PageHero from '@/components/PageHero.vue'
 
 const loading     = ref(false)
 const users       = ref([])
@@ -167,25 +168,25 @@ onMounted(() => loadUsers())
 <template>
   <div>
     <!-- Hero -->
-    <div class="page-hero page-hero--user mb-5">
-      <div class="page-hero__content">
-        <div class="page-hero__badge">
-          <VIcon icon="ri-team-line" size="13" />
-          Admin · Manajemen User
-        </div>
-        <h1 class="page-hero__title">Manajemen User</h1>
-        <p class="page-hero__subtitle">Kelola akun pengguna aplikasi QC Admission · 3 level akses</p>
-      </div>
-      <div class="d-flex gap-2 align-center" style="position:relative;z-index:2">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="loadUsers">
-          <VIcon icon="ri-refresh-line" />
-        </VBtn>
-        <VBtn color="white" variant="elevated" rounded="lg" prepend-icon="ri-user-add-line" style="color:#43e97b" @click="openAdd">
+    <PageHero
+      icon="ri-team-line"
+      badge="Admin · Manajemen User"
+      title="Manajemen User"
+      subtitle="Kelola akun pengguna aplikasi QC Admission · 3 level akses"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      text-color="dark"
+      :pills="[
+        { icon: 'ri-team-line', text: `${stats.total} user` },
+        { icon: 'ri-shield-user-line', text: `${stats.admin} admin` },
+      ]"
+    >
+      <template #actions>
+        <VBtn color="white" variant="elevated" rounded="lg" prepend-icon="ri-user-add-line" style="color:#0369A1" @click="openAdd">
           Tambah User
         </VBtn>
-      </div>
-      <VIcon icon="ri-team-line" class="page-hero__icon" />
-    </div>
+      </template>
+    </PageHero>
 
     <!-- Stats -->
     <VRow dense class="mb-4">
@@ -432,15 +433,3 @@ onMounted(() => loadUsers())
     </VSnackbar>
   </div>
 </template>
-
-<style scoped>
-.page-hero--user {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-}
-.page-hero--user .page-hero__badge,
-.page-hero--user .page-hero__title,
-.page-hero--user .page-hero__subtitle,
-.page-hero--user .page-hero__icon {
-  color: rgba(0, 60, 30, 0.9) !important;
-}
-</style>

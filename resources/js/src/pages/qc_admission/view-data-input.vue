@@ -2,12 +2,23 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/useAuthStore'
 import SummaryCards from '@/components/SummaryCards.vue'
+import PageHero from '@/components/PageHero.vue'
 
 const auth    = useAuthStore()
 const loading = ref(false)
 const search  = ref('')
-const dateFrom = ref('')
-const dateTo   = ref('')
+
+function todayStr() {
+  const d = new Date(), p = n => String(n).padStart(2,'0')
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+}
+
+const todayFormatted = computed(() =>
+  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+)
+
+const dateFrom = ref(todayStr())
+const dateTo   = ref(todayStr())
 const activeTab = ref('batal-ranap')
 
 const isKasir = computed(() => auth.isKasir)
@@ -74,14 +85,39 @@ const activeData = computed(() => {
   return map[activeTab.value] ?? []
 })
 
+/**
+ * Konversi berbagai format tanggal ke Date object untuk perbandingan.
+ * Format yang mungkin dari DB: 'DD/MM/YYYY, HH.mm.ss' | 'YYYY-MM-DD' | ISO string
+ */
+function parseTanggal(str) {
+  if (!str) return null
+  // Format: DD/MM/YYYY, HH.mm.ss atau DD/MM/YYYY HH:mm:ss
+  const dmyMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+  if (dmyMatch) {
+    return new Date(`${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`)
+  }
+  // Format: YYYY-MM-DD atau ISO
+  const d = new Date(str)
+  return isNaN(d) ? null : d
+}
+
 const filteredData = computed(() => {
   let d = activeData.value
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r => Object.values(r).some(v => String(v??'').toLowerCase().includes(q)))
   }
-  if (dateFrom.value) d = d.filter(r => (r.tanggal||r.tgl_daftar||'') >= dateFrom.value)
-  if (dateTo.value)   d = d.filter(r => (r.tanggal||r.tgl_daftar||'') <= dateTo.value)
+  if (dateFrom.value || dateTo.value) {
+    const from = dateFrom.value ? new Date(dateFrom.value + 'T00:00:00') : null
+    const to   = dateTo.value   ? new Date(dateTo.value   + 'T23:59:59') : null
+    d = d.filter(r => {
+      const tgl = parseTanggal(r.tanggal || r.tgl_daftar || '')
+      if (!tgl) return true
+      if (from && tgl < from) return false
+      if (to   && tgl > to)   return false
+      return true
+    })
+  }
   return d
 })
 
@@ -147,20 +183,24 @@ watch(() => auth.userRole, (role, prev) => {
 <template>
   <div>
     <!-- Header -->
-    <div class="page-hero page-hero--view">
-      <div class="page-hero__content">
-        <div class="page-hero__badge"><VIcon icon="ri-table-line" size="12" />View Data Input</div>
-        <h1 class="page-hero__title">View Data Input</h1>
-        <p class="page-hero__subtitle">{{ isKasir ? 'Data batal ranap real-time' : 'Summary semua data input per modul' }}</p>
-      </div>
-      <div class="page-hero__actions">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="loadAll"><VIcon icon="ri-refresh-line" /></VBtn>
-        <VBtn v-if="!isKasir" color="white" variant="elevated" rounded="pill" size="small" style="color:#0F4C35;font-weight:700" @click="exportCSV">
-          <VIcon icon="ri-download-line" size="15" class="me-1" />Export CSV
+    <PageHero
+      icon="ri-table-line"
+      badge="View Data Input"
+      title="View Data Input"
+      :subtitle="isKasir ? 'Data batal ranap real-time' : 'Summary semua data input per modul'"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
+        { icon: 'ri-calendar-line', text: todayFormatted },
+        { icon: 'ri-database-line', text: `${filteredData.length} data` },
+      ]"
+    >
+      <template #actions>
+        <VBtn v-if="!isKasir" color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700" @click="exportCSV">
+          <VIcon icon="ri-download-line" size="15" class="me-1" />Export ke CSV
         </VBtn>
-      </div>
-      <VIcon icon="ri-table-line" class="page-hero__icon" />
-    </div>
+      </template>
+    </PageHero>
 
     <!-- Stats (non-kasir) -->
     <SummaryCards v-if="!isKasir"

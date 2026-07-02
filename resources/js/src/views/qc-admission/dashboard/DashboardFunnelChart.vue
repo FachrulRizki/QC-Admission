@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 const props = defineProps({
   items: { type: Array, default: () => [] }, // [{ status, count }]
 })
@@ -12,8 +12,8 @@ const rows = computed(() => props.items.map(i => ({
 })))
 
 const colorMap = {
-  'Edukasi':          { bar: '#00C896', text: '#005C42' },
-  'Edukasi lanjutan': { bar: '#00B37E', text: '#004D35' },
+  'Edukasi':          { bar: 'var(--qc-green)', text: 'var(--qc-green-dark)' },
+  'Edukasi lanjutan': { bar: 'var(--qc-green)', text: '#004D35' },
 }
 </script>
 
@@ -42,7 +42,7 @@ const colorMap = {
               class="funnel-bar"
               :style="{
                 width: row.width + '%',
-                background: colorMap[row.status]?.bar ?? '#00C896',
+                background: colorMap[row.status]?.bar ?? 'var(--qc-green)',
               }"
             >
               <span class="funnel-bar__pct">{{ row.pct }}%</span>
@@ -104,3 +104,4 @@ const colorMap = {
   border-top: 1px solid #E1E7E5;
 }
 </style>
+

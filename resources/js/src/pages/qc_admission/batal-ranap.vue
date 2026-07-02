@@ -3,6 +3,7 @@ import { useBatalRanapStore } from '@/stores/useBatalRanapStore'
 import BatalRanapFormDialog   from '@/views/qc-admission/batal-ranap/BatalRanapFormDialog.vue'
 import BatalRanapDetailDialog from '@/views/qc-admission/batal-ranap/BatalRanapDetailDialog.vue'
 import SummaryCards           from '@/components/SummaryCards.vue'
+import PageHero               from '@/components/PageHero.vue'
 
 const store = useBatalRanapStore()
 
@@ -87,20 +88,24 @@ onMounted(load)
 <template>
   <div>
     <!-- Header -->
-    <div class="page-hero page-hero--batal">
-      <div class="page-hero__content">
-        <div class="page-hero__badge"><VIcon icon="ri-close-circle-line" size="12" />Batal Ranap</div>
-        <h1 class="page-hero__title">Batal Ranap</h1>
-        <p class="page-hero__subtitle">Kelola pembatalan rawat inap & verifikasi closing</p>
-      </div>
-      <div class="page-hero__actions">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="load"><VIcon icon="ri-refresh-line" /></VBtn>
-        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#7F1D1D;font-weight:700" @click="openAdd">
-          <VIcon icon="ri-add-line" size="16" class="me-1" />Input
+    <PageHero
+      icon="ri-close-circle-line"
+      badge="Batal Ranap"
+      title="Batal Ranap"
+      subtitle="Kelola pembatalan rawat inap & verifikasi closing"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
+        { icon: 'ri-database-line', text: `${stats.total} data` },
+        { icon: 'ri-time-line', text: `${stats.belum} belum verifikasi` },
+      ]"
+    >
+      <template #actions>
+        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700" @click="openAdd">
+          <VIcon icon="ri-add-line" size="16" class="me-1" />Input Batal Ranap
         </VBtn>
-      </div>
-      <VIcon icon="ri-close-circle-line" class="page-hero__icon" />
-    </div>
+      </template>
+    </PageHero>
 
     <!-- Stats (clickable filter) -->
     <SummaryCards

@@ -37,9 +37,15 @@ export const useEdukasiLanjutanStore = defineStore('edukasiLanjutan', {
     async fetchRecords(params = {}) {
       this.loading = true
       this.error   = null
+      this.records = []   // reset dulu agar tidak tampil data lama saat loading
       try {
+        // params dari caller (halaman) selalu override store filters
+        // Hapus key yang null/undefined dari store filters agar tidak override params
+        const baseFilters = Object.fromEntries(
+          Object.entries(this.filters).filter(([, v]) => v !== null && v !== undefined && v !== '')
+        )
         const res = await axios.get('/api/edukasi-lanjutan', {
-          params: { ...this.filters, ...params },
+          params: { ...baseFilters, ...params },
         })
         this.records             = res.data.data   ?? []
         this.pagination.total    = res.data.meta?.total    ?? this.records.length

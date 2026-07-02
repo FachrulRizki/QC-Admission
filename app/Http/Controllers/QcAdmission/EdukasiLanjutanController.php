@@ -21,6 +21,7 @@ class EdukasiLanjutanController extends Controller
     {
         $data = $this->service->paginate($request->only([
             'search', 'month', 'year', 'per_page', 'page',
+            'status', 'date_from', 'date_to',
         ]));
 
         return response()->json($data);

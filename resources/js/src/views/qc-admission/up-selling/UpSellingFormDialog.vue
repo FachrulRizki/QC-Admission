@@ -1,7 +1,8 @@
 <script setup>
-import { useUpSellingStore } from '@/stores/useUpSellingStore'
-import { usePegawaiStore }   from '@/stores/usePegawaiStore'
-import { usePasienStore }    from '@/stores/usePasienStore'
+import { useUpSellingStore }   from '@/stores/useUpSellingStore'
+import { usePegawaiStore }     from '@/stores/usePegawaiStore'
+import { usePasienStore }      from '@/stores/usePasienStore'
+import { useMasterDataStore }  from '@/stores/useMasterDataStore'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -12,6 +13,7 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const store        = useUpSellingStore()
 const pegawaiStore = usePegawaiStore()
 const pasienStore  = usePasienStore()
+const masterStore  = useMasterDataStore()
 
 const form     = ref(initialForm())
 const errorMsg = ref('')
@@ -26,7 +28,8 @@ function tickClock() {
   nowDisplay.value = `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
 }
 
-const ketUpSellingOpts = ['Naik Kelas', 'Perubahan Jaminan']
+// ── Master options (dari useMasterDataStore) ──────────────────────────────────
+// ketUpSellingList diakses via masterStore.ketUpSellingList di template
 
 // ── Search pasien ─────────────────────────────────────────────────────────────
 const noRegSearch  = ref('')
@@ -65,6 +68,7 @@ watch(() => props.modelValue, (open) => {
     pasienStore.clear()
     noRegSearch.value = ''
     pegawaiStore.fetch()
+    masterStore.fetch()
     tickClock()
     clockTimer = setInterval(tickClock, 1000)
   } else {
@@ -271,10 +275,10 @@ function close() {
           class="mb-3" hide-details
         />
 
-        <!-- Ket_Up_Selling — hanya 2 pilihan sesuai AppSheet -->
+        <!-- Ket_Up_Selling — dari master data -->
         <VSelect
           v-model="form.ket_up_selling"
-          :items="ketUpSellingOpts"
+          :items="masterStore.ketUpSellingList"
           label="Ket_Up_Selling *"
           variant="outlined" density="compact"
           clearable class="mb-3" hide-details="auto"
