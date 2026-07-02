@@ -7,7 +7,8 @@ use App\Models\ActivityLog;
 use App\Services\QcAdmission\BatalRanapService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class BatalRanapController extends Controller
 {
@@ -98,7 +99,9 @@ class BatalRanapController extends Controller
     }
 
     /**
-     * Konfirmasi Closing — update status_closing, jika Siap Closing bed management diupdate via frontend.
+     * Konfirmasi Closing — update status_closing.
+     * Jika "Siap Closing" → trigger Bed Management IGD API dari server (bukan frontend)
+     * supaya update bed availability terjadi secara server-to-server.
      */
     public function konfirmasiClosing(Request $request, int $id): JsonResponse
     {
@@ -111,7 +114,83 @@ class BatalRanapController extends Controller
         ActivityLog::record('batal-ranap', 'closing',
             "Closing Batal Ranap {$record->no_reg} → {$record->status_closing}");
 
-        return response()->json(['data' => $record, 'message' => 'Status closing berhasil disimpan.']);
+        $bedUpdateResult = null;
+
+        // Jika Siap Closing → bebaskan bed IGD via Bed Management API
+        if ($validated['status_closing'] === 'Siap Closing') {
+            $bedUpdateResult = $this->updateBedManagement($record);
+        }
+
+        return response()->json([
+            'data'             => $record,
+            'message'          => 'Status closing berhasil disimpan.',
+            'bed_update'       => $bedUpdateResult,
+        ]);
+    }
+
+    /**
+     * Call Bed Management IGD API untuk update ketersediaan bed → available.
+     * Mendukung: external HTTP API (BED_MANAGEMENT_URL) atau RSUS DB langsung.
+     */
+    private function updateBedManagement(object $record): array
+    {
+        $bedId   = $record->bed_id   ?? null;
+        $ruangan = $record->ruangan  ?? null;
+
+        if (! $bedId && ! $ruangan) {
+            return ['success' => false, 'message' => 'bed_id dan ruangan kosong — skip update.', 'source' => 'none'];
+        }
+
+        $url = config('services.bed_management.base_url', '');
+
+        // ── External HTTP API ─────────────────────────────────────────────
+        if (! empty($url)) {
+            try {
+                $response = Http::withToken(config('services.bed_management.token', ''))
+                    ->timeout(8)
+                    ->post("{$url}/api/beds/update-status", [
+                        'bed_id'    => $bedId,
+                        'ruangan'   => $ruangan,
+                        'no_reg'    => $record->no_reg,
+                        'status'    => 'available',
+                        'timestamp' => now()->toISOString(),
+                    ]);
+
+                if ($response->successful()) {
+                    Log::info("Bed Management update OK — bed {$bedId} ruangan {$ruangan}");
+                    return ['success' => true, 'source' => 'api', 'data' => $response->json()];
+                }
+
+                Log::warning("Bed Management API error {$response->status()}: " . $response->body());
+                return ['success' => false, 'source' => 'api', 'status' => $response->status(), 'message' => $response->body()];
+
+            } catch (\Exception $e) {
+                Log::warning('Bed Management API exception: ' . $e->getMessage());
+                return ['success' => false, 'source' => 'api', 'message' => $e->getMessage()];
+            }
+        }
+
+        // ── RSUS DB langsung (fallback jika tidak ada external API) ───────
+        if (config('services.rsus_db_enabled', false)) {
+            try {
+                \Illuminate\Support\Facades\DB::connection('rsus')
+                    ->table('BI_Bed_Igd')
+                    ->where('No_Bed', $bedId)
+                    ->update([
+                        'Status'     => 'Kosong',
+                        'updated_at' => now(),
+                    ]);
+                Log::info("Bed Management RSUS DB update OK — bed {$bedId}");
+                return ['success' => true, 'source' => 'rsus_db'];
+            } catch (\Exception $e) {
+                Log::warning('Bed Management RSUS DB update failed: ' . $e->getMessage());
+                return ['success' => false, 'source' => 'rsus_db', 'message' => $e->getMessage()];
+            }
+        }
+
+        // ── Mock / Dev mode ───────────────────────────────────────────────
+        Log::info("Bed Management mock update — bed {$bedId} ruangan {$ruangan} → available");
+        return ['success' => true, 'source' => 'mock', 'note' => 'Set BED_MANAGEMENT_URL di .env untuk production.'];
     }
 
     /**

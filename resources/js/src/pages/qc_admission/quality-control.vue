@@ -24,7 +24,7 @@ function todayStr() {
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
 }
 const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+  new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 )
 const dateFrom     = ref(todayStr())
 const dateTo       = ref(todayStr())
@@ -147,19 +147,6 @@ function resetFilter()     { search.value = ''; filterStatus.value = 'all'; date
 
 async function onSaved()   { showForm.value = false; toast('Data QC disimpan.'); await load() }
 
-async function doUpdateRanap(item) {
-  processing.value = true
-  const result = await store.updateRanap(item.id)
-  processing.value = false
-  if (result?.success) {
-    toast(`${item.nama_pasien} — status diubah ke Pindah Ranap.`, 'purple')
-    showDetail.value = false
-    await load()
-  } else {
-    toast(result?.message ?? 'Gagal update ranap.', 'error')
-  }
-}
-
 async function doDelete() {
   if (!deleteTarget.value) return
   loading.value = true
@@ -201,7 +188,7 @@ watch([dateFrom, dateTo], () => load())
       color-to="#0369A1"
       :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },
-        { icon: 'ri-database-line', text: `${stats.total} data hari ini` },
+        { icon: 'ri-database-line', text: `${stats.total} data` },
       ]"
     >
       <template #actions>
@@ -285,7 +272,7 @@ watch([dateFrom, dateTo], () => load())
       </div>
 
       <div v-else>
-        <div v-for="(item, idx) in filtered" :key="item.id"
+        <div v-for="item in filtered" :key="item.id"
           class="qc-row"
           @click="openRow(item)"
         >
@@ -410,7 +397,7 @@ watch([dateFrom, dateTo], () => load())
           </div>
         </div>
 
-        <!-- ── Action buttons — jelas, full-width, responsif ─────────────── -->
+        <!-- ── Action buttons ─────────────────────────────────────────────── -->
         <div class="qc-action-bar">
           <VBtn
             variant="outlined" rounded="lg" class="qc-action-btn"
@@ -421,15 +408,6 @@ watch([dateFrom, dateTo], () => load())
             @click="editItem = {...detailItem}; showDetail = false; showForm = true"
           >
             <VIcon icon="ri-pencil-line" size="15" class="me-1" />Edit Data
-          </VBtn>
-          <!-- Tombol Pindah Ranap — muncul jika belum di-ranap -->
-          <VBtn
-            v-if="!detailItem.status_ranap"
-            color="purple" variant="tonal" rounded="lg" class="qc-action-btn"
-            :loading="processing"
-            @click="doUpdateRanap(detailItem)"
-          >
-            <VIcon icon="ri-hospital-fill" size="15" class="me-1" />Ranap
           </VBtn>
           <VBtn
             color="error" variant="tonal" rounded="lg" class="qc-action-btn"

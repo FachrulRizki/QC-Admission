@@ -34,9 +34,12 @@ const detecting = ref(true)
 onMounted(async () => {
   try {
     const { data } = await axios.get('/api/config')
-    ssoEnabled.value = data.sso_enabled === true || data.sso_enabled === 'true'
+    ssoEnabled.value       = data.sso_enabled === true || data.sso_enabled === 'true'
+    keycloakUrl.value      = data.keycloak_base_url  ?? ''
+    keycloakRealm.value    = data.keycloak_realm     ?? 'master'
+    keycloakClientId.value = data.keycloak_client_id ?? 'qc-admission'
+
     if (ssoEnabled.value) {
-      // Jika SSO aktif → default mode sso, bisa switch ke local
       loginMode.value = 'sso'
     } else {
       loginMode.value = 'local'

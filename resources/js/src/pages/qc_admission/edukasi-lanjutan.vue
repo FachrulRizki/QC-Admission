@@ -103,17 +103,6 @@ function openEdit(patient)   { detailPatient.value = { ...patient }; dialogMode.
 
 async function onSaved() { showDetail.value = false; await load() }
 
-async function onRanap(patient) {
-  const result = await store.updateRanap(patient.id)
-  if (result?.success) {
-    toast(`${patient.nama_pasien} — status diubah ke Pindah Ranap.`, 'purple')
-    showDetail.value = false
-    await load()
-  } else {
-    toast(result?.message ?? 'Gagal update ranap.', 'error')
-  }
-}
-
 function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
 
 function resetFilter() {
@@ -165,8 +154,8 @@ onMounted(load)
       color-from="#0EA5E9"
       color-to="#0369A1"
       :pills="[
-        { icon: 'ri-book-open-line', text: `${stats.total} pasien` },
-        { icon: 'ri-time-line', text: `${stats.menunggu} menunggu bed` },
+        { icon: 'ri-user-line', text: `${stats.total} pasien` },
+        { icon: 'ri-time-line', text: `${stats.menunggu} menunggu` },
       ]"
     >
       <template #actions>
@@ -351,7 +340,6 @@ onMounted(load)
       :patient="detailPatient"
       :mode="dialogMode"
       @saved="onSaved"
-      @ranap="onRanap"
     />
 
     <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="xl">

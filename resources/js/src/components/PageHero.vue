@@ -75,6 +75,9 @@ defineProps({
   background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%);
   box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--hero-from) 55%, transparent);
   isolation: isolate;
+  /* Fixed min-height agar ukuran konsisten di semua menu */
+  min-height: 130px;
+  box-sizing: border-box;
 }
 
 .page-hero--text-light { color: #fff; }
@@ -154,9 +157,10 @@ defineProps({
 
 .page-hero__pills {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;       /* tidak wrap ke baris baru */
   gap: 8px;
   margin-top: 14px;
+  overflow: hidden;        /* hide jika terlalu panjang */
 }
 .page-hero__pill {
   display: inline-flex;
@@ -167,6 +171,8 @@ defineProps({
   font-size: 0.72rem;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.16);
+  white-space: nowrap;     /* teks tidak wrap */
+  flex-shrink: 0;
 }
 .page-hero--text-dark .page-hero__pill { background: rgba(0, 40, 20, 0.1); }
 
@@ -175,7 +181,7 @@ defineProps({
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 16px;
+  margin-top: 14px;       /* sama dengan pills agar konsisten */
 }
 
 /* ---------- illustration ---------- */
@@ -241,18 +247,21 @@ defineProps({
 
 /* ---------- responsive ---------- */
 @media (max-width: 960px) {
-  .page-hero { padding: 20px 22px; border-radius: 20px; }
+  .page-hero { padding: 20px 22px; border-radius: 20px; min-height: 120px; }
   .page-hero__art { width: 88px; height: 88px; }
   .page-hero__art-core { width: 66px; height: 66px; border-radius: 20px; }
 }
 
 @media (max-width: 600px) {
-  .page-hero { padding: 18px; }
-  .page-hero__row { flex-wrap: wrap; }
+  .page-hero { padding: 16px 18px; min-height: 110px; }
+  .page-hero__row { flex-wrap: nowrap; align-items: flex-start; }
   .page-hero__art { display: none; }
-  .page-hero__subtitle { max-width: 100%; }
+  .page-hero__subtitle { max-width: 100%; font-size: 0.82rem; }
   .page-hero__actions { width: 100%; }
   .page-hero__actions :deep(.v-btn) { flex: 1 1 auto; }
+  .page-hero__title { font-size: 1.2rem; }
+  .page-hero__pills { margin-top: 10px; gap: 6px; }
+  .page-hero__pill  { padding: 3px 8px; font-size: 0.68rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,6 @@
 <script setup>
 import { useBatalRanapStore } from '@/stores/useBatalRanapStore'
 import { useAuthStore }       from '@/stores/useAuthStore'
-import axios from 'axios'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -20,7 +19,6 @@ const tab = ref('detail')
 const closingStatus  = ref(null)
 const savingClosing  = ref(false)
 const closingErrMsg  = ref('')
-const bedUpdating    = ref(false)
 
 // ── Verifikasi (status_ok) state ──────────────────────────────────────────────
 const statusOkVal    = ref(null)
@@ -64,24 +62,9 @@ async function saveClosing() {
   if (!closingStatus.value) { closingErrMsg.value = 'Pilih status closing.'; return }
   savingClosing.value = true
   try {
+    // Backend sekarang handle bed management update secara server-to-server
     const result = await store.konfirmasiClosing(props.item.id, closingStatus.value)
     if (!result?.success) { closingErrMsg.value = result?.message ?? 'Gagal menyimpan.'; return }
-
-    // Jika Siap Closing → update bed management
-    if (closingStatus.value === 'Siap Closing') {
-      const bedTarget = bedHistory.value[0]
-      const bedId   = bedTarget?.bed_id   ?? props.item.bed_id   ?? props.item.ruangan
-      const ruangan = bedTarget?.ruangan  ?? props.item.ruangan  ?? ''
-      if (bedId || ruangan) {
-        bedUpdating.value = true
-        try {
-          await axios.post('/api/bed-management/update-status', {
-            bed_id: bedId, ruangan, status: 'available',
-          })
-        } catch (e) { console.warn('Bed update (non-critical):', e.message) }
-        finally { bedUpdating.value = false }
-      }
-    }
     emit('verified')
     close()
   } catch { closingErrMsg.value = 'Terjadi kesalahan.' }
@@ -374,9 +357,9 @@ function close() { emit('update:modelValue', false) }
         <template v-else-if="tab==='closing'">
           <VBtn :color="closingStatus==='Siap Closing'?'success':closingStatus==='Belum Siap Closing'?'error':'secondary'"
             rounded="xl" class="flex-grow-1" prepend-icon="ri-save-line"
-            :loading="savingClosing || bedUpdating" :disabled="!closingStatus"
+            :loading="savingClosing" :disabled="!closingStatus"
             @click="saveClosing">
-            {{ bedUpdating ? 'Update Bed...' : 'Simpan Closing' }}
+            Simpan Closing
           </VBtn>
         </template>
 
@@ -398,7 +381,7 @@ function close() { emit('update:modelValue', false) }
 /* ── Banner ──────────────────────────────────────────────────────────── */
 .modal-banner {
   position: relative;
-  background: linear-gradient(135deg, #991B1B 0%, #EF4444 55%, #F87171 100%);
+  background: linear-gradient(135deg, #0369A1 0%, #0EA5E9 55%, #0EA5E9 100%);
   padding: 16px 16px 14px; overflow: hidden;
 }
 .blob { position: absolute; border-radius: 50%; opacity: 0.14; background: #fff; }

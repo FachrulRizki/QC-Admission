@@ -47,7 +47,7 @@ const groups = computed(() => {
 })
 
 const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 )
 
 const searchCat   = ref('')

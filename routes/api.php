@@ -34,8 +34,12 @@ Route::prefix('auth')->group(function () {
 // App config — login page pakai ini untuk tampil/sembunyikan tombol SSO
 Route::get('/config', function () {
     return response()->json([
-        'sso_enabled'     => (bool) config('services.sso_enabled', false),
-        'rsus_db_enabled' => (bool) config('services.rsus_db_enabled', false),
+        'sso_enabled'       => (bool) config('services.sso_enabled', false),
+        'rsus_db_enabled'   => (bool) config('services.rsus_db_enabled', false),
+        // Keycloak config diekspos ke frontend (non-secret — hanya base_url, realm, client_id)
+        'keycloak_base_url' => config('services.keycloak.base_url', ''),
+        'keycloak_realm'    => config('services.keycloak.realm', 'master'),
+        'keycloak_client_id'=> config('services.keycloak.client_id', 'qc-admission'),
     ]);
 });
 
@@ -72,24 +76,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Quality Control — admin + qc_admission
     Route::middleware('role:admin,qc_admission')->group(function () {
-        Route::apiResource('quality-control', QualityControlController::class);
-        Route::patch('quality-control/{id}/ranap', [QualityControlController::class, 'updateRanap']);
-    });
-
-    // Edukasi Lanjutan — admin + qc_admission
-    Route::middleware('role:admin,qc_admission')->group(function () {
-        Route::apiResource('edukasi-lanjutan', EdukasiLanjutanController::class);
-        Route::patch('edukasi-lanjutan/{id}/ranap', [EdukasiLanjutanController::class, 'updateRanap']);
-        // Sync status dari RSUS (manual trigger dari frontend)
-        Route::get('edukasi-lanjutan/sync-rsus',  [EdukasiLanjutanController::class, 'syncRsus']);
-        Route::get('edukasi-lanjutan-pending',    [EdukasiLanjutanController::class, 'pending']);
-        // Trigger manual proses auto-Edukasi Lanjutan (jalankan command via HTTP)
+        // ⚠️ Route spesifik HARUS didaftarkan SEBELUM apiResource
+        // agar tidak tertimpa oleh pattern {quality_control}
         Route::post('quality-control/process-edukasi-lanjutan', function () {
             try {
                 \Illuminate\Support\Facades\Artisan::call('qc:process-edukasi-lanjutan');
                 $output = trim(\Illuminate\Support\Facades\Artisan::output());
-                // Hitung berapa yang dipindahkan dari output command
-                $count = 0;
+                $count  = 0;
                 if (preg_match('/(\d+)\s+pasien\s+dipindahkan/', $output, $m)) {
                     $count = (int) $m[1];
                 }
@@ -98,6 +91,19 @@ Route::middleware('auth:sanctum')->group(function () {
                 return response()->json(['success' => false, 'message' => $e->getMessage(), 'count' => 0], 500);
             }
         });
+
+        Route::apiResource('quality-control', QualityControlController::class);
+        Route::patch('quality-control/{id}/ranap', [QualityControlController::class, 'updateRanap']);
+    });
+
+    // Edukasi Lanjutan — admin + qc_admission
+    Route::middleware('role:admin,qc_admission')->group(function () {
+        // ⚠️ Route spesifik SEBELUM apiResource
+        Route::get('edukasi-lanjutan/sync-rsus', [EdukasiLanjutanController::class, 'syncRsus']);
+        Route::get('edukasi-lanjutan-pending',   [EdukasiLanjutanController::class, 'pending']);
+
+        Route::apiResource('edukasi-lanjutan', EdukasiLanjutanController::class);
+        Route::patch('edukasi-lanjutan/{id}/ranap', [EdukasiLanjutanController::class, 'updateRanap']);
     });
 
     // Up Selling — admin + qc_admission
