@@ -1,10 +1,12 @@
 <script setup>
 import axios from 'axios'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useDisplay } from 'vuetify'
 import SummaryCards from '@/components/SummaryCards.vue'
 import PageHero from '@/components/PageHero.vue'
 
 const auth    = useAuthStore()
+const { xs }  = useDisplay()
 const loading = ref(false)
 const search  = ref('')
 
@@ -17,34 +19,34 @@ const todayFormatted = computed(() =>
   new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 )
 
-const dateFrom     = ref(todayStr())
-const dateTo       = ref(todayStr())
-const filterClosing = ref('')   // '' | 'Siap Closing' | 'Belum Siap Closing' | 'Belum Diverifikasi'
-const activeTab = ref('batal-ranap')
+const dateFrom      = ref(todayStr())
+const dateTo        = ref(todayStr())
+const filterClosing = ref('')
+const activeTab     = ref('batal-ranap')
 
 const CLOSING_OPTIONS = [
-  { title: 'Semua Status',        value: '' },
-  { title: '👍 Siap Closing',     value: 'Siap Closing' },
-  { title: '⏳ Belum Siap',       value: 'Belum Siap Closing' },
+  { title: 'Semua Status',          value: '' },
+  { title: '👍 Siap Closing',       value: 'Siap Closing' },
+  { title: '⏳ Belum Siap',         value: 'Belum Siap Closing' },
   { title: '❓ Belum Diverifikasi', value: null },
 ]
 
 const isKasir = computed(() => auth.isKasir)
 
 const allTabs = [
-  { key: 'summary',          label: 'Summary',          icon: 'ri-user-heart-line',      roles: ['admin','qc_admission'] },
-  { key: 'quality-control',  label: 'Quality Control',  icon: 'ri-shield-check-line',    roles: ['admin','qc_admission'] },
-  { key: 'batal-ranap',      label: 'Batal Ranap',      icon: 'ri-close-circle-line',    roles: ['admin','qc_admission','kasir'] },
-  { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', icon: 'ri-book-open-line',       roles: ['admin','qc_admission'] },
-  { key: 'up-selling',       label: 'Up Selling',       icon: 'ri-arrow-up-circle-line', roles: ['admin','qc_admission'] },
+  { key: 'summary',          label: 'Summary',     shortLabel: 'Summary', icon: 'ri-user-heart-line',      roles: ['admin','qc_admission'] },
+  { key: 'quality-control',  label: 'Quality Control', shortLabel: 'QC',  icon: 'ri-shield-check-line',    roles: ['admin','qc_admission'] },
+  { key: 'batal-ranap',      label: 'Batal Ranap', shortLabel: 'Batal',   icon: 'ri-close-circle-line',    roles: ['admin','qc_admission','kasir'] },
+  { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', shortLabel: 'Edukasi', icon: 'ri-book-open-line', roles: ['admin','qc_admission'] },
+  { key: 'up-selling',       label: 'Up Selling',  shortLabel: 'Up Sell', icon: 'ri-arrow-up-circle-line', roles: ['admin','qc_admission'] },
 ]
 
 const tabs = computed(() => allTabs.filter(t => t.roles.includes(auth.userRole ?? 'kasir')))
 
-const qcData       = ref([])
-const batalData    = ref([])
-const edukasiData  = ref([])
-const upData       = ref([])
+const qcData      = ref([])
+const batalData   = ref([])
+const edukasiData = ref([])
+const upData      = ref([])
 
 async function safeGet(url, params = {}) {
   try {
@@ -93,18 +95,10 @@ const activeData = computed(() => {
   return map[activeTab.value] ?? []
 })
 
-/**
- * Konversi berbagai format tanggal ke Date object untuk perbandingan.
- * Format yang mungkin dari DB: 'DD/MM/YYYY, HH.mm.ss' | 'YYYY-MM-DD' | ISO string
- */
 function parseTanggal(str) {
   if (!str) return null
-  // Format: DD/MM/YYYY, HH.mm.ss atau DD/MM/YYYY HH:mm:ss
   const dmyMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
-  if (dmyMatch) {
-    return new Date(`${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`)
-  }
-  // Format: YYYY-MM-DD atau ISO
+  if (dmyMatch) return new Date(`${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`)
   const d = new Date(str)
   return isNaN(d) ? null : d
 }
@@ -126,10 +120,8 @@ const filteredData = computed(() => {
       return true
     })
   }
-  // Filter status closing — hanya aktif saat tab batal-ranap
   if (activeTab.value === 'batal-ranap' && filterClosing.value !== '') {
     if (filterClosing.value === null) {
-      // Belum Diverifikasi = tidak ada status_closing
       d = d.filter(r => !r.status_closing)
     } else {
       d = d.filter(r => r.status_closing === filterClosing.value)
@@ -142,6 +134,10 @@ function statusColor(s) {
   return ({'Edukasi':'success','Edukasi lanjutan':'warning','Bedah':'success','Non Bedah':'info','Selesai':'success','Menunggu':'warning','Berhasil':'success','Tidak Berhasil':'error','Pending':'warning'})[s] ?? 'secondary'
 }
 
+function closingColor(s) {
+  return s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
+}
+
 function exportCSV() {
   const cols = activeHeaders.value
   const csv  = [cols.map(h=>h.title).join(','), ...filteredData.value.map(r => cols.map(h => `"${r[h.key]??''}"`).join(','))].join('\n')
@@ -149,32 +145,31 @@ function exportCSV() {
   a.download = `view-${activeTab.value}-${new Date().toISOString().slice(0,10)}.csv`; a.click()
 }
 
+// Header definitions (for CSV export only now)
 const summaryHeaders = [
   { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' }, { title: 'Jaminan', key: 'jaminan' },
-  { title: 'QC', key: 'qc', align: 'center' }, { title: 'Edukasi', key: 'edukasi', align: 'center' },
-  { title: 'Batal Ranap', key: 'batal', align: 'center' }, { title: 'Up Selling', key: 'up', align: 'center' },
-  { title: 'Tanggal', key: 'tanggal' },
+  { title: 'QC', key: 'qc' }, { title: 'Edukasi', key: 'edukasi' },
+  { title: 'Batal Ranap', key: 'batal' }, { title: 'Up Selling', key: 'up' }, { title: 'Tanggal', key: 'tanggal' },
 ]
 const qcHeaders = [
   { title: 'Tanggal', key: 'tanggal' }, { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' },
-  { title: 'Status', key: 'status', align: 'center' }, { title: 'Petugas', key: 'petugas' }, { title: 'Durasi', key: 'durasi_tunggu', align: 'center' },
+  { title: 'Status', key: 'status' }, { title: 'Petugas', key: 'petugas' }, { title: 'Durasi', key: 'durasi_tunggu' },
 ]
 const batalHeaders = [
   { title: 'Tanggal', key: 'tanggal' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
-  { title: 'Ket. Batal', key: 'keterangan_batal' }, { title: 'Status OK', key: 'status_ok', align: 'center' },
-  { title: 'Closing', key: 'status_closing', align: 'center' }, { title: 'Petugas', key: 'petugas' },
+  { title: 'Ket. Batal', key: 'keterangan_batal' }, { title: 'Status OK', key: 'status_ok' },
+  { title: 'Closing', key: 'status_closing' }, { title: 'Petugas', key: 'petugas' },
 ]
 const edukasiHeaders = [
   { title: 'Tanggal', key: 'tanggal' }, { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' },
-  { title: 'Status', key: 'status', align: 'center' }, { title: 'Petugas', key: 'petugas' },
+  { title: 'Status', key: 'status' }, { title: 'Petugas', key: 'petugas' },
 ]
 const upHeaders = [
-  { title: 'tgldaftar', key: 'tgl_daftar' }, { title: 'NoReg', key: 'no_reg' }, { title: 'NamaPasien', key: 'nama_pasien' },
-  { title: 'Ket Up Selling', key: 'alasan' }, { title: 'notes', key: 'note' }, { title: 'Petugas', key: 'petugas' },
+  { title: 'Tgl Daftar', key: 'tgl_daftar' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
+  { title: 'Keterangan', key: 'alasan' }, { title: 'Notes', key: 'note' }, { title: 'Petugas', key: 'petugas' },
 ]
 const activeHeaders = computed(() => ({summary:summaryHeaders,'quality-control':qcHeaders,'batal-ranap':batalHeaders,'edukasi-lanjutan':edukasiHeaders,'up-selling':upHeaders})[activeTab.value] ?? [])
 
-// Set default tab berdasarkan role — hanya saat pertama kali (tidak override klik user)
 let tabInitialized = false
 onMounted(() => {
   if (!tabInitialized) {
@@ -184,10 +179,8 @@ onMounted(() => {
   loadAll()
 })
 
-// Re-load jika role berubah (restore session), jangan overwrite tab yang sudah di-klik
 watch(() => auth.userRole, (role, prev) => {
   if (role && role !== prev) {
-    // Hanya set tab default jika belum ada tab aktif yang valid
     if (!tabInitialized) {
       activeTab.value = role === 'kasir' ? 'batal-ranap' : 'summary'
       tabInitialized = true
@@ -214,12 +207,12 @@ watch(() => auth.userRole, (role, prev) => {
     >
       <template #actions>
         <VBtn v-if="!isKasir" color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700" @click="exportCSV">
-          <VIcon icon="ri-download-line" size="15" class="me-1" />Export ke CSV
+          <VIcon icon="ri-download-line" size="15" class="me-1" />Export CSV
         </VBtn>
       </template>
     </PageHero>
 
-    <!-- Stats (non-kasir) -->
+    <!-- Stats -->
     <SummaryCards v-if="!isKasir"
       v-model="activeTab"
       :cards="[
@@ -229,106 +222,186 @@ watch(() => auth.userRole, (role, prev) => {
         { value: grandStats.up,      label: 'Up Selling',       color: 'success', icon: 'ri-arrow-up-circle-line', filterValue: 'up-selling' },
       ]"
     />
-
-    <!-- Stats kasir -->
     <SummaryCards v-else :cards="[
-      { value: batalData.length,                                          label: 'Total', color: 'primary', icon: 'ri-close-circle-line' },
-      { value: batalData.filter(r=>r.status_closing==='Siap Closing').length, label: 'Siap Closing', color: 'success', icon: 'ri-checkbox-circle-line' },
-      { value: batalData.filter(r=>!r.status_closing).length,            label: 'Belum Closing', color: 'warning', icon: 'ri-time-line' },
+      { value: batalData.length,                                              label: 'Total',         color: 'primary', icon: 'ri-close-circle-line' },
+      { value: batalData.filter(r=>r.status_closing==='Siap Closing').length, label: 'Siap Closing',  color: 'success', icon: 'ri-checkbox-circle-line' },
+      { value: batalData.filter(r=>!r.status_closing).length,                label: 'Belum Closing', color: 'warning', icon: 'ri-time-line' },
     ]" />
 
-    <!-- Tabs & Filter -->
+    <!-- Tabs + Filter dalam 1 card -->
     <VCard elevation="0" border rounded="xl" class="mb-4">
-      <VTabs v-model="activeTab" color="primary" show-arrows density="compact">
-        <VTab v-for="t in tabs" :key="t.key" :value="t.key" class="text-caption">
-          <VIcon :icon="t.icon" size="15" class="me-1" />{{ t.label }}
+      <!-- Tabs — scrollable, short label on mobile -->
+      <VTabs v-model="activeTab" color="primary" show-arrows density="compact" class="vdi-tabs">
+        <VTab v-for="t in tabs" :key="t.key" :value="t.key" class="vdi-tab">
+          <VIcon :icon="t.icon" size="15" class="me-1" />
+          {{ xs ? t.shortLabel : t.label }}
         </VTab>
       </VTabs>
       <VDivider />
+
+      <!-- Filter row -->
       <VCardText class="pa-3">
-        <VRow dense align="center">
-          <VCol cols="12" sm="5">
+        <VRow dense align="center" class="g-2">
+          <!-- Search -->
+          <VCol cols="12" sm="4" md="4">
             <VTextField v-model="search" label="Cari..." prepend-inner-icon="ri-search-line"
               variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+          <!-- Date From -->
+          <VCol cols="6" sm="3" md="2">
+            <VTextField v-model="dateFrom" label="Dari" type="date"
+              variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+          <!-- Date To -->
+          <VCol cols="6" sm="3" md="2">
+            <VTextField v-model="dateTo" label="Sampai" type="date"
+              variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
+          <!-- Status Closing dropdown (hanya batal-ranap) -->
+          <VCol v-if="activeTab === 'batal-ranap'" cols="12" sm="auto" md="3">
+            <VSelect
+              v-model="filterClosing"
+              :items="CLOSING_OPTIONS"
+              item-title="title"
+              item-value="value"
+              label="Status Closing"
+              variant="outlined" density="compact" hide-details rounded="lg"
+            />
+          </VCol>
+          <!-- Reset -->
           <VCol cols="auto">
-            <VBtn size="small" variant="text" color="secondary" @click="search='';dateFrom='';dateTo='';filterClosing=''">Reset</VBtn>
-          </VCol>
-        </VRow>
-        <!-- Filter Status Closing — muncul hanya saat tab batal-ranap -->
-        <VRow v-if="activeTab === 'batal-ranap'" dense class="mt-2" align="center">
-          <VCol cols="12" sm="auto">
-            <span class="text-caption font-weight-semibold" style="color:var(--qc-text-2)">Filter Closing:</span>
-          </VCol>
-          <VCol cols="12" sm="auto">
-            <div class="d-flex gap-2 flex-wrap">
-              <VChip
-                v-for="opt in CLOSING_OPTIONS" :key="String(opt.value)"
-                :color="filterClosing === opt.value ? (opt.value === 'Siap Closing' ? 'success' : opt.value === 'Belum Siap Closing' ? 'error' : opt.value === null ? 'warning' : 'primary') : 'default'"
-                :variant="filterClosing === opt.value ? 'elevated' : 'outlined'"
-                size="small" class="cursor-pointer"
-                @click="filterClosing = filterClosing === opt.value ? '' : opt.value"
-              >{{ opt.title }}</VChip>
-            </div>
+            <VBtn size="small" variant="text" color="secondary"
+              @click="search='';dateFrom=todayStr();dateTo=todayStr();filterClosing=''">
+              Reset
+            </VBtn>
           </VCol>
         </VRow>
       </VCardText>
     </VCard>
 
-    <!-- Count -->
-    <div class="d-flex align-center gap-3 mb-4">
+    <!-- Count bar -->
+    <div class="d-flex align-center gap-3 mb-3">
       <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ filteredData.length }} data</VChip>
       <VProgressCircular v-if="loading" size="16" width="2" indeterminate color="primary" />
     </div>
 
-    <!-- Table -->
-    <VCard elevation="0" border rounded="xl">
-      <VDataTable
-        :headers="activeHeaders"
-        :items="filteredData"
-        density="comfortable"
-        hover
-        :loading="loading"
-        :items-per-page="20"
-      >
-        <!-- Status chips -->
-        <template #item.status="{ item }">
-          <VChip :color="statusColor(item.status)" size="x-small" variant="tonal">{{ item.status || '—' }}</VChip>
-        </template>
-        <template #item.status_ok="{ item }">
-          <VChip :color="statusColor(item.status_ok)" size="x-small" variant="tonal">{{ item.status_ok || '—' }}</VChip>
-        </template>
-        <template #item.status_closing="{ item }">
-          <VChip v-if="item.status_closing" :color="item.status_closing==='Siap Closing'?'success':'error'" size="x-small" variant="tonal">{{ item.status_closing }}</VChip>
-          <span v-else class="text-caption" style="color:var(--qc-text-2)">—</span>
-        </template>
-        <!-- Summary counts -->
-        <template #item.qc="{ item }"><VChip size="x-small" color="primary" variant="tonal">{{ item.qc }}</VChip></template>
-        <template #item.edukasi="{ item }"><VChip size="x-small" color="warning" variant="tonal">{{ item.edukasi }}</VChip></template>
-        <template #item.batal="{ item }"><VChip size="x-small" color="error" variant="tonal">{{ item.batal }}</VChip></template>
-        <template #item.up="{ item }"><VChip size="x-small" color="success" variant="tonal">{{ item.up }}</VChip></template>
-        <!-- Nama dengan avatar -->
-        <template #item.nama_pasien="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VAvatar color="primary" variant="tonal" size="24" rounded="md">
-              <span style="font-size:10px;font-weight:700">{{ item.nama_pasien?.charAt(0)?? '?' }}</span>
-            </VAvatar>
-            <span class="text-body-2">{{ item.nama_pasien }}</span>
+    <!-- ── LIST VIEW — responsif, no horizontal scroll ─── -->
+    <VCard elevation="0" border rounded="xl" class="overflow-hidden">
+      <!-- Loading -->
+      <div v-if="loading" class="text-center py-12">
+        <VProgressCircular indeterminate color="primary" size="32" />
+      </div>
+
+      <!-- Empty -->
+      <div v-else-if="!filteredData.length" class="text-center py-16" style="color:var(--qc-text-2)">
+        <VIcon icon="ri-inbox-line" size="52" class="mb-3 opacity-30" />
+        <p class="text-body-1 font-weight-semibold mb-1">Belum ada data</p>
+      </div>
+
+      <!-- Items -->
+      <div v-else>
+        <div
+          v-for="(item, idx) in filteredData"
+          :key="item.id ?? idx"
+          class="vdi-row"
+          :class="{ 'vdi-row--bordered': idx < filteredData.length - 1 }"
+        >
+          <!-- Avatar -->
+          <VAvatar color="primary" variant="tonal" size="38" rounded="md" class="flex-shrink-0">
+            <span style="font-size:12px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
+          </VAvatar>
+
+          <!-- Content -->
+          <div class="flex-grow-1 min-width-0">
+            <!-- Row 1: nama + chips status -->
+            <div class="d-flex align-center gap-2 flex-wrap mb-1">
+              <span class="font-weight-semibold text-truncate" style="font-size:0.875rem;color:var(--qc-text)">
+                {{ item.nama_pasien }}
+              </span>
+
+              <!-- Summary tab: count chips -->
+              <template v-if="activeTab === 'summary'">
+                <VChip v-if="item.qc"      size="x-small" color="primary" variant="tonal">QC {{ item.qc }}</VChip>
+                <VChip v-if="item.edukasi" size="x-small" color="warning" variant="tonal">Edu {{ item.edukasi }}</VChip>
+                <VChip v-if="item.batal"   size="x-small" color="error"   variant="tonal">Batal {{ item.batal }}</VChip>
+                <VChip v-if="item.up"      size="x-small" color="success" variant="tonal">Up {{ item.up }}</VChip>
+              </template>
+
+              <!-- QC tab -->
+              <template v-else-if="activeTab === 'quality-control'">
+                <VChip v-if="item.status" :color="statusColor(item.status)" size="x-small" variant="tonal">{{ item.status }}</VChip>
+                <VChip v-if="item.durasi_tunggu" size="x-small" color="secondary" variant="tonal">
+                  <VIcon icon="ri-time-line" size="10" class="me-1" />{{ item.durasi_tunggu }}
+                </VChip>
+              </template>
+
+              <!-- Batal Ranap tab -->
+              <template v-else-if="activeTab === 'batal-ranap'">
+                <VChip v-if="item.status_ok" :color="statusColor(item.status_ok)" size="x-small" variant="tonal">{{ item.status_ok }}</VChip>
+                <VChip v-if="item.status_closing" :color="closingColor(item.status_closing)" size="x-small" variant="tonal">{{ item.status_closing }}</VChip>
+                <span v-else class="text-caption" style="color:var(--qc-text-2);font-size:0.7rem">Belum closing</span>
+              </template>
+
+              <!-- Edukasi tab -->
+              <template v-else-if="activeTab === 'edukasi-lanjutan'">
+                <VChip v-if="item.status" :color="statusColor(item.status)" size="x-small" variant="tonal">{{ item.status }}</VChip>
+              </template>
+
+              <!-- Up Selling tab -->
+              <template v-else-if="activeTab === 'up-selling'">
+                <VChip v-if="item.alasan" :color="item.alasan==='Naik Kelas'?'success':'info'" size="x-small" variant="tonal">{{ item.alasan }}</VChip>
+              </template>
+            </div>
+
+            <!-- Row 2: meta info -->
+            <div class="d-flex align-center gap-3 flex-wrap">
+              <span class="text-caption" style="color:var(--qc-text-2)">
+                {{ item.no_mr || item.no_reg || '—' }}
+              </span>
+              <span v-if="activeTab === 'summary' && item.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ item.jaminan }}</span>
+              <span v-if="activeTab === 'batal-ranap' && item.keterangan_batal" class="text-caption text-truncate" style="color:var(--qc-text-2);max-width:160px">
+                <VIcon icon="ri-error-warning-line" size="10" class="me-1" />{{ item.keterangan_batal }}
+              </span>
+              <span v-if="activeTab === 'up-selling' && item.note" class="text-caption text-truncate" style="color:var(--qc-text-2);max-width:140px">{{ item.note }}</span>
+            </div>
           </div>
-        </template>
-        <template #no-data>
-          <div class="text-center py-12" style="color:var(--qc-text-2)">
-            <VIcon icon="ri-inbox-line" size="40" class="mb-2 opacity-30" />
-            <p class="text-body-2 font-weight-medium mb-0">Belum ada data</p>
+
+          <!-- Right: petugas + tanggal -->
+          <div class="text-end flex-shrink-0 vdi-right">
+            <p class="text-caption mb-0 font-weight-medium" style="color:var(--qc-text)">{{ item.petugas || '—' }}</p>
+            <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ item.tanggal || item.tgl_daftar || '—' }}</p>
           </div>
-        </template>
-      </VDataTable>
+        </div>
+      </div>
     </VCard>
   </div>
 </template>
+
+<style scoped>
+/* ── List row ── */
+.vdi-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
+}
+.vdi-row:last-child { border-bottom: none; }
+.vdi-row:hover { background: rgba(14,165,233,0.04); }
+
+/* Subtle left accent on hover */
+.vdi-row:hover { border-left: 3px solid rgba(14,165,233,0.4); padding-left: 13px; }
+
+.vdi-tab { font-size: 0.8rem !important; min-width: 0 !important; }
+
+.vdi-right {
+  min-width: 80px;
+  max-width: 110px;
+}
+
+@media (max-width: 480px) {
+  .vdi-right { display: none; }
+  .vdi-row { padding: 12px 12px; }
+}
+</style>

@@ -130,44 +130,32 @@ onMounted(load)
     <VCard elevation="0" border rounded="xl" class="mb-4">
       <VCardText class="pa-3">
         <VRow dense align="center">
-          <VCol cols="12" sm="5">
+          <VCol cols="12" sm="4">
             <VTextField v-model="search" label="Cari pasien / petugas / notes" prepend-inner-icon="ri-search-line"
               variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
+          <VCol cols="6" sm="2">
             <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
+          <VCol cols="6" sm="2">
             <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+          </VCol>
+          <VCol cols="12" sm="3">
+            <VSelect
+              v-model="filterAlasan"
+              :items="[
+                { title: 'Semua Keterangan', value: '' },
+                { title: '🏢 Naik Kelas', value: 'Naik Kelas' },
+                { title: '🔄 Perubahan Jaminan', value: 'Perubahan Jaminan' },
+              ]"
+              item-title="title" item-value="value"
+              label="Keterangan" variant="outlined" density="compact" hide-details rounded="lg"
+            />
           </VCol>
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary" @click="resetFilter; load()">Reset</VBtn>
           </VCol>
         </VRow>
-        <!-- Filter Keterangan Up Selling -->
-        <div class="d-flex gap-2 mt-3 flex-wrap align-center">
-          <span class="text-caption font-weight-semibold" style="color:var(--qc-text-2)">Keterangan:</span>
-          <VChip
-            :color="filterAlasan === '' ? 'primary' : 'default'"
-            :variant="filterAlasan === '' ? 'elevated' : 'outlined'"
-            size="small" class="cursor-pointer"
-            @click="filterAlasan = ''"
-          >Semua</VChip>
-          <VChip
-            :color="filterAlasan === 'Naik Kelas' ? 'success' : 'default'"
-            :variant="filterAlasan === 'Naik Kelas' ? 'elevated' : 'outlined'"
-            size="small" class="cursor-pointer"
-            prepend-icon="ri-building-line"
-            @click="filterAlasan = filterAlasan === 'Naik Kelas' ? '' : 'Naik Kelas'"
-          >Naik Kelas</VChip>
-          <VChip
-            :color="filterAlasan === 'Perubahan Jaminan' ? 'info' : 'default'"
-            :variant="filterAlasan === 'Perubahan Jaminan' ? 'elevated' : 'outlined'"
-            size="small" class="cursor-pointer"
-            prepend-icon="ri-exchange-line"
-            @click="filterAlasan = filterAlasan === 'Perubahan Jaminan' ? '' : 'Perubahan Jaminan'"
-          >Perubahan Jaminan</VChip>
-        </div>
       </VCardText>
     </VCard>
 
@@ -192,7 +180,6 @@ onMounted(load)
           v-for="(item, idx) in filtered"
           :key="item.id"
           class="us-row"
-          :class="{ 'us-row--bordered': idx < filtered.length - 1 }"
           @click="openRow(item)"
         >
           <!-- Avatar -->
@@ -324,10 +311,15 @@ onMounted(load)
 <style scoped>
 .us-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; cursor: pointer; transition: background 0.12s;
+  padding: 15px 16px; cursor: pointer; transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
 }
-.us-row:hover { background: rgba(59,130,246,0.04); }
-.us-row--bordered { border-bottom: 1px solid var(--qc-border); }
+.us-row:last-child { border-bottom: none; }
+.us-row:hover {
+  background: rgba(59,130,246,0.04);
+  border-left: 3px solid rgba(59,130,246,0.35);
+  padding-left: 13px;
+}
 
 /* Detail card */
 .detail-hd {

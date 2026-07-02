@@ -126,11 +126,24 @@ onMounted(load)
             <VTextField v-model="search" label="Cari pasien..." prepend-inner-icon="ri-search-line"
               variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
+          <VCol cols="6" sm="2">
             <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
+          <VCol cols="6" sm="2">
             <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+          </VCol>
+          <VCol cols="12" sm="3">
+            <VSelect
+              v-model="filterOk"
+              :items="[
+                { title: 'Semua Status', value: null },
+                { title: '⚪ Belum Verifikasi', value: '' },
+                { title: '🏥 Bedah', value: 'Bedah' },
+                { title: '🏨 Non Bedah', value: 'Non Bedah' },
+              ]"
+              item-title="title" item-value="value"
+              label="Status Verifikasi" variant="outlined" density="compact" hide-details rounded="lg"
+            />
           </VCol>
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary" @click="resetFilter; load()">Reset</VBtn>
@@ -160,7 +173,6 @@ onMounted(load)
           v-for="(item, idx) in filtered"
           :key="item.id"
           class="br-row"
-          :class="{ 'br-row--bordered': idx < filtered.length - 1 }"
           @click="openRow(item)"
         >
           <!-- Avatar -->
@@ -216,8 +228,14 @@ onMounted(load)
 <style scoped>
 .br-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; cursor: pointer; transition: background 0.12s;
+  padding: 15px 16px;
+  cursor: pointer; transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
 }
-.br-row:hover { background: rgba(239,68,68,0.04); }
-.br-row--bordered { border-bottom: 1px solid var(--qc-border); }
+.br-row:last-child { border-bottom: none; }
+.br-row:hover {
+  background: rgba(239,68,68,0.04);
+  border-left: 3px solid rgba(239,68,68,0.35);
+  padding-left: 13px;
+}
 </style>

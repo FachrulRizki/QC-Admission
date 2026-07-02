@@ -184,27 +184,30 @@ onMounted(load)
             <VTextField v-model="search" label="Cari pasien..." prepend-inner-icon="ri-search-line"
               variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
+          <VCol cols="6" sm="2">
             <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="3">
+          <VCol cols="6" sm="2">
             <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
+          <VCol cols="12" sm="3">
+            <VSelect
+              v-model="statusFilter"
+              :items="[
+                { title: 'Semua Status', value: 'All' },
+                { title: '⏳ Menunggu Bed', value: 'Menunggu' },
+                { title: '✅ Selesai', value: 'Selesai' },
+              ]"
+              item-title="title" item-value="value"
+              label="Status" variant="outlined" density="compact" hide-details rounded="lg"
+            />
+          </VCol>
           <VCol cols="auto">
-            <VBtn size="small" variant="text" color="secondary" @click="resetFilter; load()">Reset</VBtn>
+            <VBtn size="small" variant="text" color="secondary" @click="resetFilter">Reset</VBtn>
           </VCol>
         </VRow>
-        <!-- Date filter with "Lihat Semua" option -->
-        <div class="d-flex gap-2 mt-3 flex-wrap align-center">
-          <VChip
-            v-for="s in ['All','Menunggu','Selesai']" :key="s"
-            :color="statusFilter === s ? (s === 'Menunggu' ? 'warning' : s === 'Selesai' ? 'success' : 'primary') : 'default'"
-            :variant="statusFilter === s ? 'elevated' : 'outlined'"
-            size="small" class="cursor-pointer"
-            @click="statusFilter = s"
-          >{{ s === 'All' ? 'Semua Status' : s }}</VChip>
-          <VDivider vertical class="mx-1" style="height:20px" />
-          <!-- Chip untuk lihat semua data historis (hapus filter tanggal) -->
+        <!-- Quick range chips -->
+        <div class="d-flex gap-2 mt-2 flex-wrap align-center">
           <VChip
             :color="(!dateFrom && !dateTo) ? 'secondary' : 'default'"
             :variant="(!dateFrom && !dateTo) ? 'elevated' : 'outlined'"
@@ -213,7 +216,6 @@ onMounted(load)
           >
             <VIcon icon="ri-history-line" size="11" class="me-1" />Semua Riwayat
           </VChip>
-          <!-- Chip untuk kembali ke hari ini -->
           <VChip
             v-if="!dateFrom && !dateTo"
             color="primary" variant="tonal" size="small" class="cursor-pointer"

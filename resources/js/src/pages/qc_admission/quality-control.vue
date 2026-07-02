@@ -223,24 +223,22 @@ watch([dateFrom, dateTo], () => load())
             <VTextField v-model="dateTo" label="Sampai" type="date"
               variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="12" sm="auto">
-            <VBtn size="small" variant="text" color="secondary" block @click="resetFilter">Reset</VBtn>
+          <VCol cols="12" sm="3">
+            <VSelect
+              v-model="filterStatus"
+              :items="[
+                { title: 'Semua Status',          value: 'all' },
+                { title: '📚 Edukasi',            value: 'edukasi' },
+                { title: '⏰ Siap Edukasi Lanjutan', value: 'lanjutan' },
+              ]"
+              item-title="title" item-value="value"
+              label="Status" variant="outlined" density="compact" hide-details rounded="lg"
+            />
+          </VCol>
+          <VCol cols="auto">
+            <VBtn size="small" variant="text" color="secondary" @click="resetFilter">Reset</VBtn>
           </VCol>
         </VRow>
-        <!-- Filter Status chips -->
-        <div class="d-flex gap-2 mt-3 flex-wrap">
-          <VChip v-for="opt in [
-            { v:'all',      label:'Semua',                color:'primary', icon: null },
-            { v:'edukasi',  label:'Edukasi',              color:'success', icon:'ri-book-line' },
-            { v:'lanjutan', label:'Siap Edukasi Lanjutan',color:'warning', icon:'ri-timer-flash-line' },
-          ]" :key="opt.v"
-            :color="filterStatus === opt.v ? opt.color : 'default'"
-            :variant="filterStatus === opt.v ? 'elevated' : 'outlined'"
-            :prepend-icon="opt.icon ?? undefined"
-            size="small" class="cursor-pointer"
-            @click="filterStatus = filterStatus === opt.v && opt.v !== 'all' ? 'all' : opt.v"
-          >{{ opt.label }}</VChip>
-        </div>
       </VCardText>
     </VCard>
 
@@ -275,7 +273,7 @@ watch([dateFrom, dateTo], () => load())
 
       <div v-else>
         <div v-for="(item, idx) in filtered" :key="item.id"
-          class="qc-row" :class="{ 'qc-row--bordered': idx < filtered.length - 1 }"
+          class="qc-row"
           @click="openRow(item)"
         >
           <VAvatar color="primary" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
@@ -450,10 +448,15 @@ watch([dateFrom, dateTo], () => load())
 /* ── Row list ──────────────────────────────────────────────────────────────── */
 .qc-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; cursor: pointer; transition: background 0.12s;
+  padding: 15px 16px; cursor: pointer; transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
 }
-.qc-row:hover { background: var(--qc-green-light); }
-.qc-row--bordered { border-bottom: 1px solid var(--qc-border); }
+.qc-row:last-child { border-bottom: none; }
+.qc-row:hover {
+  background: var(--qc-green-light, rgba(0,179,126,0.04));
+  border-left: 3px solid rgba(0,179,126,0.35);
+  padding-left: 13px;
+}
 
 /* ── Detail banner ─────────────────────────────────────────────────────────── */
 .qc-detail-header {
