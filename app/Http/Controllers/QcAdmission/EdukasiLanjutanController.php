@@ -103,6 +103,29 @@ class EdukasiLanjutanController extends Controller
     }
 
     /**
+     * Update status ranap — dipanggil saat SIMRS konfirmasi pasien sudah pindah rawat inap.
+     * PATCH /api/edukasi-lanjutan/{id}/ranap
+     */
+    public function updateRanap(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status_ranap' => 'required|in:Pindah Ranap',
+        ]);
+
+        $record = $this->service->findOrFail($id);
+        $record->update([
+            'status_ranap' => $validated['status_ranap'],
+            'ranap_at'     => now(),
+            'status'       => 'Selesai', // otomatis selesai jika sudah ranap
+        ]);
+
+        ActivityLog::record('edukasi-lanjutan', 'update',
+            "Status ranap Edukasi {$record->nama_pasien} ({$record->no_mr}) → {$validated['status_ranap']}");
+
+        return response()->json(['data' => $record->fresh(), 'message' => 'Status ranap diperbarui.']);
+    }
+
+    /**
      * Sesi yang masih menunggu bed.
      */
     public function pending(Request $request): JsonResponse

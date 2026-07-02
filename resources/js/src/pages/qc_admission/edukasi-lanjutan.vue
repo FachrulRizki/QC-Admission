@@ -103,6 +103,17 @@ function openEdit(patient)   { detailPatient.value = { ...patient }; dialogMode.
 
 async function onSaved() { showDetail.value = false; await load() }
 
+async function onRanap(patient) {
+  const result = await store.updateRanap(patient.id)
+  if (result?.success) {
+    toast(`${patient.nama_pasien} — status diubah ke Pindah Ranap.`, 'purple')
+    showDetail.value = false
+    await load()
+  } else {
+    toast(result?.message ?? 'Gagal update ranap.', 'error')
+  }
+}
+
 function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
 
 function resetFilter() {
@@ -304,7 +315,11 @@ onMounted(load)
 
             <!-- Status + info -->
             <div class="d-flex align-center gap-2 flex-wrap mb-2">
-              <VChip
+              <!-- Badge ranap — prioritas -->
+              <VChip v-if="patient.status_ranap" color="purple" variant="tonal" size="x-small">
+                <VIcon icon="ri-hospital-fill" size="10" class="me-1" />{{ patient.status_ranap }}
+              </VChip>
+              <VChip v-else
                 :color="patient.status === 'Selesai' ? 'success' : 'warning'"
                 variant="tonal" size="x-small"
               >{{ patient.status }}</VChip>
@@ -336,6 +351,7 @@ onMounted(load)
       :patient="detailPatient"
       :mode="dialogMode"
       @saved="onSaved"
+      @ranap="onRanap"
     />
 
     <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="xl">

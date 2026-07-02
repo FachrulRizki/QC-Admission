@@ -19,24 +19,24 @@ function todayStr() {
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
 }
 
-const search     = ref('')
-const dateFrom   = ref(todayStr())
-const dateTo     = ref(todayStr())
-const filterOk   = ref(null)  // null | '' | 'Bedah' | 'Non Bedah'
+const search        = ref('')
+const dateFrom      = ref(todayStr())
+const dateTo        = ref(todayStr())
+const filterClosing = ref(null)  // null = semua | '' = belum closing | 'Siap Closing' | 'Belum Siap Closing'
 
 const records = computed(() => store.records ?? [])
 
 const stats = computed(() => ({
-  total:   records.value.length,
-  belum:   records.value.filter(r => !r.status_ok).length,
-  bedah:   records.value.filter(r => r.status_ok === 'Bedah').length,
-  nonBedah:records.value.filter(r => r.status_ok === 'Non Bedah').length,
+  total:        records.value.length,
+  belumClosing: records.value.filter(r => !r.status_closing).length,
+  siap:         records.value.filter(r => r.status_closing === 'Siap Closing').length,
+  belumSiap:    records.value.filter(r => r.status_closing === 'Belum Siap Closing').length,
 }))
 
 const filtered = computed(() => {
   let d = records.value
-  if (filterOk.value === '') d = d.filter(r => !r.status_ok)
-  else if (filterOk.value) d = d.filter(r => r.status_ok === filterOk.value)
+  if (filterClosing.value === '') d = d.filter(r => !r.status_closing)
+  else if (filterClosing.value)   d = d.filter(r => r.status_closing === filterClosing.value)
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r =>
@@ -61,7 +61,7 @@ function toast(msg, color='success') { snackbar.value = { show: true, msg, color
 async function onSaved()    { showForm.value = false; toast('Data disimpan.'); await load() }
 async function onVerified() { toast('Verifikasi disimpan.'); await load() }
 
-function resetFilter() { search.value = ''; filterOk.value = null; dateFrom.value = todayStr(); dateTo.value = todayStr() }
+function resetFilter() { search.value = ''; filterClosing.value = null; dateFrom.value = todayStr(); dateTo.value = todayStr() }
 
 async function load() {
   loading.value = true
@@ -109,12 +109,11 @@ onMounted(load)
 
     <!-- Stats (clickable filter) -->
     <SummaryCards
-      v-model="filterOk"
+      v-model="filterClosing"
       :cards="[
-        { value: stats.total,   label: 'Total',              color: 'primary', icon: 'ri-close-circle-line', filterValue: null },
-        { value: stats.belum,   label: 'Belum Verifikasi',   color: 'warning', icon: 'ri-time-line',         filterValue: '' },
-        { value: stats.bedah,   label: 'Bedah',              color: 'success', icon: 'ri-surgical-mask-line', filterValue: 'Bedah' },
-        { value: stats.nonBedah,label: 'Non Bedah',          color: 'info',    icon: 'ri-hospital-line',      filterValue: 'Non Bedah' },
+        { value: stats.total,        label: 'Total',              color: 'primary', icon: 'ri-close-circle-line',    filterValue: null },
+        { value: stats.siap,         label: 'Siap Closing',       color: 'success', icon: 'ri-checkbox-circle-line', filterValue: 'Siap Closing' },
+        { value: stats.belumSiap,    label: 'Belum Siap Closing', color: 'error',   icon: 'ri-close-circle-line',    filterValue: 'Belum Siap Closing' },
       ]"
     />
 
@@ -134,15 +133,14 @@ onMounted(load)
           </VCol>
           <VCol cols="12" sm="3">
             <VSelect
-              v-model="filterOk"
+              v-model="filterClosing"
               :items="[
-                { title: 'Semua Status', value: null },
-                { title: '⚪ Belum Verifikasi', value: '' },
-                { title: '🏥 Bedah', value: 'Bedah' },
-                { title: '🏨 Non Bedah', value: 'Non Bedah' },
+                { title: 'Semua Status',          value: null },
+                { title: '👍 Siap Closing',        value: 'Siap Closing' },
+                { title: '🔴 Belum Siap Closing',  value: 'Belum Siap Closing' },
               ]"
               item-title="title" item-value="value"
-              label="Status Verifikasi" variant="outlined" density="compact" hide-details rounded="lg"
+              label="Status Closing" variant="outlined" density="compact" hide-details rounded="lg"
             />
           </VCol>
           <VCol cols="auto">

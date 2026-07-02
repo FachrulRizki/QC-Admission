@@ -25,7 +25,13 @@ class EdukasiLanjutan extends Model
         'keluarga_pasien',
         'ttd_keluarga_pasien',
         'status',
+        'status_ranap',
+        'ranap_at',
         'quality_control_id',
+    ];
+
+    protected $casts = [
+        'ranap_at' => 'datetime',
     ];
 
     public function qualityControl(): BelongsTo

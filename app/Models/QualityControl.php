@@ -31,7 +31,13 @@ class QualityControl extends Model
         'note',
         'petugas',
         'status',
+        'status_ranap',
+        'ranap_at',
         'keluarga_pasien',
         'ttd_keluarga_pasien',
+    ];
+
+    protected $casts = [
+        'ranap_at' => 'datetime',
     ];
 }

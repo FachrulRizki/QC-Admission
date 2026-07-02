@@ -147,6 +147,19 @@ function resetFilter()     { search.value = ''; filterStatus.value = 'all'; date
 
 async function onSaved()   { showForm.value = false; toast('Data QC disimpan.'); await load() }
 
+async function doUpdateRanap(item) {
+  processing.value = true
+  const result = await store.updateRanap(item.id)
+  processing.value = false
+  if (result?.success) {
+    toast(`${item.nama_pasien} — status diubah ke Pindah Ranap.`, 'purple')
+    showDetail.value = false
+    await load()
+  } else {
+    toast(result?.message ?? 'Gagal update ranap.', 'error')
+  }
+}
+
 async function doDelete() {
   if (!deleteTarget.value) return
   loading.value = true
@@ -283,7 +296,11 @@ watch([dateFrom, dateTo], () => load())
           <div class="flex-grow-1 min-width-0">
             <div class="d-flex align-center gap-2 flex-wrap">
               <span class="font-weight-semibold" style="font-size:0.9rem;color:var(--qc-text)">{{ item.nama_pasien }}</span>
-              <VChip :color="isLanjutan(item) ? 'warning' : 'success'" size="x-small" variant="tonal">
+              <!-- Badge ranap — prioritas tampil jika sudah pindah ranap -->
+              <VChip v-if="item.status_ranap" color="purple" size="x-small" variant="tonal">
+                <VIcon icon="ri-hospital-fill" size="10" class="me-1" />{{ item.status_ranap }}
+              </VChip>
+              <VChip v-else :color="isLanjutan(item) ? 'warning' : 'success'" size="x-small" variant="tonal">
                 {{ isLanjutan(item) ? '⏰ Siap Edukasi Lanjutan' : '📚 Edukasi' }}
               </VChip>
             </div>
@@ -404,6 +421,15 @@ watch([dateFrom, dateTo], () => load())
             @click="editItem = {...detailItem}; showDetail = false; showForm = true"
           >
             <VIcon icon="ri-pencil-line" size="15" class="me-1" />Edit Data
+          </VBtn>
+          <!-- Tombol Pindah Ranap — muncul jika belum di-ranap -->
+          <VBtn
+            v-if="!detailItem.status_ranap"
+            color="purple" variant="tonal" rounded="lg" class="qc-action-btn"
+            :loading="processing"
+            @click="doUpdateRanap(detailItem)"
+          >
+            <VIcon icon="ri-hospital-fill" size="15" class="me-1" />Ranap
           </VBtn>
           <VBtn
             color="error" variant="tonal" rounded="lg" class="qc-action-btn"

@@ -109,4 +109,26 @@ class QualityControlController extends Controller
 
         return response()->json(['message' => 'Data berhasil dihapus.']);
     }
+
+    /**
+     * Update status ranap — dipanggil saat SIMRS konfirmasi pasien sudah pindah rawat inap.
+     * PATCH /api/quality-control/{id}/ranap
+     */
+    public function updateRanap(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status_ranap' => 'required|in:Pindah Ranap',
+        ]);
+
+        $record = $this->service->findOrFail($id);
+        $record->update([
+            'status_ranap' => $validated['status_ranap'],
+            'ranap_at'     => now(),
+        ]);
+
+        ActivityLog::record('quality-control', 'update',
+            "Status ranap QC {$record->nama_pasien} ({$record->no_reg}) → {$validated['status_ranap']}");
+
+        return response()->json(['data' => $record->fresh(), 'message' => 'Status ranap diperbarui.']);
+    }
 }

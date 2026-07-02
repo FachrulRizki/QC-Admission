@@ -94,6 +94,20 @@ export const useEdukasiLanjutanStore = defineStore('edukasiLanjutan', {
     },
 
     /**
+     * Update status ranap — panggil saat SIMRS konfirmasi pasien pindah rawat inap.
+     */
+    async updateRanap(id) {
+      try {
+        const res = await axios.patch(`/api/edukasi-lanjutan/${id}/ranap`, { status_ranap: 'Pindah Ranap' })
+        const idx = this.records.findIndex(r => r.id === id)
+        if (idx !== -1) this.records[idx] = { ...this.records[idx], status_ranap: 'Pindah Ranap', status: 'Selesai' }
+        return { success: true, data: res.data }
+      } catch (err) {
+        return { success: false, message: err.response?.data?.message ?? 'Gagal update status ranap' }
+      }
+    },
+
+    /**
      * Sync status dari DB RSUS via backend.
      * Pasien yang sudah mendapat bed → status otomatis Selesai.
      */

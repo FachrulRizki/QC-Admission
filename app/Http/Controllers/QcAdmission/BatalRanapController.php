@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Services\QcAdmission\BatalRanapService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class BatalRanapController extends Controller
 {
@@ -111,6 +112,70 @@ class BatalRanapController extends Controller
             "Closing Batal Ranap {$record->no_reg} → {$record->status_closing}");
 
         return response()->json(['data' => $record, 'message' => 'Status closing berhasil disimpan.']);
+    }
+
+    /**
+     * Ambil history bed IGD pasien berdasarkan no_reg dari SIMRS.
+     * Digunakan di tab Verifikasi untuk menampilkan bed yang pernah ditempati.
+     * GET /api/batal-ranap/{id}/bed-history
+     */
+    public function bedHistory(int $id): JsonResponse
+    {
+        $record = $this->service->findOrFail($id);
+
+        $beds = [];
+        $source = 'none';
+
+        // Coba ambil dari RSUS DB
+        if (config('services.rsus_db_enabled', false)) {
+            try {
+                $rows = \Illuminate\Support\Facades\DB::connection('rsus')
+                    ->table('BI_Bed_Igd')
+                    ->where('No_Reg', $record->no_reg)
+                    ->orWhere('No_MR', $record->no_mr)
+                    ->orderByDesc('Tgl_Masuk')
+                    ->limit(10)
+                    ->get();
+
+                $beds = $rows->map(fn($r) => [
+                    'bed_id'      => $r->No_Bed      ?? $r->Kode_Bed  ?? null,
+                    'bed_code'    => $r->No_Bed      ?? $r->Kode_Bed  ?? null,
+                    'ruangan'     => $r->Nama_Ruang  ?? null,
+                    'bangsal'     => $r->Nama_Bangsal ?? null,
+                    'tgl_masuk'   => $r->Tgl_Masuk   ?? null,
+                    'tgl_keluar'  => $r->Tgl_Keluar  ?? null,
+                    'status'      => $r->Status       ?? null,
+                    'keterangan'  => $r->Keterangan   ?? null,
+                ])->values()->all();
+
+                $source = 'rsus_db';
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('bed-history RSUS query failed: ' . $e->getMessage());
+            }
+        }
+
+        // Fallback: kembalikan data dari record batal_ranap itu sendiri (bed_id + ruangan)
+        if (empty($beds) && ($record->bed_id || $record->ruangan)) {
+            $beds = [[
+                'bed_id'     => $record->bed_id,
+                'bed_code'   => $record->bed_id,
+                'ruangan'    => $record->ruangan,
+                'bangsal'    => $record->ruangan,
+                'tgl_masuk'  => $record->tgl_daftar,
+                'tgl_keluar' => null,
+                'status'     => 'occupied',
+                'keterangan' => 'Data dari entry Batal Ranap',
+            ]];
+            $source = 'local';
+        }
+
+        return response()->json([
+            'data'    => $beds,
+            'source'  => $source,
+            'no_reg'  => $record->no_reg,
+            'no_mr'   => $record->no_mr,
+            'pasien'  => $record->nama_pasien,
+        ]);
     }
 
     public function destroy(int $id): JsonResponse

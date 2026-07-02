@@ -75,9 +75,14 @@ export const useBatalRanapStore = defineStore('batalRanap', {
       }
     },
 
-    async verifikasi(id, payload) {
+    async verifikasi(id, statusOk, note = '') {
       try {
-        const response = await axios.patch(`/api/batal-ranap/${id}/verifikasi`, payload)
+        const response = await axios.patch(`/api/batal-ranap/${id}/verifikasi`, {
+          status_ok: statusOk,
+          note: note || undefined,
+        })
+        const idx = this.records.findIndex(r => r.id === id)
+        if (idx !== -1) this.records[idx] = { ...this.records[idx], status_ok: statusOk }
         return { success: true, data: response.data }
       } catch (err) {
         return { success: false, message: err.response?.data?.message ?? 'Gagal verifikasi data' }

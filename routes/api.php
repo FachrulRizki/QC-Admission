@@ -73,11 +73,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Quality Control — admin + qc_admission
     Route::middleware('role:admin,qc_admission')->group(function () {
         Route::apiResource('quality-control', QualityControlController::class);
+        Route::patch('quality-control/{id}/ranap', [QualityControlController::class, 'updateRanap']);
     });
 
     // Edukasi Lanjutan — admin + qc_admission
     Route::middleware('role:admin,qc_admission')->group(function () {
         Route::apiResource('edukasi-lanjutan', EdukasiLanjutanController::class);
+        Route::patch('edukasi-lanjutan/{id}/ranap', [EdukasiLanjutanController::class, 'updateRanap']);
         // Sync status dari RSUS (manual trigger dari frontend)
         Route::get('edukasi-lanjutan/sync-rsus',  [EdukasiLanjutanController::class, 'syncRsus']);
         Route::get('edukasi-lanjutan-pending',    [EdukasiLanjutanController::class, 'pending']);
@@ -112,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('batal-ranap/{id}',                [BatalRanapController::class, 'destroy']);
         Route::patch ('batal-ranap/{id}/verifikasi',          [BatalRanapController::class, 'verifikasi']);
         Route::patch ('batal-ranap/{id}/konfirmasi-closing',  [BatalRanapController::class, 'konfirmasiClosing']);
+        Route::get   ('batal-ranap/{id}/bed-history',         [BatalRanapController::class, 'bedHistory']);
     });
 
     // User management — admin only

@@ -10,7 +10,7 @@ const props = defineProps({
   patient:    { type: Object, default: null },
   mode:       { type: String, default: 'view' },
 })
-const emit = defineEmits(['update:modelValue', 'saved'])
+const emit = defineEmits(['update:modelValue', 'saved', 'ranap'])
 
 const store        = useEdukasiLanjutanStore()
 const pegawaiStore = usePegawaiStore()
@@ -236,6 +236,13 @@ function fmtDate(d) {
                 variant="tonal" size="x-small" class="mt-1"
               >{{ patient.status || 'Menunggu' }}</VChip>
             </div>
+            <!-- Status Ranap -->
+            <div class="info-cell info-cell--full" v-if="patient.status_ranap">
+              <span class="ic-lbl">Status Rawat Inap</span>
+              <VChip color="purple" variant="tonal" size="x-small" class="mt-1" prepend-icon="ri-hospital-fill">
+                {{ patient.status_ranap }}
+              </VChip>
+            </div>
           </div>
 
           <!-- Timeline riwayat -->
@@ -410,6 +417,18 @@ function fmtDate(d) {
       <div class="d-flex gap-3 px-5 py-4">
         <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="close">Tutup</VBtn>
         <template v-if="tabView === 'riwayat'">
+          <!-- Tombol Pindah Ranap — hanya tampil jika pasien belum ranap -->
+          <VBtn
+            v-if="!patient.status_ranap"
+            color="purple" variant="tonal" rounded="lg"
+            prepend-icon="ri-hospital-fill"
+            @click="emit('ranap', patient); close()"
+          >
+            Pindah Ranap
+          </VBtn>
+          <VChip v-else color="purple" variant="tonal" size="small" class="align-self-center">
+            <VIcon icon="ri-hospital-fill" size="12" class="me-1" />{{ patient.status_ranap }}
+          </VChip>
           <VBtn color="warning" variant="tonal" rounded="lg" prepend-icon="ri-add-circle-line" @click="tabView = 'baru'">
             Tambah Sesi
           </VBtn>
