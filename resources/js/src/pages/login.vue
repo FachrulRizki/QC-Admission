@@ -273,7 +273,7 @@ function loginWithSSO() {
 // ── Wrap ──────────────────────────────────────────────────────────────────────
 .login-wrap {
   min-height: 100dvh;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  background: linear-gradient(135deg, #004d30 0%, #00B37E 60%, #00C896 100%);
   display: flex;
   align-items: stretch;
   position: relative;
@@ -284,14 +284,14 @@ function loginWithSSO() {
 .login-bg-shape {
   position: absolute;
   border-radius: 50%;
-  opacity: 0.08;
+  opacity: 0.12;
   pointer-events: none;
-  background: rgba(255,255,255,0.6);
-  filter: blur(60px);
+  background: rgba(255,255,255,0.8);
+  filter: blur(70px);
 }
 .login-bg-shape--1 { width: 500px; height: 500px; top: -200px; right: -100px; }
-.login-bg-shape--2 { width: 300px; height: 300px; bottom: -100px; left: -50px; opacity: 0.05; }
-.login-bg-shape--3 { width: 200px; height: 200px; top: 40%; left: 30%; opacity: 0.04; }
+.login-bg-shape--2 { width: 300px; height: 300px; bottom: -100px; left: -50px; opacity: 0.07; }
+.login-bg-shape--3 { width: 200px; height: 200px; top: 40%; left: 30%; opacity: 0.06; }
 
 // ── Container ─────────────────────────────────────────────────────────────────
 .login-container {

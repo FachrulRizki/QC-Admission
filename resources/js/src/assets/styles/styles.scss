@@ -1,390 +1,411 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  QC Admission — Global Design System  (green primary: #00B37E)
-//  Fully responsive: HP (≤599) · Tablet (600–959) · Desktop (960+) · TV (1440+)
+//  QC Admission — Design System v3
+//  Modern · Minimalist · Responsive · Card-Based
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ─── Layout resets ───────────────────────────────────────────────────────────
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+html, body {
+  overflow-x: hidden !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body { font-family: 'Inter', system-ui, sans-serif !important; }
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
 .layout-overlay, .v-overlay__scrim { transition: none !important; }
 .layout-page-content, .layout-wrapper { box-shadow: none !important; }
-.page-transition-enter-active, .page-transition-leave-active { transition: opacity 0.18s ease; }
+.page-transition-enter-active, .page-transition-leave-active { transition: opacity 0.12s; }
 .page-transition-enter-from, .page-transition-leave-to { opacity: 0; }
 
-// Prevent horizontal overflow at root
-html, body { overflow-x: hidden !important; max-width: 100vw; }
-
-// ─── Root CSS variables ───────────────────────────────────────────────────────
+// ─── CSS Variables ────────────────────────────────────────────────────────────
 :root {
   --qc-green:       #00B37E;
   --qc-green-dark:  #009E6B;
-  --qc-green-light: #D7F5EA;
-  --qc-text:        #1A1F1E;
-  --qc-text-sub:    #5C6B67;
-  --qc-border:      #E1E7E5;
-  --qc-bg:          #F4F7F6;
-  --qc-shadow:      rgba(16, 24, 22, 0.08);
+  --qc-green-light: #E8F8F2;
+  --qc-blue:        #6366F1;
+  --qc-border:      #F1F5F9;
+  --qc-bg:          #F8FAFC;
+  --qc-surface:     #FFFFFF;
+  --qc-text:        #0F172A;
+  --qc-text-2:      #64748B;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
 }
 
-// ─── Typography ───────────────────────────────────────────────────────────────
-body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
-
-// ─── Card overrides ───────────────────────────────────────────────────────────
+// ─── Cards ────────────────────────────────────────────────────────────────────
 .v-card:not(.v-card--elevated) { box-shadow: none !important; }
 .v-card[border] {
-  transition: box-shadow 0.2s ease, transform 0.18s ease;
   border-color: var(--qc-border) !important;
+  transition: box-shadow 0.2s, transform 0.18s, border-color 0.15s;
 }
 
 // ─── Chips ────────────────────────────────────────────────────────────────────
-.v-chip { border-radius: 8px !important; font-weight: 600; }
-.v-chip.v-chip--size-x-small { border-radius: 6px !important; }
+.v-chip {
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+.v-chip--size-x-small { font-size: 0.7rem !important; }
+.v-chip--size-small    { font-size: 0.75rem !important; }
 
 // ─── Buttons ──────────────────────────────────────────────────────────────────
-.v-btn:not(.v-btn--icon) { letter-spacing: 0.01em !important; font-weight: 600 !important; }
-.v-btn--variant-elevated { box-shadow: 0 2px 8px rgba(0,179,126,0.25) !important; }
-
-// ─── TABLE — core responsive fix ─────────────────────────────────────────────
-// Vuetify VDataTable responsive wrapper
-.v-data-table {
-  width: 100% !important;
-  max-width: 100% !important;
+.v-btn:not(.v-btn--icon) {
+  letter-spacing: 0.01em !important;
+  font-weight: 600 !important;
 }
 
-// Table container should clip, not overflow the page
+// ─── Input — fix floating label & placeholder ghost ──────────────────────────
+// Root fix: sembunyikan placeholder SELALU kecuali saat field focused
+// Ini mencegah label + placeholder terlihat bersamaan
+.v-field--variant-outlined:not(.v-field--focused) .v-field__input::placeholder,
+.v-field--variant-outlined:not(.v-field--focused) .v-field__input::-webkit-input-placeholder,
+.v-field--variant-outlined:not(.v-field--focused) .v-field__input::-moz-placeholder,
+.v-field--variant-outlined:not(.v-field--focused) .v-field__input:-ms-input-placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
+}
+// Hanya tampilkan saat focused atau field tidak punya label floating
+.v-field--variant-outlined.v-field--focused .v-field__input::placeholder {
+  color: rgba(var(--v-theme-on-surface), 0.35) !important;
+  opacity: 1 !important;
+}
+.v-field--variant-outlined.v-field--focused .v-field__outline {
+  --v-field-border-width: 2px !important;
+}
+
+// ─── Table ────────────────────────────────────────────────────────────────────
+.v-data-table { width: 100% !important; font-size: 0.875rem !important; }
 .v-data-table .v-table__wrapper {
   overflow-x: auto !important;
-  overflow-y: visible !important;
   -webkit-overflow-scrolling: touch;
-  max-width: 100%;
 }
-
-// Table headers — compact, no nowrap on most devices
 .v-data-table .v-data-table__thead th {
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   font-size: 0.72rem !important;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  background: rgba(var(--v-theme-on-surface), 0.025) !important;
-  color: rgba(var(--v-theme-on-surface), 0.55) !important;
-  padding: 8px 12px !important;
-}
-
-// Table cells — proper wrapping
-.v-data-table .v-data-table__tbody td {
-  padding: 8px 12px !important;
-  vertical-align: middle;
-}
-
-// ─── Focus ring ───────────────────────────────────────────────────────────────
-.v-field--focused .v-field__outline { --v-field-border-width: 2px !important; }
-
-// ─── Navbar glassmorphism ─────────────────────────────────────────────────────
-.layout-navbar.navbar-blur {
-  background: rgba(var(--v-theme-surface), 0.94) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  letter-spacing: 0.05em;
+  background: var(--qc-bg) !important;
+  color: var(--qc-text-2) !important;
+  padding: 10px 16px !important;
   border-bottom: 1px solid var(--qc-border) !important;
+  white-space: nowrap;
+}
+.v-data-table .v-data-table__tbody td {
+  padding: 12px 16px !important;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--qc-border) !important;
+  color: var(--qc-text);
+}
+.v-data-table .v-data-table__tbody tr:hover td {
+  background: var(--qc-green-light) !important;
+}
+.v-data-table .v-data-table__tbody tr { cursor: pointer; }
+
+// ─── Navbar ───────────────────────────────────────────────────────────────────
+.layout-navbar.navbar-blur {
+  background: rgba(255,255,255,0.92) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid var(--qc-border) !important;
+  box-shadow: var(--shadow-xs) !important;
 }
 
-// ─── Vertical nav pill style ──────────────────────────────────────────────────
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
 .nav-vertical .layout-vertical-nav {
   border-right: 1px solid var(--qc-border) !important;
   background: #fff !important;
 }
 .layout-vertical-nav .nav-link {
   border-radius: 10px !important;
-  margin: 1px 8px !important;
-  transition: background 0.15s, transform 0.12s !important;
+  margin: 2px 10px !important;
+  transition: all 0.15s !important;
   &:hover {
-    background: rgba(0,179,126, 0.07) !important;
+    background: var(--qc-green-light) !important;
     transform: translateX(2px);
   }
   &.router-link-active, &.router-link-exact-active {
-    background: rgba(0,179,126, 0.12) !important;
-    .v-icon, .nav-item-title { color: var(--qc-green) !important; }
+    background: var(--qc-green-light) !important;
+    .v-icon, .nav-item-title { color: var(--qc-green) !important; font-weight: 700 !important; }
   }
 }
 
-// ─── Text helpers ─────────────────────────────────────────────────────────────
-.page-title    { font-size: 1.25rem; font-weight: 700; line-height: 1.3; }
-.page-subtitle { font-size: 0.875rem; color: var(--qc-text-sub); }
-
-// ─── Form sections ────────────────────────────────────────────────────────────
-.form-section {
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.form-section-label {
-  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: rgba(var(--v-theme-on-surface), 0.45);
-  margin-bottom: 10px;
-}
-.qc-label {
-  font-size: 0.8125rem; font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-  margin-bottom: 4px; display: block;
-}
-.qc-label-required::after { content: " *"; color: rgb(var(--v-theme-error)); }
-.signature-canvas-wrapper {
-  border: 2px dashed rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 8px; background: rgba(var(--v-theme-surface), 1);
-  cursor: crosshair; overflow: hidden;
-}
-.signature-canvas-wrapper:focus-within { border-color: var(--qc-green); }
-
-// ─── Hero Banner ─────────────────────────────────────────────────────────────
+// ─── Page Hero ────────────────────────────────────────────────────────────────
 .page-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
-  padding: 22px 24px;
-  margin-bottom: 20px;
-  min-height: 110px;
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  min-height: 100px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: linear-gradient(135deg, var(--qc-green), var(--qc-green-dark));
+  gap: 16px;
+  margin-bottom: 20px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50px; right: -50px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    pointer-events: none;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: 20%;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    pointer-events: none;
+  }
 
   &__content { position: relative; z-index: 2; flex: 1; min-width: 0; }
-  &__title    { font-size: 1.45rem; font-weight: 800; color: #fff; margin-bottom: 3px; line-height: 1.2; }
-  &__subtitle { font-size: 0.83rem; color: rgba(255,255,255,0.82); margin: 0; }
-  &__icon     {
-    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
-    opacity: 0.1; z-index: 1; font-size: 7rem !important; color: #fff; pointer-events: none;
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 4px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  &__subtitle {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.75);
+    margin: 0;
   }
   &__badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(255,255,255,0.2); border-radius: 20px;
-    padding: 3px 10px; font-size: 0.68rem; font-weight: 700;
-    color: #fff; margin-bottom: 6px; letter-spacing: 0.04em; text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(255,255,255,0.12);
   }
-  &::before {
-    content: ''; position: absolute; top: -30px; right: -30px;
-    width: 160px; height: 160px; border-radius: 50%;
-    background: rgba(255,255,255,0.08); z-index: 1; pointer-events: none;
+  &__actions {
+    position: relative; z-index: 2;
+    display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+  }
+  &__icon {
+    position: absolute; right: 20px; top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.07; font-size: 8rem !important;
+    color: #fff; pointer-events: none; z-index: 1;
   }
 
-  // Colour variants
-  &--dashboard { background: linear-gradient(135deg, #003d26, var(--qc-green-dark)); }
-  &--qc        { background: linear-gradient(135deg, #00B37E, #009E6B); }
-  &--edukasi   { background: linear-gradient(135deg, #00B37E, #00C896); }
-  &--batal     { background: linear-gradient(135deg, #e63946, #c1121f); }
-  &--upselling { background: linear-gradient(135deg, #2d6a4f, #52b788); }
-  &--view      { background: linear-gradient(135deg, #00B37E, #00f2c0); }
-  &--master    { background: linear-gradient(135deg, #00B37E, #009E6B); }
-  &--user      {
-    background: linear-gradient(135deg, #43e97b, #38f9d7);
-    .page-hero__title, .page-hero__subtitle, .page-hero__badge { color: rgba(0,50,30,0.92) !important; }
-    .page-hero__icon { color: rgba(0,50,30,0.1) !important; }
-  }
+  // Variants
+  &--qc        { background: linear-gradient(135deg, #0F4C35 0%, #00B37E 100%); }
+  &--edukasi   { background: linear-gradient(135deg, #065F46 0%, #10B981 100%); }
+  &--batal     { background: linear-gradient(135deg, #7F1D1D 0%, #EF4444 100%); }
+  &--upselling { background: linear-gradient(135deg, #1E3A5F 0%, #3B82F6 100%); }
+  &--dashboard { background: linear-gradient(135deg, #1E1B4B 0%, #6366F1 100%); }
+  &--view      { background: linear-gradient(135deg, #0F4C35 0%, #00B37E 100%); }
+  &--master    { background: linear-gradient(135deg, #1E293B 0%, #475569 100%); }
+  &--activity  { background: linear-gradient(135deg, #1C1917 0%, #44403C 100%); }
+  &--user      { background: linear-gradient(135deg, #0C4A6E 0%, #0EA5E9 100%); }
 }
 
-// ─── Stat cards ───────────────────────────────────────────────────────────────
+// ─── Stat / Summary Cards ─────────────────────────────────────────────────────
 .stat-card {
-  transition: box-shadow 0.2s ease, transform 0.18s ease;
-  &:hover {
-    box-shadow: 0 6px 18px rgba(0,179,126,0.14) !important;
+  transition: box-shadow 0.2s, transform 0.18s, border-color 0.15s;
+  &.cursor-pointer:hover {
+    box-shadow: var(--shadow-md) !important;
     transform: translateY(-2px);
+    border-color: rgba(var(--v-theme-primary), 0.25) !important;
   }
 }
-.stat-active         { border-color: var(--qc-green) !important;    background: rgba(0,179,126,0.06) !important; }
-.stat-active-success { border-color: #56CA00 !important;             background: rgba(86,202,0,0.06)  !important; }
-.stat-active-warning { border-color: #FFB400 !important;             background: rgba(255,180,0,0.06) !important; }
-.stat-active-error   { border-color: #FF4C51 !important;             background: rgba(255,76,81,0.06) !important; }
-.stat-active-info    { border-color: #16B1FF !important;             background: rgba(22,177,255,0.06)!important; }
+.stat-active         { border-color: var(--qc-green) !important;       background: var(--qc-green-light) !important; }
+.stat-active-success { border-color: #10B981 !important;               background: rgba(16,185,129,0.07) !important; }
+.stat-active-warning { border-color: #F59E0B !important;               background: rgba(245,158,11,0.07) !important; }
+.stat-active-error   { border-color: #EF4444 !important;               background: rgba(239,68,68,0.07) !important; }
+.stat-active-info    { border-color: #3B82F6 !important;               background: rgba(59,130,246,0.07) !important; }
 
-// ─── Filter bar & quick cards ─────────────────────────────────────────────────
-.filter-bar { background: #fff; border: 1px solid var(--qc-border); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
-.quick-card {
-  transition: box-shadow 0.18s, transform 0.15s;
-  &:hover { box-shadow: 0 4px 18px rgba(0,179,126,0.18) !important; transform: translateY(-2px); }
+// ─── Filter card ──────────────────────────────────────────────────────────────
+.filter-card {
+  background: #fff;
+  border: 1px solid var(--qc-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
 }
 
-// ─── Status chip aliases ──────────────────────────────────────────────────────
-.chip-edukasi          { background: rgba(0,179,126,0.12) !important;  color: #005C42 !important; }
-.chip-edukasi-lanjutan { background: rgba(255,180,0,0.14) !important;  color: #B37A00 !important; }
-.chip-batal            { background: rgba(255,76,81,0.12) !important;  color: #C4282D !important; }
-.chip-durasi-ok        { background: rgba(86,202,0,0.12) !important;   color: #3d8f00 !important; }
-.chip-durasi-warn      { background: rgba(255,180,0,0.14) !important;  color: #b37d00 !important; }
-.chip-durasi-danger    { background: rgba(255,76,81,0.12) !important;  color: #c4282d !important; }
+// ─── Patient row / card ───────────────────────────────────────────────────────
+.patient-row {
+  cursor: pointer;
+  transition: background 0.12s;
+  &:hover { background: var(--qc-green-light) !important; }
+}
 
-// ─── Dashboard table cursor ───────────────────────────────────────────────────
-.batal-table :deep(tr) { cursor: pointer; }
-.batal-table :deep(tr:hover td) { background: rgba(0,179,126,0.03); }
+// Active state for touch devices
+.qc-row, .br-row, .us-row {
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: rgba(0,0,0,0.04) !important; }
+}
 
-// ─── Nav section label ────────────────────────────────────────────────────────
-.nav-section-label { margin-top: 4px; padding-bottom: 2px; }
+// ─── Dialog ───────────────────────────────────────────────────────────────────
+.v-dialog > .v-overlay__content > .v-card {
+  border-radius: var(--radius-xl) !important;
+}
+
+// ─── Scrollbar ────────────────────────────────────────────────────────────────
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+.cursor-pointer { cursor: pointer; }
+.min-width-0    { min-width: 0; }
+.font-mono      { font-family: 'JetBrains Mono', 'Fira Code', monospace !important; }
+.text-truncate  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lh-1           { line-height: 1.1 !important; }
+
+// ─── Form section ─────────────────────────────────────────────────────────────
+.fsec {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--qc-bg);
+  border: 1px solid var(--qc-border);
+  transition: border-color 0.15s;
+  &:focus-within { border-color: var(--qc-green); }
+}
+.fsec--white { background: #fff; }
+.fsec-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--qc-text-2);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.form-section { @extend .fsec; }
+.form-section-label { @extend .fsec-label; }
+
+.signature-canvas-wrapper {
+  border: 2px dashed var(--qc-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  cursor: crosshair;
+  overflow: hidden;
+  &:focus-within { border-color: var(--qc-green); }
+}
+
+// ─── Info/detail label-value ──────────────────────────────────────────────────
+.fl {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--qc-text-2);
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+.fv {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--qc-text);
+  margin-bottom: 8px;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  RESPONSIVE BREAKPOINTS
+//  RESPONSIVE
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ─── Mobile ≤ 599px ──────────────────────────────────────────────────────────
 @media (max-width: 599px) {
-  // Page padding
-  .page-content-container { padding: 10px 8px !important; }
-
-  // Hero banner — compact
   .page-hero {
-    padding: 14px 14px;
-    min-height: 84px;
-    border-radius: 10px;
-    gap: 8px;
-    &__title     { font-size: 1.1rem; }
-    &__subtitle  { font-size: 0.75rem; display: none; } // hide on very small
-    &__icon      { font-size: 4rem !important; right: 8px; }
-    &__badge     { font-size: 0.62rem; padding: 2px 8px; margin-bottom: 4px; }
+    padding: 14px 16px;
+    min-height: 82px;
+    border-radius: var(--radius-md);
+    &__title    { font-size: 1.2rem; }
+    &__subtitle { font-size: 0.78rem; }
+    &__icon     { font-size: 4rem !important; right: 10px; }
+    &__badge    { font-size: 0.62rem; margin-bottom: 4px; }
   }
 
-  // Stat cards — smaller text
-  .stat-card .text-h4 { font-size: 1.35rem !important; }
-  .stat-card .text-h5 { font-size: 1.15rem !important; }
-  .stat-card.pa-4 { padding: 10px !important; }
-  .stat-card.pa-3 { padding: 8px !important; }
-
-  // Form sections
-  .form-section { padding: 10px !important; }
-
-  // Tables — allow horizontal scroll but CONTAINED in card
-  .v-data-table .v-table__wrapper {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  // Hide non-critical columns on mobile
-  // QC table: hide Jaminan, Durasi, Edukasi Kamar
-  .qc-table :deep(th:nth-child(4)),
-  .qc-table :deep(td:nth-child(4)),
-  .qc-table :deep(th:nth-child(7)),
-  .qc-table :deep(td:nth-child(7)) { display: none !important; }
-
-  // Batal Ranap: hide Ruangan, Diagnosa
-  .batal-table :deep(th:nth-child(5)),
-  .batal-table :deep(td:nth-child(5)),
-  .batal-table :deep(th:nth-child(6)),
-  .batal-table :deep(td:nth-child(6)) { display: none !important; }
-
-  // Activity log: hide IP, Role
-  .activity-table :deep(th:nth-child(3)),
-  .activity-table :deep(td:nth-child(3)),
-  .activity-table :deep(th:nth-child(7)),
-  .activity-table :deep(td:nth-child(7)) { display: none !important; }
-
-  // Up selling: hide Jaminan, Rek Kelas
-  .upselling-table :deep(th:nth-child(4)),
-  .upselling-table :deep(td:nth-child(4)),
-  .upselling-table :deep(th:nth-child(5)),
-  .upselling-table :deep(td:nth-child(5)) { display: none !important; }
-
-  // Dialogs — bottom sheet
+  // Semua dialog jadi bottom sheet di HP
   .v-dialog > .v-overlay__content {
     margin: 0 !important;
     align-items: flex-end !important;
     max-width: 100% !important;
+    width: 100% !important;
   }
   .v-dialog > .v-overlay__content > .v-card {
     border-radius: 20px 20px 0 0 !important;
-    max-height: 94dvh;
+    max-height: 95dvh !important;
     overflow-y: auto;
+    width: 100%;
   }
 
-  // Search field in toolbar — full width
-  .v-card .v-text-field[style*='max-width'] { max-width: 100% !important; }
-
-  // Filter rows — stack vertically
-  .filter-bar .v-row { flex-direction: column; }
-}
-
-// ─── Tablet 600–959px ────────────────────────────────────────────────────────
-@media (min-width: 600px) and (max-width: 959px) {
-  .page-content-container { padding: 12px 10px !important; }
-
-  .page-hero {
-    padding: 18px 20px;
-    min-height: 98px;
-    &__title    { font-size: 1.3rem; }
-    &__subtitle { font-size: 0.82rem; }
-    &__icon     { font-size: 5.5rem !important; }
-  }
-
-  // Tables — allow scroll but cards contain them
+  // Tabel — paksa overflow scroll horizontal
   .v-data-table .v-table__wrapper {
     overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
+    max-width: 100vw !important;
+  }
+  // Sembunyikan kolom non-kritis di HP
+  .qc-table :deep(th:nth-child(n+4):nth-child(-n+5)),
+  .qc-table :deep(td:nth-child(n+4):nth-child(-n+5)) { display: none !important; }
+
+  .batal-table :deep(th:nth-child(n+5):nth-child(-n+7)),
+  .batal-table :deep(td:nth-child(n+5):nth-child(-n+7)) { display: none !important; }
+
+  // Filter card row — stack vertical
+  .v-card .v-row { row-gap: 8px !important; }
+
+  // Stat cards — angka lebih kecil
+  .stat-card .text-h3 { font-size: 1.6rem !important; }
+
+  // Page content padding
+  .layout-page-content { padding-inline: 12px !important; }
+
+  // Filter VRow — stack vertikal dan ada jarak antar field
+  .v-card .v-row.v-row--dense > .v-col {
+    padding-bottom: 6px !important;
   }
 
-  // Less critical columns hidden on tablet
-  .activity-table :deep(th:nth-child(7)),
-  .activity-table :deep(td:nth-child(7)) { display: none !important; }
-
-  // Dialogs — centered but not bottom sheet
-  .v-dialog > .v-overlay__content { max-width: 92vw !important; }
+  // Touch target minimum 44px
+  .qc-row, .br-row, .us-row, .edu-card {
+    min-height: 64px;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
-// ─── Desktop ≥ 960px ──────────────────────────────────────────────────────────
+@media (max-width: 768px) {
+  .db-page { padding: 10px !important; }
+  .db-grid--row1, .db-grid--row2 {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: unset !important;
+  }
+  .db-kpi-row { display: none !important; }
+}
+
+@media (min-width: 600px) and (max-width: 959px) {
+  .v-dialog > .v-overlay__content { max-width: 90vw !important; }
+}
+
 @media (min-width: 960px) {
   .v-data-table .v-table__wrapper { overflow-x: visible; }
 }
 
-// ─── Large screen / TV ≥ 1440px ──────────────────────────────────────────────
 @media (min-width: 1440px) {
   .page-content-container { max-width: 1600px; margin: 0 auto; }
-  .page-hero__title { font-size: 1.75rem; }
 }
 
-// ─── Dashboard grid responsive ────────────────────────────────────────────────
-// Dashboard has its own inline grid styles, but ensure collapse on mobile
-@media (max-width: 768px) {
-  // Force dashboard grid to single column
-  .db-grid--row1,
-  .db-grid--row2 {
-    grid-template-columns: 1fr !important;
-    grid-template-areas: unset !important;
-  }
-  .db-grid__avg,
-  .db-grid__matrix,
-  .db-grid__filter,
-  .db-grid__petugas,
-  .db-grid__funnel,
-  .db-grid__bar {
-    grid-area: unset !important;
-  }
-  // Dashboard KPI cards
-  .db-kpi-row { display: none !important; }
-  // Dashboard page padding
-  .db-page { padding: 8px !important; }
-  // Dashboard topbar compact
-  .db-topbar { padding: 8px 12px !important; flex-wrap: wrap; gap: 8px !important; }
-  // Dashboard native table — horizontal scroll contained
-  .qc-table-scroll { overflow-x: auto !important; max-height: none !important; }
-  .ds-table { min-width: unset !important; width: 100% !important; }
-  // Hide some columns in dashboard QC table
-  .ds-th:nth-child(5),
-  .ds-td:nth-child(5),
-  .ds-th:nth-child(7),
-  .ds-td:nth-child(7),
-  .ds-th:nth-child(8),
-  .ds-td:nth-child(8) { display: none !important; }
-}
-
-@media (min-width: 769px) and (max-width: 1100px) {
-  // Tablet-specific dashboard grid
-  .db-grid--row1 {
-    grid-template-columns: 1fr 1fr !important;
-    grid-template-areas: 'avg matrix' 'filter filter' !important;
-  }
-  .db-grid--row2 {
-    grid-template-columns: 1fr 1fr !important;
-    grid-template-areas: 'petugas funnel' 'bar bar' !important;
-  }
-}
-
-// ─── Print ────────────────────────────────────────────────────────────────────
 @media print {
   .layout-navbar, .layout-vertical-nav, .page-hero, .v-btn { display: none !important; }
-  .layout-page-content { padding: 0 !important; }
-  .v-card { box-shadow: none !important; border: 1px solid #ddd !important; }
-  .v-data-table .v-table__wrapper { overflow-x: visible !important; }
 }

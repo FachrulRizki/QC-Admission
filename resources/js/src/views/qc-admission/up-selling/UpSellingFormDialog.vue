@@ -182,7 +182,6 @@ function close() {
           variant="outlined" density="compact" readonly
           prepend-inner-icon="ri-calendar-check-line"
           bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-          placeholder="Otomatis dari NoReg..."
           class="mb-3" hide-details
         />
 
@@ -207,7 +206,6 @@ function close() {
           prepend-inner-icon="ri-search-line"
           clearable no-filter
           :loading="noRegLoading || pasienStore.loading"
-          placeholder="Cari No. Reg / No. MR / Nama..."
           no-data-text="Ketik min. 2 karakter..."
           class="mb-3" hide-details="auto"
         >

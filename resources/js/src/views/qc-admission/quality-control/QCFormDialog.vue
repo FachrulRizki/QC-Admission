@@ -207,7 +207,6 @@ function close() {
             prepend-inner-icon="ri-search-line"
             clearable no-filter
             :loading="noRegLoading || pasienStore.loading"
-            placeholder="Ketik minimal 2 karakter untuk mencari..."
             no-data-text="Ketik min. 2 karakter..."
             class="mb-3" hide-details="auto"
           >
@@ -263,7 +262,6 @@ function close() {
                 v-model="form.status_ket" label="Status Pasien"
                 variant="outlined" density="compact" readonly hide-details
                 prepend-inner-icon="ri-information-line"
-                placeholder="Otomatis dari data RSUS..."
                 bg-color="rgba(var(--v-theme-on-surface), 0.03)"
               />
             </VCol>
@@ -275,7 +273,6 @@ function close() {
                 v-model="form.tgl_daftar" label="Tgl. Daftar Pasien"
                 variant="outlined" density="compact" readonly hide-details
                 prepend-inner-icon="ri-calendar-check-line"
-                placeholder="Pilih pasien..."
                 bg-color="rgba(var(--v-theme-on-surface), 0.03)"
               />
             </VCol>
@@ -302,7 +299,6 @@ function close() {
             variant="outlined" density="compact"
             prepend-inner-icon="ri-hospital-line"
             class="mb-3" hide-details="auto"
-            placeholder="Nama kamar / ruangan edukasi..."
           />
 
           <VRow dense>

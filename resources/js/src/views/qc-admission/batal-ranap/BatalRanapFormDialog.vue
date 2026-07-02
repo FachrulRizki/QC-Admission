@@ -220,7 +220,6 @@ function statusClosingColor(v) {
             prepend-inner-icon="ri-search-line"
             clearable no-filter
             :loading="noRegLoading || pasienStore.loading"
-            placeholder="Ketik minimal 2 karakter..."
             no-data-text="Ketik min. 2 karakter..."
             class="mb-3" hide-details="auto"
           >
@@ -254,7 +253,6 @@ function statusClosingColor(v) {
                 variant="outlined" density="compact" readonly hide-details
                 prepend-inner-icon="ri-calendar-check-line"
                 bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-                placeholder="Otomatis dari NoReg..."
               />
             </VCol>
             <VCol cols="5">

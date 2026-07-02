@@ -1,99 +1,49 @@
 <script setup>
 import axios from 'axios'
+import SummaryCards from '@/components/SummaryCards.vue'
 
-const loading        = ref(false)
-const records        = ref([])
-const search         = ref('')
-const filterModule   = ref('')
-const filterAction   = ref('')
-const filterUser     = ref('')
-const filterDateFrom = ref('')
-const filterDateTo   = ref('')
-const page           = ref(1)
-const perPage        = ref(30)
-const total          = ref(0)
-const lastPage       = ref(1)
+const loading   = ref(false)
+const records   = ref([])
+const total     = ref(0)
+const lastPage  = ref(1)
+const page      = ref(1)
+
+const search       = ref('')
+const filterModule = ref('')
+const filterAction = ref('')
+const dateFrom     = ref('')
+const dateTo       = ref('')
 
 const MODULE_OPTIONS = [
-  { title: 'Semua Modul',      value: '' },
-  { title: 'Quality Control',  value: 'quality-control' },
-  { title: 'Edukasi Lanjutan', value: 'edukasi-lanjutan' },
-  { title: 'Batal Ranap',      value: 'batal-ranap' },
-  { title: 'Up Selling',       value: 'up-selling' },
-  { title: 'Master Data',      value: 'master-data' },
-  { title: 'User',             value: 'user' },
-  { title: 'Auth',             value: 'auth' },
-]
+  '','quality-control','edukasi-lanjutan','batal-ranap','up-selling','user','auth',
+].map(v => ({ title: v ? v.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Semua Modul', value: v }))
 
 const ACTION_OPTIONS = [
-  { title: 'Semua Aksi',   value: '' },
-  { title: 'Login',        value: 'login' },
-  { title: 'Logout',       value: 'logout' },
-  { title: 'Create',       value: 'create' },
-  { title: 'Update',       value: 'update' },
-  { title: 'Delete',       value: 'delete' },
-  { title: 'Verifikasi',   value: 'verifikasi' },
-]
+  '', 'login', 'logout', 'create', 'update', 'delete', 'verifikasi', 'closing',
+].map(v => ({ title: v ? v.charAt(0).toUpperCase()+v.slice(1) : 'Semua Aksi', value: v }))
 
 const headers = [
-  { title: 'Waktu',       key: 'created_at',  sortable: true, width: '160px' },
-  { title: 'User',        key: 'user_name',   sortable: true },
-  { title: 'Role',        key: 'user_role',   sortable: true },
-  { title: 'Modul',       key: 'module',      sortable: true },
-  { title: 'Aksi',        key: 'action',      sortable: true, align: 'center' },
-  { title: 'Keterangan',  key: 'subject',     sortable: false },
-  { title: 'IP',          key: 'ip_address',  sortable: false, width: '110px' },
+  { title: 'Waktu',      key: 'created_at', width: '155px' },
+  { title: 'User',       key: 'user_name' },
+  { title: 'Role',       key: 'user_role',  align: 'center', width: '110px' },
+  { title: 'Modul',      key: 'module',     align: 'center', width: '140px' },
+  { title: 'Aksi',       key: 'action',     align: 'center', width: '110px' },
+  { title: 'Keterangan', key: 'subject' },
 ]
 
-function actionColor(a) {
-  return { login:'success', logout:'secondary', create:'primary', update:'warning', delete:'error', verifikasi:'info' }[a] ?? 'default'
-}
-function actionIcon(a) {
-  return {
-    login:      'ri-login-circle-line',
-    logout:     'ri-logout-circle-line',
-    create:     'ri-add-circle-line',
-    update:     'ri-pencil-line',
-    delete:     'ri-delete-bin-line',
-    verifikasi: 'ri-check-double-line',
-  }[a] ?? 'ri-circle-line'
-}
-function moduleColor(m) {
-  return {
-    'quality-control':  'primary',
-    'edukasi-lanjutan': 'warning',
-    'batal-ranap':      'error',
-    'up-selling':       'success',
-    'master-data':      'info',
-    'auth':             'secondary',
-    'user':             'deep-purple',
-  }[m] ?? 'default'
-}
-function formatDate(d) {
-  return new Date(d).toLocaleString('id-ID', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-function roleColor(r) {
-  return { admin: 'error', qc_admission: 'primary', kasir: 'warning' }[r] ?? 'default'
-}
-function roleLabel(r) {
-  return { admin: 'Admin', qc_admission: 'QC Admission', kasir: 'Kasir' }[r] ?? r
-}
+const actionColor = a => ({'login':'success','logout':'secondary','create':'primary','update':'warning','delete':'error','verifikasi':'info','closing':'teal'})[a] ?? 'default'
+const moduleColor = m => ({'quality-control':'primary','edukasi-lanjutan':'warning','batal-ranap':'error','up-selling':'success','auth':'secondary','user':'info'})[m] ?? 'default'
+const roleColor   = r => ({'admin':'error','qc_admission':'primary','kasir':'warning'})[r] ?? 'default'
+const fmtDate     = d => new Date(d).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
 
-function resetFilters() {
-  search.value         = ''
-  filterModule.value   = ''
-  filterAction.value   = ''
-  filterUser.value     = ''
-  filterDateFrom.value = ''
-  filterDateTo.value   = ''
-  page.value           = 1
-  doRefresh()
-}
+const statCards = computed(() => [
+  { value: total.value, label: 'Total Log', color: 'primary', icon: 'ri-history-line' },
+  { value: records.value.filter(r=>r.action==='login').length, label: 'Login', color: 'success', icon: 'ri-login-circle-line' },
+  { value: records.value.filter(r=>r.action==='create').length, label: 'Input Data', color: 'info', icon: 'ri-add-circle-line' },
+  { value: records.value.filter(r=>r.action==='delete').length, label: 'Hapus Data', color: 'error', icon: 'ri-delete-bin-line' },
+])
 
-async function doRefresh() {
+async function load() {
   loading.value = true
   try {
     const { data } = await axios.get('/api/activity-log', {
@@ -101,238 +51,128 @@ async function doRefresh() {
         search:    search.value       || undefined,
         module:    filterModule.value || undefined,
         action:    filterAction.value || undefined,
-        user:      filterUser.value   || undefined,
-        date_from: filterDateFrom.value || undefined,
-        date_to:   filterDateTo.value   || undefined,
-        page:      page.value,
-        per_page:  perPage.value,
-      },
+        date_from: dateFrom.value     || undefined,
+        date_to:   dateTo.value       || undefined,
+        page: page.value, per_page: 30,
+      }
     })
-    records.value = data.data           ?? []
-    total.value   = data.meta?.total    ?? data.total ?? 0
+    records.value  = data.data ?? []
+    total.value    = data.meta?.total ?? data.total ?? 0
     lastPage.value = data.meta?.last_page ?? 1
-  } catch (e) {
-    console.error('Activity log error', e)
-  } finally {
-    loading.value = false
-  }
+  } catch(e) { console.error(e) }
+  finally { loading.value = false }
 }
 
-// Stats derived from current page
-const stats = computed(() => ({
-  total:   total.value,
-  today:   records.value.filter(r => {
-    const d = new Date(r.created_at)
-    const n = new Date()
-    return d.getDate() === n.getDate() && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear()
-  }).length,
-  logins:  records.value.filter(r => r.action === 'login').length,
-  creates: records.value.filter(r => r.action === 'create').length,
-}))
+function resetFilter() { search.value=''; filterModule.value=''; filterAction.value=''; dateFrom.value=''; dateTo.value=''; page.value=1; load() }
 
-watch([filterModule, filterAction, filterUser, search, filterDateFrom, filterDateTo], () => {
-  page.value = 1
-  doRefresh()
-}, { debounce: 400 })
-
-onMounted(() => doRefresh())
+watch([search, filterModule, filterAction, dateFrom, dateTo], () => { page.value=1; load() })
+onMounted(load)
 </script>
 
 <template>
   <div>
-    <!-- Hero -->
-    <div class="page-hero page-hero--view mb-5">
+    <!-- Header -->
+    <div class="page-hero page-hero--activity">
       <div class="page-hero__content">
-        <div class="page-hero__badge">
-          <VIcon icon="ri-history-line" size="13" />
-          Admin · Log Aktivitas
-        </div>
+        <div class="page-hero__badge"><VIcon icon="ri-history-line" size="12" />Admin · Log Aktivitas</div>
         <h1 class="page-hero__title">Log Aktivitas</h1>
-        <p class="page-hero__subtitle">Rekam jejak semua aktivitas pengguna di sistem · Real-time dari database</p>
+        <p class="page-hero__subtitle">Rekam jejak semua aktivitas pengguna di sistem</p>
       </div>
-      <div style="position:relative;z-index:2">
-        <VBtn color="white" variant="elevated" rounded="lg" size="small"
-          prepend-icon="ri-refresh-line" style="color:#4facfe"
-          :loading="loading" @click="doRefresh">
-          Refresh
+      <div class="page-hero__actions">
+        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="load">
+          <VIcon icon="ri-refresh-line" />
         </VBtn>
       </div>
       <VIcon icon="ri-history-line" class="page-hero__icon" />
     </div>
 
-    <!-- Stats cards -->
-    <VRow dense class="mb-4">
-      <VCol cols="6" sm="3">
-        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
-          <p class="text-h5 font-weight-bold text-primary mb-0">{{ stats.total }}</p>
-          <p class="text-caption text-medium-emphasis mb-0">Total Log</p>
-        </VCard>
-      </VCol>
-      <VCol cols="6" sm="3">
-        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
-          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-success))">{{ stats.today }}</p>
-          <p class="text-caption text-medium-emphasis mb-0">Hari Ini</p>
-        </VCard>
-      </VCol>
-      <VCol cols="6" sm="3">
-        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
-          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-info))">{{ stats.logins }}</p>
-          <p class="text-caption text-medium-emphasis mb-0">Login</p>
-        </VCard>
-      </VCol>
-      <VCol cols="6" sm="3">
-        <VCard elevation="0" border rounded="lg" class="pa-3 text-center">
-          <p class="text-h5 font-weight-bold mb-0" style="color:rgb(var(--v-theme-warning))">{{ stats.creates }}</p>
-          <p class="text-caption text-medium-emphasis mb-0">Input Data</p>
-        </VCard>
-      </VCol>
-    </VRow>
+    <!-- Stats -->
+    <SummaryCards :cards="statCards" />
 
-    <!-- Filter bar -->
-    <VCard elevation="0" border rounded="lg" class="mb-4">
-      <VCardText class="py-3">
+    <!-- Filter -->
+    <VCard elevation="0" border rounded="xl" class="mb-4">
+      <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="3">
-            <VTextField
-              v-model="search"
-              placeholder="Cari user, keterangan, modul..."
-              prepend-inner-icon="ri-search-line"
-              variant="outlined" density="compact" hide-details clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="2">
-            <VTextField
-              v-model="filterUser"
-              placeholder="Nama user..."
-              prepend-inner-icon="ri-user-line"
-              variant="outlined" density="compact" hide-details clearable
-            />
+            <VTextField v-model="search" label="Cari..." prepend-inner-icon="ri-search-line"
+              variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VSelect
-              v-model="filterModule"
-              :items="MODULE_OPTIONS"
-              item-title="title" item-value="value"
-              variant="outlined" density="compact" hide-details
-              placeholder="Modul"
-            />
+            <VSelect v-model="filterModule" :items="MODULE_OPTIONS" item-title="title" item-value="value"
+              label="Modul" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VSelect
-              v-model="filterAction"
-              :items="ACTION_OPTIONS"
-              item-title="title" item-value="value"
-              variant="outlined" density="compact" hide-details
-              placeholder="Aksi"
-            />
+            <VSelect v-model="filterAction" :items="ACTION_OPTIONS" item-title="title" item-value="value"
+              label="Aksi" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="1">
-            <VTextField v-model="filterDateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
+          <VCol cols="6" sm="2">
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="1">
-            <VTextField v-model="filterDateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
+          <VCol cols="6" sm="2">
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
           <VCol cols="auto">
-            <VBtn size="small" variant="text" color="secondary" prepend-icon="ri-refresh-line" @click="resetFilters">Reset</VBtn>
+            <VBtn size="small" variant="text" color="secondary" @click="resetFilter">Reset</VBtn>
           </VCol>
         </VRow>
       </VCardText>
     </VCard>
 
     <!-- Count -->
-    <div class="d-flex align-center gap-2 mb-3">
-      <VChip size="small" color="primary" variant="tonal">{{ total }} aktivitas</VChip>
-      <span class="text-caption text-disabled">total log tersimpan</span>
+    <div class="d-flex align-center gap-3 mb-4">
+      <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ total }} log</VChip>
     </div>
 
     <!-- Table -->
-    <VCard elevation="0" border rounded="lg">
+    <VCard elevation="0" border rounded="xl">
       <VDataTable
         :headers="headers"
         :items="records"
         :loading="loading"
-        density="compact"
+        density="comfortable"
         hover
-        :items-per-page="perPage"
+        :items-per-page="30"
         hide-default-footer
         class="activity-table"
       >
         <template #item.created_at="{ item }">
-          <span class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</span>
+          <span class="text-caption" style="color:var(--qc-text-2)">{{ fmtDate(item.created_at) }}</span>
         </template>
-
         <template #item.user_name="{ item }">
           <div class="d-flex align-center gap-2">
-            <VAvatar :color="roleColor(item.user_role)" variant="tonal" size="26" rounded="lg">
+            <VAvatar :color="roleColor(item.user_role)" variant="tonal" size="26" rounded="md">
               <span style="font-size:10px;font-weight:700">{{ item.user_name?.charAt(0)?.toUpperCase() }}</span>
             </VAvatar>
             <span class="text-body-2 font-weight-medium">{{ item.user_name || '—' }}</span>
           </div>
         </template>
-
         <template #item.user_role="{ item }">
-          <VChip :color="roleColor(item.user_role)" size="x-small" variant="tonal">
-            {{ roleLabel(item.user_role) }}
-          </VChip>
+          <VChip :color="roleColor(item.user_role)" size="x-small" variant="tonal">{{ item.user_role }}</VChip>
         </template>
-
         <template #item.module="{ item }">
-          <VChip :color="moduleColor(item.module)" size="x-small" variant="tonal">
-            {{ item.module || '—' }}
-          </VChip>
+          <VChip :color="moduleColor(item.module)" size="x-small" variant="tonal">{{ item.module || '—' }}</VChip>
         </template>
-
         <template #item.action="{ item }">
-          <VChip :color="actionColor(item.action)" size="small" variant="tonal">
-            <VIcon :icon="actionIcon(item.action)" size="12" class="me-1" />
-            {{ item.action }}
-          </VChip>
+          <VChip :color="actionColor(item.action)" size="x-small" variant="tonal">{{ item.action }}</VChip>
         </template>
-
-        <template #item.subject="{ item }">
-          <span class="text-body-2">{{ item.subject || '—' }}</span>
-        </template>
-
-        <template #item.ip_address="{ item }">
-          <span class="text-caption text-disabled font-mono">{{ item.ip_address || '—' }}</span>
-        </template>
-
         <template #no-data>
-          <div class="text-center py-10 text-medium-emphasis">
-            <VIcon icon="ri-history-line" size="40" class="mb-2 opacity-40" />
-            <p class="mb-1 font-weight-medium">Belum ada log aktivitas</p>
-            <p class="text-caption mb-0">Log akan muncul ketika ada aktivitas di sistem</p>
+          <div class="text-center py-12" style="color:var(--qc-text-2)">
+            <VIcon icon="ri-history-line" size="40" class="mb-2 opacity-30" />
+            <p class="text-body-2 font-weight-medium mb-0">Belum ada log</p>
           </div>
         </template>
-
         <template #bottom>
-          <div class="d-flex align-center justify-space-between pa-3 flex-wrap gap-2">
-            <span class="text-caption text-medium-emphasis">
-              Halaman {{ page }} dari {{ lastPage }} ({{ total }} total)
-            </span>
-            <div class="d-flex gap-2">
-              <VBtn
-                icon size="small" variant="tonal"
-                :disabled="page <= 1 || loading"
-                @click="page--; doRefresh()"
-              >
-                <VIcon icon="ri-arrow-left-s-line" />
-              </VBtn>
-              <VBtn
-                icon size="small" variant="tonal"
-                :disabled="page >= lastPage || loading"
-                @click="page++; doRefresh()"
-              >
-                <VIcon icon="ri-arrow-right-s-line" />
-              </VBtn>
-            </div>
+          <div class="d-flex align-center justify-end gap-2 pa-3">
+            <span class="text-caption" style="color:var(--qc-text-2)">{{ page }}/{{ lastPage }}</span>
+            <VBtn icon size="x-small" variant="tonal" :disabled="page<=1||loading" @click="page--;load()">
+              <VIcon icon="ri-arrow-left-s-line" />
+            </VBtn>
+            <VBtn icon size="x-small" variant="tonal" :disabled="page>=lastPage||loading" @click="page++;load()">
+              <VIcon icon="ri-arrow-right-s-line" />
+            </VBtn>
           </div>
         </template>
       </VDataTable>
     </VCard>
   </div>
 </template>
-
-<style scoped>
-.font-mono { font-family: 'Courier New', monospace; font-size: 0.75rem; }
-</style>

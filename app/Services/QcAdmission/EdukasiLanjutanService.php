@@ -22,10 +22,12 @@ class EdukasiLanjutanService
             });
         }
 
-        if (! empty($filters['month']))  $query->where('bulan', $filters['month']);
-        if (! empty($filters['status'])) $query->where('status', $filters['status']);
-        if (! empty($filters['petugas'])) $query->where('petugas', $filters['petugas']);
-        if (! empty($filters['year']))   $query->whereYear('created_at', $filters['year']);
+        if (! empty($filters['month']))     $query->where('bulan', $filters['month']);
+        if (! empty($filters['status']))    $query->where('status', $filters['status']);
+        if (! empty($filters['petugas']))   $query->where('petugas', $filters['petugas']);
+        if (! empty($filters['year']))      $query->whereYear('created_at', $filters['year']);
+        if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
+        if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
 
         // Auto-sync status dari RSUS sebelum paginate jika RSUS aktif
         if (config('services.rsus_db_enabled', false)) {

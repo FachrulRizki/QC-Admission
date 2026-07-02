@@ -16,7 +16,13 @@ const auth         = useAuthStore()
 const pegawaiStore = usePegawaiStore()
 
 // ── Date filter ───────────────────────────────────────────────────────────────
-const today         = new Date().toISOString().slice(0, 10)
+// Gunakan local date (bukan toISOString yang UTC) agar cocok dengan timezone WIB
+function localDateStr(d = new Date()) {
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+}
+
+const today         = localDateStr()
 const dateFrom      = ref(today)
 const dateTo        = ref(today)
 const activeRange   = ref('Hari Ini')
@@ -36,17 +42,17 @@ function applyRange(r) {
   activeRange.value = label
 
   const now = new Date()
-  const to  = now.toISOString().slice(0, 10)
+  const to  = localDateStr(now)
   if (days === 0) {
     dateFrom.value = to; dateTo.value = to
   } else if (days === -1) {
-    dateFrom.value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-    dateTo.value = to
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+    dateFrom.value = localDateStr(firstDay); dateTo.value = to
   } else if (days === -2) {
     dateFrom.value = '2020-01-01'; dateTo.value = to
   } else {
     const from = new Date(now); from.setDate(now.getDate() - days)
-    dateFrom.value = from.toISOString().slice(0, 10); dateTo.value = to
+    dateFrom.value = localDateStr(from); dateTo.value = to
   }
   doFetch()
   showDatePicker.value = false
@@ -83,14 +89,16 @@ const filteredRecentQC = computed(() => {
     data = data.filter(r => r.nama_pasien?.toLowerCase().includes(q))
   }
   if (filterPetugas.value) {
-    data = data.filter(r => r.petugas === filterPetugas.value)
+    const q = filterPetugas.value.toLowerCase()
+    data = data.filter(r => r.petugas?.toLowerCase().includes(q))
   }
   if (filterNoMR.value.trim()) {
     const q = filterNoMR.value.trim()
     data = data.filter(r => r.no_mr?.includes(q) || r.no_reg?.includes(q))
   }
   if (filterStatus.value) {
-    data = data.filter(r => r.status === filterStatus.value)
+    const s = filterStatus.value.toLowerCase()
+    data = data.filter(r => r.status?.toLowerCase() === s)
   }
   return data
 })
@@ -117,9 +125,11 @@ const formattedTime = computed(() =>
   now.value.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
 )
 const rangeLabelDisplay = computed(() => {
+  // Parse YYYY-MM-DD sebagai local date (bukan UTC) dengan tambah T00:00:00
+  const parseLocal = s => new Date(s + 'T00:00:00')
   if (dateFrom.value === dateTo.value)
-    return new Date(dateFrom.value).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })
-  const fmt = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
+    return parseLocal(dateFrom.value).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })
+  const fmt = d => parseLocal(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
   return fmt(dateFrom.value) + ' – ' + fmt(dateTo.value)
 })
 
@@ -257,7 +267,7 @@ const kpiCards = computed(() => [
             <span v-else class="fp__qcf-ch">▾</span>
           </div>
 
-          <!-- Petugas — native select (lebih reliable) -->
+          <!-- Petugas — text input untuk partial search -->
           <div class="fp__qcf fp__qcf--sel-wrap" :class="filterPetugas ? 'fp__qcf--on' : ''">
             <span class="fp__qcf-icon">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -267,11 +277,9 @@ const kpiCards = computed(() => [
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
             </span>
-            <select v-model="filterPetugas" class="fp__qcf-in">
-              <option value="">Petugas</option>
-              <option v-for="p in petugasOptions" :key="p" :value="p">{{ p }}</option>
-            </select>
-            <span class="fp__qcf-ch">▾</span>
+            <input v-model="filterPetugas" class="fp__qcf-in" placeholder="Petugas" />
+            <button v-if="filterPetugas" class="fp__qcf-x" @click.stop="filterPetugas = ''">✕</button>
+            <span v-else class="fp__qcf-ch">▾</span>
           </div>
 
           <!-- NoMR — text input -->
@@ -289,21 +297,27 @@ const kpiCards = computed(() => [
             <span v-else class="fp__qcf-ch">▾</span>
           </div>
 
-          <!-- Status — native select -->
-          <div class="fp__qcf fp__qcf--sel-wrap" :class="filterStatus ? 'fp__qcf--on' : ''">
-            <span class="fp__qcf-icon">
+          <!-- Status — quick chips langsung (tanpa select) -->
+          <div class="fp__qcf-label">
+            <span class="fp__qcf-icon" style="display:inline-flex;align-items:center">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
             </span>
-            <select v-model="filterStatus" class="fp__qcf-in">
-              <option value="">Status</option>
-              <option value="Edukasi">Edukasi</option>
-              <option value="Edukasi lanjutan">Edukasi lanjutan</option>
-            </select>
-            <span class="fp__qcf-ch">▾</span>
+            <span style="font-size:0.78rem;font-weight:600;color:rgba(26,31,30,0.7)">Status</span>
+          </div>
+          <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+            <button class="fp__status-chip" :class="filterStatus === '' ? 'fp__status-chip--on' : ''" @click="filterStatus = ''">
+              Semua
+            </button>
+            <button class="fp__status-chip" :class="filterStatus === 'Edukasi' ? 'fp__status-chip--on' : ''" @click="filterStatus = filterStatus === 'Edukasi' ? '' : 'Edukasi'">
+              Edukasi
+            </button>
+            <button class="fp__status-chip" :class="filterStatus === 'Edukasi lanjutan' ? 'fp__status-chip--on' : ''" @click="filterStatus = filterStatus === 'Edukasi lanjutan' ? '' : 'Edukasi lanjutan'">
+              Edukasi Lanjutan
+            </button>
           </div>
 
           <button
@@ -485,34 +499,61 @@ const kpiCards = computed(() => [
 .db-subtitle-bar__loading { display: flex; align-items: center; font-size: 0.78rem; color: #00B37E; }
 
 /* ── Grid layouts ───────────────────────────────────────────────────────────── */
-.db-grid { display: grid; gap: 16px; }
+.db-grid { display: grid; gap: 14px; }
 
-.db-grid--row1 {
-  grid-template-columns: 1fr 2fr 260px;
-  grid-template-areas: 'avg matrix filter';
+/* Desktop: 3 kolom row1, 3 kolom row2 */
+@media (min-width: 1025px) {
+  .db-grid--row1 {
+    grid-template-columns: minmax(0,1fr) minmax(0,2fr) 240px;
+    grid-template-areas: 'avg matrix filter';
+  }
+  .db-grid--row2 {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,2fr);
+    grid-template-areas: 'petugas funnel bar';
+  }
+  .db-grid__avg    { grid-area: avg; }
+  .db-grid__matrix { grid-area: matrix; overflow-x: auto; }
+  .db-grid__filter { grid-area: filter; }
+  .db-grid__petugas{ grid-area: petugas; }
+  .db-grid__funnel { grid-area: funnel; }
+  .db-grid__bar    { grid-area: bar; }
 }
-.db-grid__avg    { grid-area: avg; }
-.db-grid__matrix { grid-area: matrix; }
-.db-grid__filter { grid-area: filter; }
 
-.db-grid--row2 {
-  grid-template-columns: 1fr 1fr 2fr;
-  grid-template-areas: 'petugas funnel bar';
+/* Tablet 769-1024: 2 kolom */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .db-grid--row1 { grid-template-columns: 1fr 1fr; }
+  .db-grid--row2 { grid-template-columns: 1fr 1fr; }
 }
-.db-grid__petugas { grid-area: petugas; }
-.db-grid__funnel  { grid-area: funnel; }
-.db-grid__bar     { grid-area: bar; }
 
-@media (max-width: 1100px) {
-  .db-grid--row1 { grid-template-columns: 1fr 1fr; grid-template-areas: 'avg matrix' 'filter filter'; }
-  .db-grid--row2 { grid-template-columns: 1fr 1fr; grid-template-areas: 'petugas funnel' 'bar bar'; }
-}
+/* Mobile ≤ 768: 1 kolom, semua stack */
 @media (max-width: 768px) {
-  .db-topbar { padding: 10px 12px; }
+  .db-topbar { padding: 8px 12px; flex-wrap: wrap; gap: 6px; }
   .db-kpi-row { display: none; }
-  .db-grid--row1 { grid-template-columns: 1fr; grid-template-areas: 'avg' 'matrix' 'filter'; }
-  .db-grid--row2 { grid-template-columns: 1fr; grid-template-areas: 'petugas' 'funnel' 'bar'; }
-  .db-page { padding: 10px; }
+  .db-grid--row1,
+  .db-grid--row2 { grid-template-columns: 1fr; gap: 10px; }
+  .db-page { padding: 8px; }
+  .db-date-btn { font-size: 0.73rem; padding: 5px 9px; }
+  .db-topbar__brand { flex: 1; min-width: 0; }
+  .db-date-panel { left: 0 !important; right: 0 !important; min-width: unset; position: fixed !important; bottom: 0; top: auto !important; border-radius: 16px 16px 0 0; padding: 16px; }
+  .db-subtitle-bar { padding: 4px 0; gap: 8px; font-size: 0.72rem; }
+
+  /* Filter panel jadi horizontal scroll di mobile */
+  .fp {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 10px 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+  .fp__title { display: none; }
+  .fp__divider { display: none; }
+  .fp__qcf { flex-shrink: 0; margin-bottom: 0; min-width: 120px; }
+  .fp__stats { flex-shrink: 0; min-width: 200px; }
+  .fp__reset { flex-shrink: 0; white-space: nowrap; width: auto; }
 }
 
 /* ── Filter panel ───────────────────────────────────────────────────────────── */
@@ -759,6 +800,35 @@ const kpiCards = computed(() => [
   position: relative;
 }
 .fp__qcf-x:hover { background: rgba(26,31,30,0.28); }
+
+/* Status chip label row */
+.fp__qcf-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+/* Status quick chips */
+.fp__status-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.12);
+  color: rgba(26,31,30,0.8);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.fp__status-chip:hover { background: rgba(255,255,255,0.22); }
+.fp__status-chip--on {
+  background: rgba(255,255,255,0.9) !important;
+  border-color: #fff !important;
+  color: #005C42 !important;
+}
 
 /* Reset button */
 .fp__reset {

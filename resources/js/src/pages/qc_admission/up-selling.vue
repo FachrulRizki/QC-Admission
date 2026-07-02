@@ -1,21 +1,35 @@
 <script setup>
-import { useUpSellingStore } from '@/stores/useUpSellingStore'
-import UpSellingFormDialog   from '@/views/qc-admission/up-selling/UpSellingFormDialog.vue'
+import { useUpSellingStore }  from '@/stores/useUpSellingStore'
+import UpSellingFormDialog    from '@/views/qc-admission/up-selling/UpSellingFormDialog.vue'
+import SummaryCards           from '@/components/SummaryCards.vue'
 
 const store = useUpSellingStore()
 
-const showDialog        = ref(false)
-const editItem          = ref(null)
-const showDeleteConfirm = ref(false)
-const deleteTarget      = ref(null)
-const loading           = ref(false)
-const lastRefresh       = ref(null)
-const search            = ref('')
-const filterDateFrom    = ref('')
-const filterDateTo      = ref('')
-const snackbar          = ref({ show: false, message: '', color: 'success' })
+const showForm   = ref(false)
+const editItem   = ref(null)
+const showDetail = ref(false)
+const detailItem = ref(null)
+const showDel    = ref(false)
+const delTarget  = ref(null)
+const loading    = ref(false)
+const snackbar   = ref({ show: false, msg: '', color: 'success' })
+
+function todayStr() {
+  const d = new Date(), p = n => String(n).padStart(2,'0')
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+}
+
+const search   = ref('')
+const dateFrom = ref(todayStr())
+const dateTo   = ref(todayStr())
 
 const records = computed(() => store.records ?? [])
+
+const stats = computed(() => ({
+  total:     records.value.length,
+  naikKelas: records.value.filter(r => r.alasan === 'Naik Kelas').length,
+  perubahan: records.value.filter(r => r.alasan === 'Perubahan Jaminan').length,
+}))
 
 const filtered = computed(() => {
   let d = records.value
@@ -28,237 +42,305 @@ const filtered = computed(() => {
       r.note?.toLowerCase().includes(q)
     )
   }
-  if (filterDateFrom.value) d = d.filter(r => r.tgl_daftar >= filterDateFrom.value || r.tanggal >= filterDateFrom.value)
-  if (filterDateTo.value)   d = d.filter(r => r.tgl_daftar <= filterDateTo.value   || r.tanggal <= filterDateTo.value)
+  // Date filter sudah dilakukan server-side di load()
   return d
 })
 
-// Kolom tabel PERSIS AppSheet:
-// tgldaftar | NoReg | NoMR | NamaPasien | ketBayar | NamaRuang | NamaBangsal | Kelas | Ket_Up_Selling | notes | nama_petugas | Aksi
-const headers = [
-  { title: 'tgldaftar',       key: 'tgl_daftar',        sortable: true },
-  { title: 'NoReg',           key: 'no_reg',            sortable: true },
-  { title: 'NoMR',            key: 'no_mr',             sortable: true },
-  { title: 'NamaPasien',      key: 'nama_pasien',       sortable: true },
-  { title: 'ketBayar',        key: 'jaminan',           sortable: true },
-  { title: 'NamaRuang',       key: 'nama_ruang',        sortable: true },
-  { title: 'NamaBangsal',     key: 'nama_bangsal',      sortable: true },
-  { title: 'Kelas',           key: 'kelas',             sortable: true },
-  { title: 'Ket_Up_Selling',  key: 'alasan',            sortable: true },
-  { title: 'notes',           key: 'note',              sortable: true },
-  { title: 'nama_petugas',    key: 'petugas',           sortable: true },
-  { title: 'Aksi',            key: 'actions',           sortable: false, align: 'center', width: '80px' },
-]
+function ketColor(k) { return k === 'Naik Kelas' ? 'success' : 'info' }
 
-function openAdd()        { editItem.value = null;        showDialog.value = true }
-function openEdit(item)   { editItem.value = { ...item }; showDialog.value = true }
-function openDelete(item) { deleteTarget.value = item;    showDeleteConfirm.value = true }
+function openRow(item)  { detailItem.value = item; showDetail.value = true }
+function openAdd()      { editItem.value = null; showForm.value = true }
+function openEdit(item) { editItem.value = { ...item }; showDetail.value = false; showForm.value = true }
 
-async function confirmDelete() {
-  if (!deleteTarget.value) return
+function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
+
+async function onSaved() { showForm.value = false; toast('Data disimpan.'); await load() }
+
+async function doDel() {
+  if (!delTarget.value) return
   loading.value = true
-  const result = await store.destroy(deleteTarget.value.id)
-  snackbar.value = result?.success
-    ? { show: true, message: 'Data berhasil dihapus.', color: 'success' }
-    : { show: true, message: result?.message ?? 'Gagal menghapus.', color: 'error' }
+  await store.destroy(delTarget.value.id)
   loading.value = false
-  showDeleteConfirm.value = false
-  deleteTarget.value = null
+  showDel.value = false
+  showDetail.value = false
+  delTarget.value = null
+  toast('Data dihapus.')
+  await load()
 }
 
-async function onSaved() {
-  showDialog.value = false
-  await doRefresh()
-  snackbar.value = { show: true, message: 'Data berhasil disimpan.', color: 'success' }
-}
+function resetFilter() { search.value = ''; dateFrom.value = todayStr(); dateTo.value = todayStr() }
 
-async function doRefresh() {
+async function load() {
   loading.value = true
   try {
     await store.fetchRecords({
-      per_page:  200,
-      search:    search.value         || undefined,
-      date_from: filterDateFrom.value || undefined,
-      date_to:   filterDateTo.value   || undefined,
+      per_page: 200,
+      search: search.value || undefined,
+      date_from: dateFrom.value || undefined,
+      date_to: dateTo.value || undefined,
     })
-    lastRefresh.value = new Date()
-  } catch (e) { console.error(e) }
+  } catch(e) { console.error(e) }
   finally { loading.value = false }
 }
 
-function resetFilters() {
-  search.value       = ''
-  filterDateFrom.value = ''
-  filterDateTo.value   = ''
-}
+// Watch date filter — re-fetch dari API saat tanggal berubah
+watch([dateFrom, dateTo], () => load())
 
-onMounted(() => doRefresh())
+onMounted(load)
 </script>
 
 <template>
   <div>
-    <!-- Hero -->
-    <div class="page-hero page-hero--upselling mb-5">
+    <!-- Header -->
+    <div class="page-hero page-hero--upselling">
       <div class="page-hero__content">
-        <div class="page-hero__badge">
-          <VIcon icon="ri-arrow-up-circle-line" size="13" />
-          QC Admission · Up Selling
-        </div>
+        <div class="page-hero__badge"><VIcon icon="ri-arrow-up-circle-line" size="12" />Up Selling</div>
         <h1 class="page-hero__title">Up Selling</h1>
-        <p class="page-hero__subtitle">Penawaran upgrade kelas kamar pasien rawat inap</p>
+        <p class="page-hero__subtitle">Penawaran upgrade kelas kamar rawat inap</p>
       </div>
-      <div class="d-flex gap-2 align-center" style="position:relative;z-index:2">
-        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="doRefresh">
+      <div class="page-hero__actions">
+        <VBtn icon variant="text" color="white" size="small" :loading="loading" @click="load">
           <VIcon icon="ri-refresh-line" />
         </VBtn>
-        <VBtn color="white" variant="elevated" rounded="lg" prepend-icon="ri-add-line" style="color:#2d6a4f" @click="openAdd">
-          + Input Up Selling
+        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#1E3A5F;font-weight:700" @click="openAdd">
+          <VIcon icon="ri-add-line" size="16" class="me-1" />Input
         </VBtn>
       </div>
       <VIcon icon="ri-arrow-up-circle-line" class="page-hero__icon" />
     </div>
 
+    <!-- Stats -->
+    <SummaryCards :cards="[
+      { value: stats.total,     label: 'Total Up Selling',  color: 'primary', icon: 'ri-arrow-up-circle-line' },
+      { value: stats.naikKelas, label: 'Naik Kelas',        color: 'success', icon: 'ri-building-line' },
+      { value: stats.perubahan, label: 'Perubahan Jaminan', color: 'info',    icon: 'ri-exchange-line' },
+    ]" />
+
     <!-- Filter -->
-    <VCard elevation="0" border rounded="lg" class="mb-4">
-      <VCardText class="py-3">
+    <VCard elevation="0" border rounded="xl" class="mb-4">
+      <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="5">
-            <VTextField
-              v-model="search"
-              placeholder="Cari No. Reg / Nama Pasien / Petugas / Notes..."
-              prepend-inner-icon="ri-search-line"
-              variant="outlined" density="compact" hide-details clearable
-            />
+            <VTextField v-model="search" label="Cari pasien / petugas / notes" prepend-inner-icon="ri-search-line"
+              variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="2">
-            <VTextField v-model="filterDateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
+          <VCol cols="6" sm="3">
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <VCol cols="6" sm="2">
-            <VTextField v-model="filterDateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
+          <VCol cols="6" sm="3">
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
           <VCol cols="auto">
-            <VBtn size="small" variant="text" color="secondary" @click="resetFilters">Reset</VBtn>
+            <VBtn size="small" variant="text" color="secondary" @click="resetFilter; load()">Reset</VBtn>
           </VCol>
         </VRow>
       </VCardText>
     </VCard>
 
     <!-- Count -->
-    <div class="d-flex align-center justify-space-between mb-3 flex-wrap gap-2">
-      <div class="d-flex align-center gap-2">
-        <VChip size="small" color="primary" variant="tonal">{{ filtered.length }} data</VChip>
-        <span class="text-caption text-disabled">dari {{ records.length }} total</span>
-      </div>
-      <span v-if="lastRefresh" class="text-caption text-disabled">
-        <VIcon icon="ri-time-line" size="13" class="me-1" />
-        {{ lastRefresh.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) }}
-      </span>
+    <div class="d-flex align-center gap-3 mb-4">
+      <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ filtered.length }} data</VChip>
+      <span class="text-caption" style="color:var(--qc-text-2)">Klik untuk detail & edit</span>
     </div>
 
-    <!-- Tabel persis AppSheet -->
-    <VCard elevation="0" border rounded="lg">
-      <VDataTable
-        :headers="headers"
-        :items="filtered"
-        :loading="loading"
-        density="comfortable"
-        hover
-        :items-per-page="15"
-        class="upselling-table"
-      >
-        <!-- Kelas — tampilkan field kelas, fallback ke rekomendasi_kelas -->
-        <template #item.kelas="{ item }">
-          {{ item.kelas || item.rekomendasi_kelas || '—' }}
-        </template>
+    <!-- List -->
+    <VCard elevation="0" border rounded="xl" class="overflow-hidden">
+      <div v-if="loading" class="text-center py-12">
+        <VProgressCircular indeterminate color="info" size="32" />
+      </div>
+      <div v-else-if="!filtered.length" class="text-center py-16" style="color:var(--qc-text-2)">
+        <VIcon icon="ri-arrow-up-circle-line" size="52" class="mb-3 opacity-30" />
+        <p class="text-body-1 font-weight-semibold mb-1">Belum ada data</p>
+        <VBtn color="info" variant="tonal" rounded="lg" size="small" class="mt-2" @click="openAdd">+ Input Up Selling</VBtn>
+      </div>
+      <div v-else>
+        <div
+          v-for="(item, idx) in filtered"
+          :key="item.id"
+          class="us-row"
+          :class="{ 'us-row--bordered': idx < filtered.length - 1 }"
+          @click="openRow(item)"
+        >
+          <!-- Avatar -->
+          <VAvatar color="info" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
+            <span style="font-size:14px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
+          </VAvatar>
 
-        <!-- NamaRuang — fallback -->
-        <template #item.nama_ruang="{ item }">
-          {{ item.nama_ruang || '—' }}
-        </template>
-
-        <!-- NamaBangsal — fallback -->
-        <template #item.nama_bangsal="{ item }">
-          {{ item.nama_bangsal || '—' }}
-        </template>
-
-        <!-- NoMR — fallback -->
-        <template #item.no_mr="{ item }">
-          {{ item.no_mr || '—' }}
-        </template>
-
-        <!-- tgldaftar — tampilkan tgl_daftar -->
-        <template #item.tgl_daftar="{ item }">
-          {{ item.tgl_daftar || '—' }}
-        </template>
-
-        <!-- NamaPasien dengan avatar -->
-        <template #item.nama_pasien="{ item }">
-          <div class="d-flex align-center gap-2 py-1">
-            <VAvatar color="success" variant="tonal" size="28" rounded="md">
-              <span style="font-size:11px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
-            </VAvatar>
-            <span class="text-body-2">{{ item.nama_pasien }}</span>
+          <!-- Info -->
+          <div class="flex-grow-1 min-width-0">
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <span class="font-weight-semibold text-truncate" style="font-size:0.9rem;color:var(--qc-text)">{{ item.nama_pasien }}</span>
+              <VChip :color="ketColor(item.alasan)" size="x-small" variant="tonal">{{ item.alasan || '—' }}</VChip>
+            </div>
+            <div class="d-flex align-center gap-3 mt-1 flex-wrap">
+              <span class="text-caption" style="color:var(--qc-text-2)">{{ item.no_reg }}</span>
+              <span v-if="item.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ item.jaminan }}</span>
+              <span v-if="item.kelas" class="text-caption" style="color:var(--qc-text-2)">
+                <VIcon icon="ri-hotel-bed-line" size="11" class="me-1" />{{ item.kelas }}
+              </span>
+            </div>
           </div>
-        </template>
 
-        <!-- Aksi -->
-        <template #item.actions="{ item }">
-          <div class="d-flex gap-1 justify-center">
-            <VTooltip text="Edit">
-              <template #activator="{ props: tp }">
-                <VBtn v-bind="tp" icon size="x-small" variant="text" color="primary" @click="openEdit(item)">
-                  <VIcon icon="ri-pencil-line" size="15" />
-                </VBtn>
-              </template>
-            </VTooltip>
-            <VTooltip text="Hapus">
-              <template #activator="{ props: tp }">
-                <VBtn v-bind="tp" icon size="x-small" variant="text" color="error" @click="openDelete(item)">
-                  <VIcon icon="ri-delete-bin-line" size="15" />
-                </VBtn>
-              </template>
-            </VTooltip>
+          <!-- Right -->
+          <div class="text-end flex-shrink-0">
+            <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ item.petugas }}</p>
+            <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ item.tgl_daftar || item.tanggal }}</p>
           </div>
-        </template>
-
-        <template #no-data>
-          <div class="text-center py-12 text-medium-emphasis">
-            <VIcon icon="ri-arrow-up-circle-line" size="48" class="mb-3 opacity-40" />
-            <p class="text-body-1 font-weight-medium mb-1">Belum ada data up selling</p>
-            <VBtn color="success" variant="tonal" prepend-icon="ri-add-line" rounded="lg" size="small" class="mt-2" @click="openAdd">
-              + Input Up Selling
-            </VBtn>
-          </div>
-        </template>
-      </VDataTable>
+        </div>
+      </div>
     </VCard>
 
-    <UpSellingFormDialog v-model="showDialog" :edit-item="editItem" @saved="onSaved" />
+    <!-- Form Dialog -->
+    <UpSellingFormDialog v-model="showForm" :edit-item="editItem" @saved="onSaved" />
 
-    <!-- Delete confirm -->
-    <VDialog v-model="showDeleteConfirm" max-width="360">
-      <VCard rounded="xl">
-        <VCardText class="pa-6 text-center">
-          <VAvatar color="error" variant="tonal" size="56" rounded="xl" class="mb-4">
-            <VIcon icon="ri-delete-bin-2-line" size="28" />
-          </VAvatar>
-          <p class="text-h6 font-weight-bold mb-1">Hapus Data?</p>
-          <p class="text-body-2 text-medium-emphasis mb-0">
-            Data <strong>{{ deleteTarget?.nama_pasien }}</strong> akan dihapus permanen.
-          </p>
-        </VCardText>
-        <VCardActions class="px-6 pb-5 pt-0 d-flex gap-2">
-          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showDeleteConfirm = false">Batal</VBtn>
-          <VBtn color="error" rounded="lg" class="flex-grow-1" :loading="loading" @click="confirmDelete">Hapus</VBtn>
-        </VCardActions>
+    <!-- Detail Sheet -->
+    <VDialog v-model="showDetail" max-width="420" scrollable>
+      <VCard v-if="detailItem" rounded="xl" class="detail-card">
+        <!-- Gradient header -->
+        <div class="detail-hd detail-hd--blue">
+          <div class="d-flex align-center gap-3">
+            <div class="detail-av">{{ detailItem.nama_pasien?.charAt(0) ?? '?' }}</div>
+            <div class="flex-grow-1 min-width-0">
+              <p class="detail-nm text-truncate">{{ detailItem.nama_pasien }}</p>
+              <span class="detail-id">{{ detailItem.no_reg }}</span>
+            </div>
+            <VChip class="detail-ket-chip" size="x-small">{{ detailItem.alasan || '—' }}</VChip>
+            <VBtn icon variant="text" color="white" size="small" @click="showDetail=false">
+              <VIcon icon="ri-close-line" size="18" />
+            </VBtn>
+          </div>
+        </div>
+
+        <!-- Info grid -->
+        <div class="detail-grid">
+          <div class="detail-cell">
+            <span class="detail-lbl">tgldaftar</span>
+            <span class="detail-val">{{ detailItem.tgl_daftar || '—' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">NoMR</span>
+            <span class="detail-val fw">{{ detailItem.no_mr || '—' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">ketBayar</span>
+            <span class="detail-val">{{ detailItem.jaminan || '—' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">Kelas</span>
+            <span class="detail-val">{{ detailItem.kelas || detailItem.rekomendasi_kelas || '—' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">NamaRuang</span>
+            <span class="detail-val">{{ detailItem.nama_ruang || '—' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">NamaBangsal</span>
+            <span class="detail-val">{{ detailItem.nama_bangsal || '—' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">nama_petugas</span>
+            <span class="detail-val">{{ detailItem.petugas || '—' }}</span>
+          </div>
+          <div class="detail-cell">
+            <span class="detail-lbl">Ket_Up_Selling</span>
+            <span class="detail-val">{{ detailItem.alasan || '—' }}</span>
+          </div>
+          <div class="detail-cell detail-cell--full">
+            <span class="detail-lbl">notes</span>
+            <span class="detail-val" style="white-space:pre-wrap">{{ detailItem.note || '—' }}</span>
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          <VBtn variant="outlined" rounded="lg" size="small" @click="showDetail=false">Tutup</VBtn>
+          <VBtn color="info" variant="tonal" rounded="lg" size="small" @click="openEdit(detailItem)">
+            <VIcon icon="ri-pencil-line" size="14" class="me-1" />Edit
+          </VBtn>
+          <VBtn color="error" variant="tonal" rounded="lg" size="small" @click="delTarget=detailItem; showDel=true">
+            <VIcon icon="ri-delete-bin-line" size="14" />
+          </VBtn>
+        </div>
       </VCard>
     </VDialog>
 
-    <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="lg">
-      {{ snackbar.message }}
-      <template #actions>
-        <VBtn variant="text" size="small" @click="snackbar.show = false">Tutup</VBtn>
-      </template>
+    <!-- Delete Confirm -->
+    <VDialog v-model="showDel" max-width="320">
+      <VCard rounded="xl">
+        <VCardText class="pa-6 text-center">
+          <VAvatar color="error" variant="tonal" size="52" rounded="xl" class="mb-3">
+            <VIcon icon="ri-delete-bin-2-line" size="24" />
+          </VAvatar>
+          <p class="text-h6 font-weight-bold mb-1">Hapus Data?</p>
+          <p class="text-body-2" style="color:var(--qc-text-2)">{{ delTarget?.nama_pasien }}</p>
+        </VCardText>
+        <div class="d-flex gap-2 px-5 pb-5">
+          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showDel=false">Batal</VBtn>
+          <VBtn color="error" rounded="lg" class="flex-grow-1" :loading="loading" @click="doDel">Hapus</VBtn>
+        </div>
+      </VCard>
+    </VDialog>
+
+    <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="xl">
+      {{ snackbar.msg }}
+      <template #actions><VBtn variant="text" size="small" @click="snackbar.show=false">✕</VBtn></template>
     </VSnackbar>
   </div>
 </template>
+
+<style scoped>
+.us-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer; transition: background 0.12s;
+}
+.us-row:hover { background: rgba(59,130,246,0.04); }
+.us-row--bordered { border-bottom: 1px solid var(--qc-border); }
+</style>
+
+<style scoped>
+.us-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer; transition: background 0.12s;
+}
+.us-row:hover { background: rgba(59,130,246,0.04); }
+.us-row--bordered { border-bottom: 1px solid var(--qc-border); }
+
+/* Detail card */
+.detail-hd {
+  padding: 18px 18px 14px;
+  border-radius: 20px 20px 0 0;
+}
+.detail-hd--blue { background: linear-gradient(135deg, #1E3A5F, #3B82F6); }
+
+.detail-av {
+  width: 48px; height: 48px; border-radius: 13px;
+  background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.detail-nm { font-size: 1rem; font-weight: 700; color: #fff; margin: 0; }
+.detail-id { font-size: 0.72rem; color: rgba(255,255,255,0.7); }
+.detail-ket-chip {
+  background: rgba(255,255,255,0.2) !important;
+  color: #fff !important;
+  font-size: 0.68rem !important;
+  flex-shrink: 0;
+}
+
+.detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+}
+.detail-cell {
+  display: flex; flex-direction: column;
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--qc-border);
+}
+.detail-cell--full { grid-column: span 2; }
+.detail-lbl { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--qc-text-2); margin-bottom: 2px; font-weight: 600; }
+.detail-val { font-size: 0.85rem; font-weight: 500; color: var(--qc-text); }
+.detail-val.fw { font-weight: 700; }
+
+.detail-actions {
+  display: flex; gap: 8px; padding: 12px 18px;
+  border-top: 1px solid var(--qc-border);
+}
+</style>
