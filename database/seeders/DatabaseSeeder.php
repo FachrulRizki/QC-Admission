@@ -155,7 +155,8 @@ class DatabaseSeeder extends Seeder
 
         // ── Batal Ranap ────────────────────────────────────────────────────────
         $keterangans = ['Kamar Penuh','Pasien Menolak','DPJP Tidak Setuju','Keluarga Menolak','Kondisi Membaik','APS Alih RS Lain','Batal Rawat'];
-        $statusOks   = ['OK','Pending','Ditolak'];
+        $statusOks   = ['Bedah', 'Non Bedah', null, null]; // null = belum diverifikasi
+        $statusClosings = ['Siap Closing', 'Belum Siap Closing', null, null];
         $ruangans    = ['Ruang Mawar','Ruang Anggrek','ICU','NICU','Ruang Dahlia'];
 
         for ($i = 0; $i < 10; $i++) {
@@ -172,6 +173,7 @@ class DatabaseSeeder extends Seeder
                 'nama_pasien'        => $p['nama'],
                 'keterangan_batal'   => $keterangans[$i % count($keterangans)],
                 'status_ok'          => $statusOks[$i % count($statusOks)],
+                'status_closing'     => $statusClosings[$i % count($statusClosings)],
                 'ketersediaan_kamar' => $i % 3 === 0 ? '2 kamar tersedia' : null,
                 'diagnosa'           => ['Hipertensi','Diabetes','Stroke','Gagal Jantung','ISPA'][$i % 5],
                 'note'               => $i % 2 === 0 ? 'Sudah konfirmasi keluarga' : null,

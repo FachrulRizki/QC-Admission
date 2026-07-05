@@ -13,8 +13,13 @@ return new class extends Migration
             $table->string('tanggal', 30);
             $table->string('jam_input', 20);
             $table->string('no_reg', 20);
+            $table->string('no_mr', 20)->nullable();
+            $table->string('tgl_daftar', 30)->nullable();
             $table->string('nama_pasien', 100)->nullable();
             $table->string('jaminan', 50)->nullable();
+            $table->string('nama_ruang', 100)->nullable();
+            $table->string('nama_bangsal', 100)->nullable();
+            $table->string('kelas', 50)->nullable();
             $table->string('rekomendasi_kelas', 50)->nullable();
             $table->string('kelas_diambil', 50)->nullable();
             $table->string('alasan', 255)->nullable();

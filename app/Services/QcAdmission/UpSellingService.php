@@ -12,24 +12,17 @@ class UpSellingService
         $query = UpSelling::query()->latest();
 
         if (! empty($filters['search'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('no_reg', 'like', "%{$filters['search']}%")
-                  ->orWhere('nama_pasien', 'like', "%{$filters['search']}%")
-                  ->orWhere('petugas', 'like', "%{$filters['search']}%");
-            });
+            $q = $filters['search'];
+            $query->where(fn($s) => $s
+                ->where('no_reg',     'like', "%{$q}%")
+                ->orWhere('nama_pasien','like', "%{$q}%")
+                ->orWhere('petugas',  'like', "%{$q}%")
+            );
         }
 
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('created_at', '>=', $filters['date_from']);
-        }
-
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('created_at', '<=', $filters['date_to']);
-        }
-
-        if (! empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
+        if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
+        if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
+        if (! empty($filters['status']))    $query->where('status', $filters['status']);
 
         return $query->paginate($filters['per_page'] ?? 10);
     }
@@ -48,7 +41,6 @@ class UpSellingService
     {
         $record = $this->findOrFail($id);
         $record->update($data);
-
         return $record->fresh();
     }
 

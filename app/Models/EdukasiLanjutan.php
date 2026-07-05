@@ -13,26 +13,13 @@ class EdukasiLanjutan extends Model
     protected $table = 'edukasi_lanjutans';
 
     protected $fillable = [
-        'tanggal',
-        'no_mr',
-        'no_reg',
-        'nama_pasien',
-        'jaminan',
-        'bulan',
-        'edukasi_kamar',
-        'note',
-        'petugas',
-        'keluarga_pasien',
-        'ttd_keluarga_pasien',
-        'status',
-        'status_ranap',
-        'ranap_at',
-        'quality_control_id',
+        'tanggal', 'no_mr', 'no_reg', 'nama_pasien', 'jaminan',
+        'bulan', 'edukasi_kamar', 'note', 'petugas',
+        'keluarga_pasien', 'ttd_keluarga_pasien',
+        'status', 'status_ranap', 'ranap_at', 'quality_control_id',
     ];
 
-    protected $casts = [
-        'ranap_at' => 'datetime',
-    ];
+    protected $casts = ['ranap_at' => 'datetime'];
 
     public function qualityControl(): BelongsTo
     {

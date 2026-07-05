@@ -9,18 +9,14 @@ use Illuminate\Support\Facades\DB;
 
 class ProcessEdukasiLanjutan extends Command
 {
-    protected $signature = 'qc:process-edukasi-lanjutan';
-
-    protected $description = 'Pindahkan data QC berstatus Edukasi yang sudah >= 2 jam ke tabel edukasi_lanjutans';
+    protected $signature   = 'qc:process-edukasi-lanjutan';
+    protected $description = 'Pindahkan data QC >= 2 jam ke edukasi_lanjutans';
 
     public function handle(): int
     {
-        $cutoff = now()->subHours(2);
-
         $records = QualityControl::query()
             ->where('status', 'Edukasi')
-            ->where('created_at', '<=', $cutoff)
-            // jaga-jaga kalau command sempat jalan dobel sebelum status sempat berubah
+            ->where('created_at', '<=', now()->subHours(2))
             ->whereDoesntHave('edukasiLanjutans')
             ->get();
 
@@ -49,17 +45,12 @@ class ProcessEdukasiLanjutan extends Command
                     'quality_control_id'  => $record->id,
                 ]);
 
-                // record asli TETAP ADA di quality_controls (riwayat terjaga),
-                // hanya statusnya berubah supaya hilang dari menu "Edukasi"
                 $record->update(['status' => 'Edukasi lanjutan']);
-
                 $moved++;
             });
         }
 
-        // Kalimat ini sengaja mengandung "pasien dipindahkan" — route
-        // POST /quality-control/process-edukasi-lanjutan di api.php
-        // mem-parsing angka dari output ini lewat regex.
+        // Format output mengandung "pasien dipindahkan" — di-parse oleh route HTTP trigger.
         $this->info("{$moved} pasien dipindahkan ke Edukasi Lanjutan.");
 
         return self::SUCCESS;

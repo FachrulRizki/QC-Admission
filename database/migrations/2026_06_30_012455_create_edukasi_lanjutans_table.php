@@ -20,9 +20,10 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->string('petugas', 100);
             $table->string('keluarga_pasien', 100)->nullable();
-            $table->text('ttd_keluarga_pasien')->nullable(); // base64 signature
+            $table->text('ttd_keluarga_pasien')->nullable();
             $table->enum('status', ['Menunggu', 'Selesai'])->default('Menunggu');
-            // Foreign reference to quality_control
+            $table->string('status_ranap', 30)->nullable();
+            $table->timestamp('ranap_at')->nullable();
             $table->unsignedBigInteger('quality_control_id')->nullable();
             $table->foreign('quality_control_id')->references('id')->on('quality_controls')->nullOnDelete();
             $table->timestamps();

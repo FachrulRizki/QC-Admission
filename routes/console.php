@@ -11,4 +11,3 @@ Artisan::command('inspire', function () {
 // Cek setiap menit — pasien QC yang sudah >= 2 jam otomatis pindah ke Edukasi Lanjutan.
 // Pastikan cron job server menjalankan: * * * * * php /path/to/artisan schedule:run
 Schedule::command('qc:process-edukasi-lanjutan')->everyMinute()->withoutOverlapping();
-

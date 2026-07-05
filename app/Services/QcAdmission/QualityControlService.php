@@ -3,25 +3,22 @@
 namespace App\Services\QcAdmission;
 
 use App\Models\QualityControl;
-use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class QualityControlService
 {
-    // ── CRUD ──────────────────────────────────────────────────────────────────
-
     public function paginate(array $filters = []): LengthAwarePaginator
     {
         $query = QualityControl::query()->latest();
 
         if (! empty($filters['search'])) {
             $q = $filters['search'];
-            $query->where(function ($sub) use ($q) {
-                $sub->where('no_mr',        'like', "%{$q}%")
-                    ->orWhere('no_reg',      'like', "%{$q}%")
-                    ->orWhere('nama_pasien', 'like', "%{$q}%")
-                    ->orWhere('petugas',     'like', "%{$q}%");
-            });
+            $query->where(fn($s) => $s
+                ->where('no_mr',        'like', "%{$q}%")
+                ->orWhere('no_reg',     'like', "%{$q}%")
+                ->orWhere('nama_pasien','like', "%{$q}%")
+                ->orWhere('petugas',    'like', "%{$q}%")
+            );
         }
 
         if (! empty($filters['status']))    $query->where('status',   $filters['status']);
@@ -34,9 +31,7 @@ class QualityControlService
 
     public function create(array $data): QualityControl
     {
-        // Status selalu Edukasi saat entry — auto-pindah ke Edukasi Lanjutan
-        // dilakukan oleh scheduler 'qc:process-edukasi-lanjutan' setelah >= 2 jam
-        $data['status'] = 'Edukasi';
+        $data['status'] = 'Edukasi'; // selalu Edukasi saat entry
         return QualityControl::create($data);
     }
 
@@ -45,18 +40,10 @@ class QualityControlService
         return QualityControl::findOrFail($id);
     }
 
-    // public function update(int $id, array $data): QualityControl
-    // {
-    //     $record = $this->findOrFail($id);
-    //     $data['status'] = 'Edukasi'; // tidak bisa diubah manual
-    //     $record->update($data);
-    //     return $record->fresh();
-    // }
-
-     public function update(int $id, array $data): QualityControl
+    public function update(int $id, array $data): QualityControl
     {
         $record = $this->findOrFail($id);
-        unset($data['status']);
+        unset($data['status']); // status tidak boleh diubah manual
         $record->update($data);
         return $record->fresh();
     }

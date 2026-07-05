@@ -13,9 +13,6 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    /**
-     * Local login — authenticate with username/email + password.
-     */
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
@@ -34,22 +31,11 @@ class AuthController extends Controller
 
         ActivityLog::record('auth', 'login', "Login berhasil — {$user->name}");
 
-        return response()->json([
-            'user'  => $user,
-            'token' => $token,
-        ]);
+        return response()->json(['user' => $user, 'token' => $token]);
     }
 
     /**
-     * SSO/Keycloak callback — exchange Keycloak token for local Sanctum token.
-     *
-     * Flow:
-     *  1. Frontend redirects user to Keycloak login page (KEYCLOAK_URL/auth?client_id=...).
-     *  2. Keycloak returns code; frontend exchanges code for tokens via Keycloak token endpoint.
-     *  3. Frontend sends Keycloak access_token here.
-     *  4. We validate the token against Keycloak's userinfo endpoint.
-     *  5. Find or create local user with sso_id = Keycloak sub claim.
-     *  6. Return our own Sanctum token to the frontend.
+     * SSO Keycloak — validasi access_token ke userinfo endpoint, lalu buat/update user lokal.
      */
     public function ssoCallback(Request $request): JsonResponse
     {
@@ -106,15 +92,9 @@ class AuthController extends Controller
 
         $token = $user->createToken('qc-admission-sso')->plainTextToken;
 
-        return response()->json([
-            'user'  => $user,
-            'token' => $token,
-        ]);
+        return response()->json(['user' => $user, 'token' => $token]);
     }
 
-    /**
-     * Revoke current token (logout).
-     */
     public function logout(Request $request): JsonResponse
     {
         ActivityLog::record('auth', 'logout', "Logout — {$request->user()->name}");
@@ -123,27 +103,19 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logout berhasil.']);
     }
 
-    /**
-     * Return authenticated user info.
-     */
     public function me(Request $request): JsonResponse
     {
         return response()->json(['user' => $request->user()]);
     }
 
-    /**
-     * Map Keycloak realm roles to local roles.
-     */
+    /** Map Keycloak realm roles ke role lokal. */
     private function mapKeycloakRole(array $keycloakUser): string
     {
         $realmRoles = $keycloakUser['realm_access']['roles'] ?? [];
 
-        if (in_array('admin', $realmRoles) || in_array('qc_admin', $realmRoles)) {
-            return 'admin';
-        }
-        if (in_array('kasir', $realmRoles)) {
-            return 'kasir';
-        }
-        return 'qc_admission'; // default untuk semua petugas RS
+        if (in_array('admin', $realmRoles) || in_array('qc_admin', $realmRoles)) return 'admin';
+        if (in_array('kasir', $realmRoles)) return 'kasir';
+
+        return 'qc_admission';
     }
 }

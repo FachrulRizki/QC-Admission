@@ -13,12 +13,12 @@ class EdukasiLanjutanService
 
         if (! empty($filters['search'])) {
             $q = $filters['search'];
-            $query->where(function ($sub) use ($q) {
-                $sub->where('no_mr',        'like', "%{$q}%")
-                    ->orWhere('no_reg',      'like', "%{$q}%")
-                    ->orWhere('nama_pasien', 'like', "%{$q}%")
-                    ->orWhere('petugas',     'like', "%{$q}%");
-            });
+            $query->where(fn($s) => $s
+                ->where('no_mr',        'like', "%{$q}%")
+                ->orWhere('no_reg',     'like', "%{$q}%")
+                ->orWhere('nama_pasien','like', "%{$q}%")
+                ->orWhere('petugas',    'like', "%{$q}%")
+            );
         }
 
         if (! empty($filters['status']))    $query->where('status', $filters['status']);
@@ -28,10 +28,6 @@ class EdukasiLanjutanService
         return $query->paginate($filters['per_page'] ?? 20);
     }
 
-    /**
-     * Setiap panggilan create() = 1 sesi edukasi baru untuk pasien
-     * (bukan update record lama) — sesuai alur "Tambah Sesi" di frontend.
-     */
     public function create(array $data): EdukasiLanjutan
     {
         $data['status'] = $data['status'] ?? 'Menunggu';
@@ -55,9 +51,6 @@ class EdukasiLanjutanService
         $this->findOrFail($id)->delete();
     }
 
-    /**
-     * Sesi yang masih menunggu bed — dipakai endpoint /edukasi-lanjutan-pending.
-     */
     public function pending(array $filters = []): LengthAwarePaginator
     {
         $filters['status'] = 'Menunggu';

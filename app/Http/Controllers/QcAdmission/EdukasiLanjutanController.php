@@ -10,25 +10,15 @@ use Illuminate\Http\JsonResponse;
 
 class EdukasiLanjutanController extends Controller
 {
-    public function __construct(
-        private readonly EdukasiLanjutanService $service
-    ) {}
+    public function __construct(private readonly EdukasiLanjutanService $service) {}
 
-    /**
-     * List / search sesi edukasi lanjutan.
-     */
     public function index(Request $request): JsonResponse
     {
-        $data = $this->service->paginate($request->only([
-            'search', 'date_from', 'date_to', 'status', 'per_page', 'page',
-        ]));
-
-        return response()->json($data);
+        return response()->json(
+            $this->service->paginate($request->only(['search', 'date_from', 'date_to', 'status', 'per_page', 'page']))
+        );
     }
 
-    /**
-     * Catat sesi edukasi lanjutan baru (dipanggil tombol "Tambah Sesi").
-     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -48,24 +38,17 @@ class EdukasiLanjutanController extends Controller
         ]);
 
         $record = $this->service->create($validated);
-
         ActivityLog::record('edukasi-lanjutan', 'create',
             "Sesi edukasi lanjutan — {$record->nama_pasien} ({$record->no_mr})");
 
         return response()->json(['data' => $record, 'message' => 'Sesi edukasi lanjutan berhasil dicatat.'], 201);
     }
 
-    /**
-     * Detail 1 sesi.
-     */
     public function show(int $id): JsonResponse
     {
         return response()->json(['data' => $this->service->findOrFail($id)]);
     }
 
-    /**
-     * Update sesi (mis. ubah status Menunggu -> Selesai, atau koreksi data).
-     */
     public function update(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
@@ -80,70 +63,50 @@ class EdukasiLanjutanController extends Controller
         ]);
 
         $record = $this->service->update($id, $validated);
-
         ActivityLog::record('edukasi-lanjutan', 'update',
             "Edukasi lanjutan diupdate — {$record->nama_pasien} ({$record->no_mr})");
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }
 
-    /**
-     * Hapus sesi.
-     */
     public function destroy(int $id): JsonResponse
     {
         $record = $this->service->findOrFail($id);
-
         ActivityLog::record('edukasi-lanjutan', 'delete',
             "Edukasi lanjutan dihapus — {$record->nama_pasien} ({$record->no_mr})");
-
         $this->service->delete($id);
 
         return response()->json(['message' => 'Data berhasil dihapus.']);
     }
 
-    /**
-     * Update status ranap — dipanggil saat SIMRS konfirmasi pasien sudah pindah rawat inap.
-     * PATCH /api/edukasi-lanjutan/{id}/ranap
-     */
+    /** Update status ranap dari SIMRS. PATCH /api/edukasi-lanjutan/{id}/ranap */
     public function updateRanap(Request $request, int $id): JsonResponse
     {
-        $validated = $request->validate([
-            'status_ranap' => 'required|in:Pindah Ranap',
-        ]);
+        $validated = $request->validate(['status_ranap' => 'required|in:Pindah Ranap']);
 
         $record = $this->service->findOrFail($id);
         $record->update([
             'status_ranap' => $validated['status_ranap'],
             'ranap_at'     => now(),
-            'status'       => 'Selesai', // otomatis selesai jika sudah ranap
+            'status'       => 'Selesai',
         ]);
 
         ActivityLog::record('edukasi-lanjutan', 'update',
-            "Status ranap Edukasi {$record->nama_pasien} ({$record->no_mr}) → {$validated['status_ranap']}");
+            "Status ranap Edukasi {$record->nama_pasien} → {$validated['status_ranap']}");
 
         return response()->json(['data' => $record->fresh(), 'message' => 'Status ranap diperbarui.']);
     }
 
-    /**
-     * Sesi yang masih menunggu bed.
-     */
     public function pending(Request $request): JsonResponse
     {
-        $data = $this->service->pending($request->only([
-            'search', 'date_from', 'date_to', 'per_page', 'page',
-        ]));
-
-        return response()->json($data);
+        return response()->json(
+            $this->service->pending($request->only(['search', 'date_from', 'date_to', 'per_page', 'page']))
+        );
     }
 
-    /**
-     * Sync status dari RSUS — PLACEHOLDER, lihat catatan di bawah.
-     */
-    public function syncRsus(Request $request): JsonResponse
+    /** Sync status rawat inap dari SIMRS — implementasi setelah konfirmasi struktur tabel. */
+    public function syncRsus(): JsonResponse
     {
-        return response()->json([
-            'message' => 'syncRsus belum diimplementasikan — perlu konfirmasi logic pencocokan bed.',
-        ], 501);
+        return response()->json(['message' => 'Sync SIMRS belum diimplementasikan.'], 501);
     }
 }
