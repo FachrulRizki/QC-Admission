@@ -24,8 +24,10 @@ return new class extends Migration
             $table->string('note', 255)->nullable();
             $table->string('petugas', 100);
             $table->enum('status', ['Edukasi', 'Edukasi lanjutan', 'Masuk'])->default('Edukasi');
+            $table->string('status_ranap', 30)->nullable();
+            $table->timestamp('ranap_at')->nullable();
             $table->string('keluarga_pasien', 100)->nullable();
-            $table->text('ttd_keluarga_pasien')->nullable(); // base64 signature image
+            $table->text('ttd_keluarga_pasien')->nullable();
             $table->timestamps();
 
             $table->index(['no_mr', 'no_reg']);
