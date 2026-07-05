@@ -1,8 +1,6 @@
 ﻿<script setup>
 import { useDashboardStore } from '@/stores/useDashboardStore'
-import { useAuthStore }      from '@/stores/useAuthStore'
 import { usePegawaiStore }   from '@/stores/usePegawaiStore'
-import axios                 from 'axios'
 
 import DashboardAvgTable          from '@/views/qc-admission/dashboard/DashboardAvgTable.vue'
 import DashboardMatrixTable       from '@/views/qc-admission/dashboard/DashboardMatrixTable.vue'
@@ -12,20 +10,18 @@ import DashboardBarChart          from '@/views/qc-admission/dashboard/Dashboard
 import DashboardRecentQCTable     from '@/views/qc-admission/dashboard/DashboardRecentQCTable.vue'
 
 const store        = useDashboardStore()
-const auth         = useAuthStore()
 const pegawaiStore = usePegawaiStore()
 
 // ── Date filter ───────────────────────────────────────────────────────────────
-// Gunakan local date (bukan toISOString yang UTC) agar cocok dengan timezone WIB
 function localDateStr(d = new Date()) {
   const p = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
 }
 
-const today         = localDateStr()
-const dateFrom      = ref(today)
-const dateTo        = ref(today)
-const activeRange   = ref('Hari Ini')
+const today          = localDateStr()
+const dateFrom       = ref(today)
+const dateTo         = ref(today)
+const activeRange    = ref('Hari Ini')
 const showDatePicker = ref(false)
 
 const RANGES = [
@@ -40,14 +36,12 @@ function applyRange(r) {
   const days  = typeof r === 'object' ? r.days  : r
   const label = typeof r === 'object' ? r.label : ''
   activeRange.value = label
-
   const now = new Date()
   const to  = localDateStr(now)
   if (days === 0) {
     dateFrom.value = to; dateTo.value = to
   } else if (days === -1) {
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-    dateFrom.value = localDateStr(firstDay); dateTo.value = to
+    dateFrom.value = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1)); dateTo.value = to
   } else if (days === -2) {
     dateFrom.value = '2020-01-01'; dateTo.value = to
   } else {
@@ -62,50 +56,159 @@ async function doFetch() {
   await store.fetchDashboard(dateFrom.value, dateTo.value)
 }
 
-// ── 4 QC column filters (client-side) ────────────────────────────────────────
-const filterNamaPasien = ref('')
-const filterPetugas    = ref('')
-const filterNoMR       = ref('')
-const filterStatus     = ref('')
+// ── Filter QC — checkbox multi-select ────────────────────────────────────────
+const filterPasien  = ref([])
+const filterPetugas = ref([])
+const filterStatus  = ref([])
+const searchPasien  = ref('')
+const searchPetugas = ref('')
 
-// Opsi petugas dari KPI API (sudah di-fetch saat app load)
-const petugasOptions = computed(() =>
-  (pegawaiStore.items ?? []).map(p => p.nama).filter(Boolean).sort()
-)
+const STATUS_OPTIONS = ['Edukasi', 'Edukasi lanjutan']
+
+const pasienOptions = computed(() => {
+  const seen = new Set()
+  return (store.recentQC ?? [])
+    .filter(r => {
+      const k = r.no_mr || r.no_reg
+      if (!k || seen.has(k)) return false
+      seen.add(k); return true
+    })
+    .map(r => ({ label: `${r.nama_pasien || '—'} · ${r.no_mr || r.no_reg}`, value: r.no_mr || r.no_reg }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+})
+
+const petugasOptions = computed(() => {
+  const seen = new Set()
+  return (store.recentQC ?? [])
+    .filter(r => r.petugas && !seen.has(r.petugas) && seen.add(r.petugas))
+    .map(r => r.petugas).sort()
+})
+
+const filteredPasienOptions = computed(() => {
+  if (!searchPasien.value.trim()) return pasienOptions.value
+  const q = searchPasien.value.toLowerCase()
+  return pasienOptions.value.filter(o => o.label.toLowerCase().includes(q))
+})
+
+const filteredPetugasOptions = computed(() => {
+  if (!searchPetugas.value.trim()) return petugasOptions.value
+  const q = searchPetugas.value.toLowerCase()
+  return petugasOptions.value.filter(o => o.toLowerCase().includes(q))
+})
 
 function clearFilters() {
-  filterNamaPasien.value = ''
-  filterPetugas.value    = ''
-  filterNoMR.value       = ''
-  filterStatus.value     = ''
+  filterPasien.value  = []
+  filterPetugas.value = []
+  filterStatus.value  = []
+  searchPasien.value  = ''
+  searchPetugas.value = ''
 }
 
-// filteredRecentQC — filter data tabel QC secara client-side
+const hasActiveFilter = computed(() =>
+  filterPasien.value.length > 0 || filterPetugas.value.length > 0 || filterStatus.value.length > 0
+)
+
 const filteredRecentQC = computed(() => {
   let data = store.recentQC ?? []
-
-  if (filterNamaPasien.value.trim()) {
-    const q = filterNamaPasien.value.toLowerCase()
-    data = data.filter(r => r.nama_pasien?.toLowerCase().includes(q))
-  }
-  if (filterPetugas.value) {
-    const q = filterPetugas.value.toLowerCase()
-    data = data.filter(r => r.petugas?.toLowerCase().includes(q))
-  }
-  if (filterNoMR.value.trim()) {
-    const q = filterNoMR.value.trim()
-    data = data.filter(r => r.no_mr?.includes(q) || r.no_reg?.includes(q))
-  }
-  if (filterStatus.value) {
-    const s = filterStatus.value.toLowerCase()
-    data = data.filter(r => r.status?.toLowerCase() === s)
-  }
+  if (filterPasien.value.length)
+    data = data.filter(r => filterPasien.value.includes(r.no_mr || r.no_reg))
+  if (filterPetugas.value.length)
+    data = data.filter(r => filterPetugas.value.includes(r.petugas))
+  if (filterStatus.value.length)
+    data = data.filter(r => filterStatus.value.includes(r.status))
   return data
 })
 
-const hasActiveFilter = computed(() =>
-  !!(filterNamaPasien.value || filterPetugas.value || filterNoMR.value || filterStatus.value)
-)
+// ── Derived chart data dari filteredRecentQC ────────────────────────────────
+// Ketika filter aktif → semua komponen pakai data filtered
+// Ketika tidak ada filter → pakai data asli dari store (sudah pre-computed di backend)
+
+const isFiltered = computed(() => hasActiveFilter.value)
+
+// avgPerPetugas: [{ petugas, avg_durasi_menit }]
+const derivedAvgPerPetugas = computed(() => {
+  if (!isFiltered.value) return store.avgPerPetugas
+  const map = {}
+  filteredRecentQC.value.forEach(r => {
+    if (!r.petugas) return
+    if (!map[r.petugas]) map[r.petugas] = { petugas: r.petugas, total: 0, count: 0 }
+    if (r.durasi_tunggu) {
+      const parts = r.durasi_tunggu.split(':').map(Number)
+      const mnt = parts.length >= 2 ? parts[0] * 60 + parts[1] : 0
+      map[r.petugas].total += mnt
+      map[r.petugas].count++
+    }
+  })
+  return Object.values(map).map(v => ({
+    petugas: v.petugas,
+    avg_durasi_menit: v.count > 0 ? Math.round(v.total / v.count) : 0,
+  })).sort((a, b) => b.avg_durasi_menit - a.avg_durasi_menit)
+})
+
+// edukasiPerPetugas: [{ petugas, Edukasi, 'Edukasi lanjutan', total }]
+const derivedEdukasiPerPetugas = computed(() => {
+  if (!isFiltered.value) return store.edukasiPerPetugas
+  const map = {}
+  filteredRecentQC.value.forEach(r => {
+    if (!r.petugas) return
+    if (!map[r.petugas]) map[r.petugas] = { petugas: r.petugas, 'Edukasi': 0, 'Edukasi lanjutan': 0, total: 0 }
+    const s = r.status || ''
+    if (s === 'Edukasi' || s === 'Edukasi lanjutan') {
+      map[r.petugas][s]++
+      map[r.petugas].total++
+    }
+  })
+  return Object.values(map).sort((a, b) => b.total - a.total)
+})
+
+// perStatus: [{ status, count }]
+const derivedPerStatus = computed(() => {
+  if (!isFiltered.value) return store.perStatus
+  const map = {}
+  filteredRecentQC.value.forEach(r => {
+    const s = r.status || 'Unknown'
+    map[s] = (map[s] ?? 0) + 1
+  })
+  return Object.entries(map).map(([status, count]) => ({ status, count }))
+})
+
+// perKamar: [{ edukasi_kamar, count }]
+const derivedPerKamar = computed(() => {
+  if (!isFiltered.value) return store.perKamar
+  const map = {}
+  filteredRecentQC.value.forEach(r => {
+    const k = r.edukasi_kamar || '—'
+    map[k] = (map[k] ?? 0) + 1
+  })
+  return Object.entries(map).map(([edukasi_kamar, count]) => ({ edukasi_kamar, count }))
+    .sort((a, b) => b.count - a.count).slice(0, 10)
+})
+
+// matrix: [{ petugas, Edukasi, 'Edukasi lanjutan', total }] — sama dengan edukasiPerPetugas
+const derivedMatrix = computed(() => {
+  if (!isFiltered.value) return store.matrix
+  return derivedEdukasiPerPetugas.value
+})
+
+// derived stats
+const derivedStats = computed(() => {
+  if (!isFiltered.value) return store.stats
+  const data = filteredRecentQC.value
+  const totalEdukasi = data.filter(r => r.status === 'Edukasi').length
+  const totalLanjutan = data.filter(r => r.status === 'Edukasi lanjutan').length
+  const durations = data.filter(r => r.durasi_tunggu).map(r => {
+    const parts = r.durasi_tunggu.split(':').map(Number)
+    return parts.length >= 2 ? parts[0] * 60 + parts[1] : 0
+  })
+  const avgDurasi = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0
+  return {
+    ...store.stats,
+    jumlahEdukasiPasien:  data.length,
+    durasiTungguEdukasi:  String(avgDurasi),
+    totalEdukasi,
+    totalEdukasiLanjutan: totalLanjutan,
+  }
+})
 
 // ── Clock ─────────────────────────────────────────────────────────────────────
 const now = ref(new Date())
@@ -113,19 +216,11 @@ let clockTimer
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
   doFetch()
-  // Ambil data petugas dari KPI API (untuk dropdown filter)
   pegawaiStore.fetch()
 })
 onUnmounted(() => clearInterval(clockTimer))
 
-const formattedDate = computed(() =>
-  now.value.toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
-)
-const formattedTime = computed(() =>
-  now.value.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
-)
 const rangeLabelDisplay = computed(() => {
-  // Parse YYYY-MM-DD sebagai local date (bukan UTC) dengan tambah T00:00:00
   const parseLocal = s => new Date(s + 'T00:00:00')
   if (dateFrom.value === dateTo.value)
     return parseLocal(dateFrom.value).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })
@@ -133,8 +228,8 @@ const rangeLabelDisplay = computed(() => {
   return fmt(dateFrom.value) + ' – ' + fmt(dateTo.value)
 })
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
-const stats = computed(() => store.stats)
+// ── Stats — pakai derived saat filter aktif ───────────────────────────────────
+const stats = computed(() => derivedStats.value)
 
 const kpiCards = computed(() => [
   { label: 'Jumlah Edukasi Pasien',         value: (stats.value.jumlahEdukasiPasien ?? 0).toLocaleString('id-ID') },
@@ -224,103 +319,105 @@ const kpiCards = computed(() => [
     <!-- ── Row 1: Avg Durasi | Matrix | Filter pills ─────────────────────── -->
     <div class="db-grid db-grid--row1 mb-4">
       <div class="db-grid__avg">
-        <DashboardAvgTable :items="store.avgPerPetugas" :loading="store.loading" />
+        <DashboardAvgTable :items="derivedAvgPerPetugas" :loading="store.loading" />
       </div>
       <div class="db-grid__matrix">
-        <DashboardMatrixTable :items="store.matrix" :loading="store.loading" />
+        <DashboardMatrixTable :items="derivedMatrix" :loading="store.loading" />
       </div>
       <div class="db-grid__filter">
         <!-- ══ Filter Panel ══════════════════════════════════════════════════ -->
         <div class="fp">
 
-          <!-- Filter Tabel QC — 4 inputs pill -->
-          <p class="fp__title">Filter Tabel QC</p>
+          <p class="fp__title">
+            Filter Tabel QC
+            <span v-if="hasActiveFilter" class="fp__active-badge">
+              {{ filterPasien.length + filterPetugas.length + filterStatus.length }} aktif
+            </span>
+          </p>
           <div class="fp__divider" />
 
-          <!-- NamaPasien — text input -->
-          <div class="fp__qcf" :class="filterNamaPasien ? 'fp__qcf--on' : ''">
-            <span class="fp__qcf-icon">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-            </span>
-            <input v-model="filterNamaPasien" class="fp__qcf-in" placeholder="NamaPasien" />
-            <button v-if="filterNamaPasien" class="fp__qcf-x" @click.stop="filterNamaPasien = ''">✕</button>
-            <span v-else class="fp__qcf-ch">▾</span>
+          <!-- ── Pasien + No MR ── -->
+          <div class="fp__section">
+            <div class="fp__section-head">
+              <span class="fp__section-lbl">Pasien / No. MR</span>
+              <span v-if="filterPasien.length" class="fp__badge">{{ filterPasien.length }}</span>
+            </div>
+            <input v-model="searchPasien" class="fp__search" placeholder="Cari pasien..." />
+            <div class="fp__check-list">
+              <label v-for="opt in filteredPasienOptions" :key="opt.value" class="fp__check-item">
+                <input
+                  type="checkbox"
+                  :value="opt.value"
+                  v-model="filterPasien"
+                  class="fp__checkbox"
+                />
+                <span class="fp__check-label">{{ opt.label }}</span>
+              </label>
+              <p v-if="!filteredPasienOptions.length" class="fp__empty">Tidak ada data</p>
+            </div>
           </div>
 
-          <!-- Petugas — text input untuk partial search -->
-          <div class="fp__qcf fp__qcf--sel-wrap" :class="filterPetugas ? 'fp__qcf--on' : ''">
-            <span class="fp__qcf-icon">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-            </span>
-            <input v-model="filterPetugas" class="fp__qcf-in" placeholder="Petugas" />
-            <button v-if="filterPetugas" class="fp__qcf-x" @click.stop="filterPetugas = ''">✕</button>
-            <span v-else class="fp__qcf-ch">▾</span>
+          <div class="fp__divider" />
+
+          <!-- ── Petugas ── -->
+          <div class="fp__section">
+            <div class="fp__section-head">
+              <span class="fp__section-lbl">Petugas</span>
+              <span v-if="filterPetugas.length" class="fp__badge">{{ filterPetugas.length }}</span>
+            </div>
+            <input v-model="searchPetugas" class="fp__search" placeholder="Cari petugas..." />
+            <div class="fp__check-list">
+              <label v-for="p in filteredPetugasOptions" :key="p" class="fp__check-item">
+                <input
+                  type="checkbox"
+                  :value="p"
+                  v-model="filterPetugas"
+                  class="fp__checkbox"
+                />
+                <span class="fp__check-label">{{ p }}</span>
+              </label>
+              <p v-if="!filteredPetugasOptions.length" class="fp__empty">Tidak ada data</p>
+            </div>
           </div>
 
-          <!-- NoMR — text input -->
-          <div class="fp__qcf" :class="filterNoMR ? 'fp__qcf--on' : ''">
-            <span class="fp__qcf-icon">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <rect x="2" y="3" width="20" height="18" rx="2"/>
-                <line x1="8" y1="8" x2="16" y2="8"/>
-                <line x1="8" y1="12" x2="16" y2="12"/>
-                <line x1="8" y1="16" x2="12" y2="16"/>
-              </svg>
-            </span>
-            <input v-model="filterNoMR" class="fp__qcf-in" placeholder="NoMR" />
-            <button v-if="filterNoMR" class="fp__qcf-x" @click.stop="filterNoMR = ''">✕</button>
-            <span v-else class="fp__qcf-ch">▾</span>
+          <div class="fp__divider" />
+
+          <!-- ── Status ── -->
+          <div class="fp__section">
+            <div class="fp__section-head">
+              <span class="fp__section-lbl">Status</span>
+              <span v-if="filterStatus.length" class="fp__badge">{{ filterStatus.length }}</span>
+            </div>
+            <div class="fp__check-list fp__check-list--compact">
+              <label v-for="s in STATUS_OPTIONS" :key="s" class="fp__check-item">
+                <input
+                  type="checkbox"
+                  :value="s"
+                  v-model="filterStatus"
+                  class="fp__checkbox"
+                />
+                <span class="fp__check-label">{{ s }}</span>
+              </label>
+            </div>
           </div>
 
-          <!-- Status — quick chips langsung (tanpa select) -->
-          <div class="fp__qcf-label">
-            <span class="fp__qcf-icon" style="display:inline-flex;align-items:center">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-            </span>
-            <span style="font-size:0.78rem;font-weight:600;color:rgba(26,31,30,0.7)">Status</span>
-          </div>
-          <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
-            <button class="fp__status-chip" :class="filterStatus === '' ? 'fp__status-chip--on' : ''" @click="filterStatus = ''">
-              Semua
-            </button>
-            <button class="fp__status-chip" :class="filterStatus === 'Edukasi' ? 'fp__status-chip--on' : ''" @click="filterStatus = filterStatus === 'Edukasi' ? '' : 'Edukasi'">
-              Edukasi
-            </button>
-            <button class="fp__status-chip" :class="filterStatus === 'Edukasi lanjutan' ? 'fp__status-chip--on' : ''" @click="filterStatus = filterStatus === 'Edukasi lanjutan' ? '' : 'Edukasi lanjutan'">
-              Edukasi Lanjutan
-            </button>
-          </div>
-
-          <button
-            v-if="hasActiveFilter"
-            class="fp__reset"
-            @click="clearFilters"
-          >✕ Reset Filter</button>
+          <button v-if="hasActiveFilter" class="fp__reset" @click="clearFilters">
+            ✕ Reset Filter
+          </button>
 
           <!-- Mini stats -->
+          <div class="fp__divider" />
           <div class="fp__stats">
             <div class="fp__stat">
-              <span class="fp__stat-num">{{ (stats.totalEdukasi ?? 0).toLocaleString('id-ID') }}</span>
+              <span class="fp__stat-num">{{ (derivedStats.totalEdukasi ?? 0).toLocaleString('id-ID') }}</span>
               <span class="fp__stat-lbl">Edukasi</span>
             </div>
             <div class="fp__stat">
-              <span class="fp__stat-num">{{ (stats.totalEdukasiLanjutan ?? 0).toLocaleString('id-ID') }}</span>
-              <span class="fp__stat-lbl">Edukasi Lanjutan</span>
+              <span class="fp__stat-num">{{ (derivedStats.totalEdukasiLanjutan ?? 0).toLocaleString('id-ID') }}</span>
+              <span class="fp__stat-lbl">Lanjutan</span>
             </div>
             <div class="fp__stat">
-              <span class="fp__stat-num">{{ (stats.totalBatalRanap ?? 0).toLocaleString('id-ID') }}</span>
+              <span class="fp__stat-num">{{ (derivedStats.totalBatalRanap ?? 0).toLocaleString('id-ID') }}</span>
               <span class="fp__stat-lbl">Batal Ranap</span>
             </div>
           </div>
@@ -332,13 +429,13 @@ const kpiCards = computed(() => [
     <!-- ── Row 2: Per Petugas | Funnel | Bar Chart ───────────────────────── -->
     <div class="db-grid db-grid--row2 mb-4">
       <div class="db-grid__petugas">
-        <DashboardEdukasiPerPetugas :items="store.edukasiPerPetugas" :loading="store.loading" />
+        <DashboardEdukasiPerPetugas :items="derivedEdukasiPerPetugas" :loading="store.loading" />
       </div>
       <div class="db-grid__funnel">
-        <DashboardFunnelChart :items="store.perStatus" />
+        <DashboardFunnelChart :items="derivedPerStatus" />
       </div>
       <div class="db-grid__bar">
-        <DashboardBarChart :items="store.perKamar" />
+        <DashboardBarChart :items="derivedPerKamar" />
       </div>
     </div>
 
@@ -498,12 +595,10 @@ const kpiCards = computed(() => [
   .db-topbar__brand { flex: 1; min-width: 0; }
   .db-date-panel { left: 0 !important; right: 0 !important; min-width: unset; position: fixed !important; bottom: 0; top: auto !important; border-radius: 16px 16px 0 0; padding: 16px; }
   .db-subtitle-bar { padding: 4px 0; gap: 8px; font-size: 0.72rem; }
-  .fp { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding: 10px 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .fp::-webkit-scrollbar { display: none; }
-  .fp__title, .fp__divider { display: none; }
-  .fp__qcf { flex-shrink: 0; margin-bottom: 0; min-width: 120px; }
-  .fp__stats { flex-shrink: 0; min-width: 200px; }
-  .fp__reset { flex-shrink: 0; white-space: nowrap; width: auto; }
+  /* Filter panel jadi horizontal scroll di mobile */
+  .fp { display: flex; flex-direction: column; padding: 12px; gap: 0; }
+  .fp__check-list { max-height: 100px; }
+  .fp__stats { flex-wrap: wrap; }
 }
 
 /* ── Filter panel (.fp) — dark mode aware ────────────────────────────────── */
@@ -620,7 +715,57 @@ const kpiCards = computed(() => [
 }
 .fp__reset:hover { border-color: rgb(var(--v-theme-error)); color: rgb(var(--v-theme-error)); }
 
-/* db-filter-* legacy classes */
+/* ── Checkbox filter styles ── */
+.fp__title {
+  font-size: 0.875rem; font-weight: 700; color: rgb(var(--v-theme-on-surface));
+  margin: 0 0 10px; display: flex; align-items: center; gap: 8px;
+}
+.fp__active-badge {
+  font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+  background: rgb(var(--v-theme-primary)); color: #fff;
+}
+.fp__section { margin-bottom: 6px; }
+.fp__section-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+}
+.fp__section-lbl {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.fp__badge {
+  font-size: 0.62rem; font-weight: 800; padding: 1px 6px; border-radius: 10px;
+  background: rgb(var(--v-theme-primary)); color: #fff;
+}
+.fp__search {
+  width: 100%; border: 1.5px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 8px; padding: 5px 9px; font-size: 0.78rem;
+  color: rgb(var(--v-theme-on-surface)); background: rgb(var(--v-theme-surface));
+  outline: none; margin-bottom: 6px; box-sizing: border-box; transition: border-color 0.15s;
+}
+.fp__search:focus { border-color: rgb(var(--v-theme-primary)); }
+.fp__search::placeholder { color: rgba(var(--v-theme-on-surface), 0.35); }
+.fp__check-list {
+  max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px;
+  scrollbar-width: thin;
+}
+.fp__check-list--compact { max-height: 80px; }
+.fp__check-list::-webkit-scrollbar { width: 3px; }
+.fp__check-list::-webkit-scrollbar-thumb { background: rgba(var(--v-theme-primary),0.3); border-radius:3px; }
+.fp__check-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: 6px; cursor: pointer; transition: background 0.12s;
+}
+.fp__check-item:hover { background: rgba(var(--v-theme-primary), 0.08); }
+.fp__checkbox {
+  width: 15px; height: 15px; flex-shrink: 0; cursor: pointer;
+  accent-color: rgb(var(--v-theme-primary));
+}
+.fp__check-label {
+  font-size: 0.8rem; color: rgba(var(--v-theme-on-surface), 0.82);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
+}
+.fp__empty { font-size: 0.75rem; color: rgba(var(--v-theme-on-surface),0.4); text-align:center; padding:8px 0; margin:0; }
+
 .db-filter-panel {
   background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 12px; box-shadow: 0 2px 8px rgba(16,24,22,0.08); padding: 14px; height: 100%;
