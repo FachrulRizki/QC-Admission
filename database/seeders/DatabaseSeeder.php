@@ -32,6 +32,9 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        // ── Master Data ────────────────────────────────────────────────────────
+        $this->call(MasterDataSeeder::class);
+
         // ── 3 Akun utama ──────────────────────────────────────────────────────
         // 1. admin       — kelola aplikasi, akses semua menu + user management
         // 2. qc_admission — entry data QC, Edukasi, Batal Ranap, Up Selling
