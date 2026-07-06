@@ -8,11 +8,6 @@ use App\Models\MasterData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * MasterDataController
- * Data disimpan di tabel `master_data` (persisten, tidak hilang saat cache clear).
- * Seed default: php artisan db:seed --class=MasterDataSeeder
- */
 class MasterDataController extends Controller
 {
     /** GET /api/master-data — semua kategori */
@@ -21,10 +16,6 @@ class MasterDataController extends Controller
         return response()->json(MasterData::allGrouped());
     }
 
-    /**
-     * POST /api/master-data
-     * Body: { "category": "ruangan", "item": "Ruang Baru" }
-     */
     public function store(Request $request): JsonResponse
     {
         $request->validate([
@@ -58,10 +49,6 @@ class MasterDataController extends Controller
         ], 201);
     }
 
-    /**
-     * PUT /api/master-data/{category}
-     * Body: { "items": ["item1", "item2", ...] } — replace seluruh isi kategori
-     */
     public function update(Request $request, string $category): JsonResponse
     {
         $request->validate([
@@ -73,7 +60,6 @@ class MasterDataController extends Controller
             return response()->json(['message' => 'Kategori tidak ditemukan.'], 404);
         }
 
-        // Hapus semua item lama, insert ulang
         MasterData::where('category', $category)->delete();
 
         $rows = [];
@@ -96,9 +82,6 @@ class MasterDataController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/master-data/{category}/{index}
-     */
     public function destroy(string $category, int $index): JsonResponse
     {
         $items = MasterData::where('category', $category)

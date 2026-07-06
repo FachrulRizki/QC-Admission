@@ -7,29 +7,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-/**
- * BedIgdService
- *
- * Mengelola semua interaksi dengan Bed Management IGD.
- * Prioritas:
- *   1. Bed IGD API (BED_IGD_ENABLED=true) — login → cache token → call API
- *   2. RSUS DB langsung (RSUS_DB_ENABLED=true) — query/update BI_Bed_Igd
- *   3. Mock (fallback lokal, tidak ada koneksi)
- */
 class BedIgdService
 {
     private const TOKEN_CACHE_KEY = 'bed_igd_api_token';
 
-    // ── Public API ────────────────────────────────────────────────────────────
-
-    /**
-     * Ambil daftar bed berdasarkan No. Reg pasien.
-     *
-     * @return array{ beds: array, source: string }
-     */
     public function getBedsByNoReg(string $noReg): array
     {
-        // 1. Bed IGD API
+        // Bed IGD API
         if ($this->isApiEnabled()) {
             try {
                 $token    = $this->getToken();
@@ -57,7 +41,7 @@ class BedIgdService
             }
         }
 
-        // 2. RSUS DB
+        // RSUS DB
         if ($this->isRsusEnabled()) {
             try {
                 $rows = DB::connection('rsus')
@@ -76,7 +60,7 @@ class BedIgdService
             }
         }
 
-        // 3. Mock
+        // Mock
         return [
             'beds'   => $this->mockBeds($noReg),
             'source' => 'mock',
@@ -94,7 +78,7 @@ class BedIgdService
             return ['success' => false, 'source' => 'none', 'message' => 'Kode bed tidak boleh kosong.'];
         }
 
-        // 1. Bed IGD API
+        // Bed IGD API
         if ($this->isApiEnabled()) {
             try {
                 $token    = $this->getToken();
@@ -121,7 +105,7 @@ class BedIgdService
             }
         }
 
-        // 2. RSUS DB langsung
+        // RSUS DB langsung
         if ($this->isRsusEnabled()) {
             try {
                 // Kolom timestamp di BI_Bed_Igd: "update_at" (bukan updated_at)
@@ -142,7 +126,7 @@ class BedIgdService
             }
         }
 
-        // 3. Mock
+        // Mock
         Log::info("BedIgdService: mock release — bed {$kodeBed} (No_Reg: {$noReg}) → KOSONG");
         return ['success' => true, 'source' => 'mock', 'kode_bed' => $kodeBed];
     }
@@ -202,13 +186,9 @@ class BedIgdService
         return (bool) config('services.rsus_db_enabled', false);
     }
 
-    /**
-     * Normalisasi array bed dari API eksternal ke format standar.
-     */
     private function normalizeBeds(array $beds): array
     {
         return collect($beds)->map(function ($b) {
-            // API mungkin kirim field dengan nama berbeda — cover semua kemungkinan
             return [
                 'kode_bed'       => $b['kode_bed']       ?? $b['bed_code']  ?? $b['bed_id']   ?? null,
                 'bed_id'         => $b['kode_bed']       ?? $b['bed_code']  ?? $b['bed_id']   ?? null,
@@ -220,9 +200,6 @@ class BedIgdService
         })->values()->toArray();
     }
 
-    /**
-     * Normalisasi baris dari RSUS DB (BI_Bed_Igd) ke format standar.
-     */
     private function normalizeRow(object $r): array
     {
         return [
