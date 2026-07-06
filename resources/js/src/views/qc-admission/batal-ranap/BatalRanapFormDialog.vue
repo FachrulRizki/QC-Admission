@@ -1,457 +1,542 @@
 <script setup>
-import { useBatalRanapStore }  from '@/stores/useBatalRanapStore'
-import { usePegawaiStore }     from '@/stores/usePegawaiStore'
-import { usePasienStore }      from '@/stores/usePasienStore'
-import { useMasterDataStore }  from '@/stores/useMasterDataStore'
+import { useBatalRanapStore } from '@/stores/useBatalRanapStore'
+import { usePegawaiStore } from '@/stores/usePegawaiStore'
+import { usePasienStore } from '@/stores/usePasienStore'
+import { useMasterDataStore } from '@/stores/useMasterDataStore'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
-  modelValue: { type: Boolean, default: false },
-  editItem:   { type: Object, default: null },
+modelValue: { type: Boolean, default: false },
+editItem: { type: Object, default: null },
 })
 const emit = defineEmits(['update:modelValue', 'saved'])
 
-const store        = useBatalRanapStore()
+const store = useBatalRanapStore()
 const pegawaiStore = usePegawaiStore()
-const pasienStore  = usePasienStore()
-const masterStore  = useMasterDataStore()
+const pasienStore = usePasienStore()
+const masterStore = useMasterDataStore()
 
-const form     = ref(initialForm())
+const form = ref(initialForm())
 const errorMsg = ref('')
-const saving   = ref(false)
+const saving = ref(false)
 
-// Live clock
 const nowDisplay = ref('')
 let clockTimer = null
+
 function tickClock() {
-  const d = new Date()
-  const p = n => String(n).padStart(2, '0')
-  nowDisplay.value = `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
+const d = new Date()
+const p = n => String(n).padStart(2, '0')
+nowDisplay.value = `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
 }
 
-// ── Opsi ─────────────────────────────────────────────────────────────────────
-// keteranganOpts & statusOkOpts diambil dari masterStore (bukan hardcoded)
 const statusClosingOpts = [
-  { title: '👍 Siap Closing',        value: 'Siap Closing',        color: 'success' },
-  { title: '⏳ Belum Siap Closing',  value: 'Belum Siap Closing',  color: 'error'   },
+{ title: '👍 Siap Closing', value: 'Siap Closing', color: 'success' },
+{ title: '⏳ Belum Siap Closing', value: 'Belum Siap Closing', color: 'error' },
 ]
 
 // ── Pasien search ─────────────────────────────────────────────────────────────
-const noRegSearch  = ref('')
+const noRegSearch = ref('')
 const noRegLoading = ref(false)
-let   searchTimer  = null
+let searchTimer = null
 
 watch(noRegSearch, (val) => {
-  clearTimeout(searchTimer)
-  if (!val || val.trim().length < 2) { pasienStore.clear(); return }
-  noRegLoading.value = true
-  searchTimer = setTimeout(async () => {
-    await pasienStore.search(val.trim())
-    noRegLoading.value = false
-  }, 300)
+clearTimeout(searchTimer)
+if (!val || val.trim().length < 2) { pasienStore.clear(); return }
+noRegLoading.value = true
+searchTimer = setTimeout(async () => {
+await pasienStore.search(val.trim())
+noRegLoading.value = false
+}, 300)
 })
 
-// Autofill saat pasien dipilih
 watch(() => form.value.no_reg, async (val) => {
-  if (!val) return
-  const hit = pasienStore.results.find(p => p.no_reg === val)
-    ?? await pasienStore.lookup(val)
-  if (hit) {
-    form.value.no_mr       = hit.no_mr        ?? ''
-    form.value.nama_pasien = hit.nama_pasien  ?? ''
-    form.value.tgl_daftar  = hit.tgl_daftar   ?? ''
-    form.value.jam_daftar  = hit.jam_daftar   ?? ''
-    form.value.diagnosa    = hit.diagnosa     ?? ''
-    form.value.ruangan     = hit.nama_bangsal ?? hit.nama_ruang ?? ''
-  }
+if (!val) return
+const hit = pasienStore.results.find(p => p.no_reg === val)
+?? await pasienStore.lookup(val)
+if (hit) {
+form.value.no_mr = hit.no_mr ?? ''
+form.value.nama_pasien = hit.nama_pasien ?? ''
+form.value.tgl_daftar = hit.tgl_daftar ?? ''
+form.value.jam_daftar = hit.jam_daftar ?? ''
+form.value.diagnosa = hit.diagnosa ?? ''
+form.value.ruangan = hit.nama_bangsal ?? hit.nama_ruang ?? ''
+}
 })
 
 watch(() => props.modelValue, (open) => {
-  if (open) {
-    form.value        = props.editItem ? { ...initialForm(), ...props.editItem } : initialForm()
-    errorMsg.value    = ''
-    pasienStore.clear()
-    noRegSearch.value = ''
-    pegawaiStore.fetch()
-    masterStore.fetch()
-    tickClock()
-    clockTimer = setInterval(tickClock, 1000)
-  } else {
-    clearInterval(clockTimer)
-  }
+if (open) {
+form.value = props.editItem ? { ...initialForm(), ...props.editItem } : initialForm()
+errorMsg.value = ''
+pasienStore.clear()
+noRegSearch.value = ''
+pegawaiStore.fetch()
+masterStore.fetch()
+tickClock()
+clockTimer = setInterval(tickClock, 1000)
+} else {
+clearInterval(clockTimer)
+}
 })
 
 function initialForm() {
-  return {
-    no_reg:             null,
-    no_mr:              '',
-    nama_pasien:        '',
-    tgl_daftar:         '',
-    jam_daftar:         '',
-    keterangan_batal:   null,
-    status_ok:          null,
-    status_closing:     null,
-    ketersediaan_kamar: '',
-    diagnosa:           '',
-    note:               '',
-    petugas:            null,
-    ruangan:            '',
-  }
+return {
+no_reg: null,
+no_mr: '',
+nama_pasien: '',
+tgl_daftar: '',
+jam_daftar: '',
+keterangan_batal: null,
+status_ok: null,
+status_closing: null,
+ketersediaan_kamar: '',
+diagnosa: '',
+note: '',
+petugas: null,
+ruangan: '',
+}
 }
 
 function fmtJam(d) {
-  const p = n => String(n).padStart(2, '0')
-  return `${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
+const p = n => String(n).padStart(2, '0')
+return `${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
 }
 function fmtTgl(d) {
-  const p = n => String(n).padStart(2, '0')
-  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${fmtJam(d)}`
+const p = n => String(n).padStart(2, '0')
+return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${fmtJam(d)}`
 }
 
 async function handleSave() {
-  errorMsg.value = ''
-  if (!form.value.no_reg)           { errorMsg.value = 'Pasien wajib dipilih.'; return }
-  if (!form.value.keterangan_batal) { errorMsg.value = 'Keterangan batal wajib dipilih.'; return }
-  if (!form.value.petugas)          { errorMsg.value = 'Petugas wajib dipilih.'; return }
+errorMsg.value = ''
+if (!form.value.no_reg) { errorMsg.value = 'Pasien wajib dipilih.'; return }
+if (!form.value.keterangan_batal) { errorMsg.value = 'Keterangan batal wajib dipilih.'; return }
+if (!form.value.petugas) { errorMsg.value = 'Petugas wajib dipilih.'; return }
 
-  saving.value = true
-  const now = new Date()
-  const payload = {
-    ...form.value,
-    tanggal:   fmtTgl(now),
-    jam_input: fmtJam(now),
-  }
+saving.value = true
+const now = new Date()
+const payload = {
+...form.value,
+tanggal: fmtTgl(now),
+jam_input: fmtJam(now),
+}
 
-  const result = props.editItem
-    ? await store.update(props.editItem.id, payload)
-    : await store.store(payload)
+const result = props.editItem
+? await store.update(props.editItem.id, payload)
+: await store.store(payload)
 
-  saving.value = false
+saving.value = false
 
-  if (result?.success !== false) {
-    emit('saved', payload)
-    close()
-  } else {
-    errorMsg.value = result?.message ?? 'Gagal menyimpan.'
-  }
+if (result?.success !== false) {
+emit('saved', payload)
+close()
+} else {
+errorMsg.value = result?.message ?? 'Gagal menyimpan.'
+}
 }
 
 function close() {
-  clearInterval(clockTimer)
-  emit('update:modelValue', false)
+clearInterval(clockTimer)
+emit('update:modelValue', false)
 }
 
 function statusClosingColor(v) {
-  return v === 'Siap Closing' ? 'success' : v === 'Belum Siap Closing' ? 'error' : 'secondary'
+return v === 'Siap Closing' ? 'success' : v === 'Belum Siap Closing' ? 'error' : 'secondary'
 }
+
+const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien)
 </script>
 
 <template>
-  <VDialog :model-value="modelValue" max-width="600" persistent scrollable @update:model-value="close">
-    <VCard rounded="xl">
+<VDialog :model-value="modelValue" max-width="600" persistent scrollable @update:model-value="close">
+<VCard rounded="xl" class="dlg-card overflow-hidden">
 
-      <!-- ── Header ─────────────────────────────────────────────────────────── -->
-      <div class="dlg-header d-flex align-center gap-3 px-5 py-4">
-        <VAvatar color="error" variant="tonal" size="44" rounded="lg">
-          <VIcon icon="ri-close-circle-line" size="22" />
-        </VAvatar>
-        <div class="flex-grow-1 min-width-0">
-          <p class="text-subtitle-1 font-weight-bold mb-0">
-            {{ editItem ? 'Edit Batal Ranap' : 'Input Pasien Batal Ranap' }}
-          </p>
-          <p class="text-caption text-medium-emphasis mb-0">
-            Pencatatan pembatalan rawat inap pasien IGD
-          </p>
-        </div>
-        <VBtn icon variant="text" size="small" @click="close">
-          <VIcon icon="ri-close-line" />
-        </VBtn>
-      </div>
-      <VDivider />
+<!-- ── Gradient Banner Header ───────────────────────────────────────── -->
+<div class="dlg-banner">
+<div class="db-blob db-blob--1" /><div class="db-blob db-blob--2" />
+<div class="db-inner">
+<div class="db-icon">
+<VIcon icon="ri-close-circle-line" size="22" color="white" />
+</div>
+<div class="db-text">
+<p class="db-sub">Batal Ranap · IGD</p>
+<h3 class="db-title">{{ editItem ? 'Edit Batal Ranap' : 'Input Batal Ranap' }}</h3>
+</div>
+<div class="db-clock">
+<VIcon icon="ri-time-line" size="11" class="me-1 opacity-70" />
+<span>{{ nowDisplay }}</span>
+</div>
+<button class="db-close" @click="close">
+<VIcon icon="ri-close-line" size="16" />
+</button>
+</div>
+</div>
 
-      <VCardText class="pa-5">
-        <VAlert v-if="errorMsg" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="errorMsg=''">
-          {{ errorMsg }}
-        </VAlert>
+<VCardText class="pa-0">
+<div v-if="errorMsg" class="px-5 pt-4">
+<VAlert type="error" variant="tonal" density="compact" closable @click:close="errorMsg=''">
+{{ errorMsg }}
+</VAlert>
+</div>
 
-        <!-- ── Waktu Input ──────────────────────────────────────────────────── -->
-        <div class="fsec fsec--muted mb-4">
-          <p class="fsec-label">
-            <VIcon icon="ri-time-line" size="13" class="me-1" />Waktu Input
-          </p>
-          <VRow dense>
-            <VCol cols="7">
-              <VTextField
-                :model-value="nowDisplay"
-                label="Tanggal"
-                variant="outlined" density="compact" readonly hide-details
-                prepend-inner-icon="ri-calendar-line"
-                bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-              />
-            </VCol>
-            <VCol cols="5">
-              <VTextField
-                :model-value="nowDisplay.split(', ')[1] ?? ''"
-                label="Jam Input"
-                variant="outlined" density="compact" readonly hide-details
-                prepend-inner-icon="ri-time-line"
-                bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-              />
-            </VCol>
-          </VRow>
-        </div>
+<div class="px-5 py-4 d-flex flex-column gap-4">
 
-        <!-- ── Data Pasien IGD (autofill dari search) ──────────────────────── -->
-        <div class="fsec mb-4">
-          <p class="fsec-label">
-            <VIcon icon="ri-user-heart-line" size="13" class="me-1" />Data Pasien
-          </p>
+<!-- Info verifikasi -->
+<div v-if="!editItem" class="auto-trigger-banner">
+<VIcon icon="ri-information-line" size="16" color="info" />
+<span class="text-caption">
+Setelah disimpan, gunakan aksi <strong>Verifikasi</strong> pada data untuk konfirmasi dan update status bed management IGD.
+</span>
+</div>
 
-          <!-- Search -->
-          <VAutocomplete
-            v-model="form.no_reg"
-            v-model:search="noRegSearch"
-            :items="pasienStore.optionList"
-            item-title="title"
-            item-value="value"
-            label="NoReg (cari No. MR / No. Reg / Nama Pasien) *"
-            variant="outlined" density="compact"
-            prepend-inner-icon="ri-search-line"
-            clearable no-filter
-            :loading="noRegLoading || pasienStore.loading"
-            no-data-text="Ketik min. 2 karakter..."
-            class="mb-3" hide-details="auto"
-          >
-            <template #item="{ item, props: iProps }">
-              <VListItem v-bind="iProps" class="py-2">
-                <template #prepend>
-                  <VAvatar color="error" variant="tonal" size="34" rounded="lg" class="me-2">
-                    <span style="font-size:12px;font-weight:700">
-                      {{ item.raw?.data?.nama_pasien?.charAt(0) ?? '?' }}
-                    </span>
-                  </VAvatar>
-                </template>
-                <VListItemTitle class="text-body-2 font-weight-semibold">
-                  {{ item.raw?.data?.nama_pasien }}
-                </VListItemTitle>
-                <VListItemSubtitle class="d-flex flex-wrap gap-1 mt-1">
-                  <VChip size="x-small" color="error" variant="tonal" label>{{ item.raw?.data?.no_reg }}</VChip>
-                  <VChip size="x-small" color="secondary" variant="tonal" label>{{ item.raw?.data?.ket_bayar }}</VChip>
-                  <span class="text-caption text-medium-emphasis">{{ item.raw?.data?.nama_bangsal }}</span>
-                </VListItemSubtitle>
-              </VListItem>
-            </template>
-          </VAutocomplete>
+<!-- ── SECTION: Data Pasien IGD ──────────────────────────────────── -->
+<div class="form-section form-section--error">
+<div class="fs-header fs-header--error">
+<VIcon icon="ri-user-heart-line" size="14" />
+<span>Data Pasien</span>
+</div>
 
-          <!-- tgldaftar & jamdaftar -->
-          <VRow dense class="mb-2">
-            <VCol cols="7">
-              <VTextField
-                v-model="form.tgl_daftar"
-                label="tgldaftar"
-                variant="outlined" density="compact" readonly hide-details
-                prepend-inner-icon="ri-calendar-check-line"
-                bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-              />
-            </VCol>
-            <VCol cols="5">
-              <VTextField
-                v-model="form.jam_daftar"
-                label="jamdaftar"
-                variant="outlined" density="compact" readonly hide-details
-                prepend-inner-icon="ri-time-line"
-                bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-              />
-            </VCol>
-          </VRow>
+<div class="fs-body">
+<!-- Search -->
+<VAutocomplete
+v-model="form.no_reg"
+v-model:search="noRegSearch"
+:items="pasienStore.optionList"
+item-title="title"
+item-value="value"
+label="Cari No. Reg / No. MR / Nama Pasien *"
+variant="outlined" density="compact"
+prepend-inner-icon="ri-search-line"
+clearable no-filter
+:loading="noRegLoading || pasienStore.loading"
+no-data-text="Ketik min. 2 karakter..."
+class="mb-3" hide-details="auto"
+>
+<template #item="{ item, props: iProps }">
+<VListItem v-bind="iProps" class="py-2">
+<template #prepend>
+<VAvatar color="error" variant="tonal" size="34" rounded="lg" class="me-2">
+<span style="font-size:12px;font-weight:700">
+{{ item.raw?.data?.nama_pasien?.charAt(0) ?? '?' }}
+</span>
+</VAvatar>
+</template>
+<VListItemTitle class="text-body-2 font-weight-semibold">
+{{ item.raw?.data?.nama_pasien }}
+</VListItemTitle>
+<VListItemSubtitle class="d-flex flex-wrap gap-1 mt-1">
+<VChip size="x-small" color="error" variant="tonal" label>{{ item.raw?.data?.no_reg }}</VChip>
+<VChip size="x-small" color="secondary" variant="tonal" label>{{ item.raw?.data?.ket_bayar }}</VChip>
+<span class="text-caption text-medium-emphasis">{{ item.raw?.data?.nama_bangsal }}</span>
+</VListItemSubtitle>
+</VListItem>
+</template>
+</VAutocomplete>
 
-          <!-- NoMR + NamaPasien -->
-          <VRow dense>
-            <VCol cols="4">
-              <VTextField
-                v-model="form.no_mr"
-                label="NoMR"
-                variant="outlined" density="compact" readonly hide-details
-                bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-              />
-            </VCol>
-            <VCol cols="8">
-              <VTextField
-                v-model="form.nama_pasien"
-                label="NamaPasien"
-                variant="outlined" density="compact" readonly hide-details
-                prepend-inner-icon="ri-user-3-line"
-                bg-color="rgba(var(--v-theme-on-surface), 0.03)"
-              />
-            </VCol>
-          </VRow>
-        </div>
+<!-- Autofill info chips -->
+<Transition name="slide-down">
+<div v-if="hasPasien" class="info-chip-grid">
+<div class="icg-cell icg-cell--span2">
+<span class="icg-lbl"><VIcon icon="ri-user-3-line" size="10" class="me-1" />Nama Pasien</span>
+<span class="icg-val icg-val--accent">{{ form.nama_pasien || '—' }}</span>
+</div>
+<div class="icg-cell">
+<span class="icg-lbl"><VIcon icon="ri-id-card-line" size="10" class="me-1" />No. MR</span>
+<span class="icg-val icg-val--mono">{{ form.no_mr || '—' }}</span>
+</div>
+<div class="icg-cell">
+<span class="icg-lbl"><VIcon icon="ri-door-line" size="10" class="me-1" />Ruangan</span>
+<span class="icg-val">{{ form.ruangan || '—' }}</span>
+</div>
+<div class="icg-cell icg-cell--span2">
+<span class="icg-lbl"><VIcon icon="ri-stethoscope-line" size="10" class="me-1" />Diagnosa</span>
+<span class="icg-val">{{ form.diagnosa || '—' }}</span>
+</div>
+<div class="icg-cell">
+<span class="icg-lbl"><VIcon icon="ri-calendar-check-line" size="10" class="me-1" />Tgl. Daftar</span>
+<span class="icg-val">{{ form.tgl_daftar || '—' }}</span>
+</div>
+<div class="icg-cell">
+<span class="icg-lbl"><VIcon icon="ri-time-line" size="10" class="me-1" />Jam Daftar</span>
+<span class="icg-val icg-val--mono">{{ form.jam_daftar || '—' }}</span>
+</div>
+</div>
+</Transition>
 
-        <!-- ── Detail Batal ─────────────────────────────────────────────────── -->
-        <div class="fsec mb-4">
-          <p class="fsec-label">
-            <VIcon icon="ri-close-circle-line" size="13" class="me-1" />Keterangan Batal
-          </p>
+<!-- Empty state -->
+<div v-if="!hasPasien" class="empty-pasien">
+<VIcon icon="ri-user-search-line" size="28" class="mb-1 opacity-30" />
+<p class="text-caption text-disabled mb-0">Cari pasien untuk mengisi data otomatis</p>
+</div>
+</div>
+</div>
 
-          <!-- Keterangan_Batal -->
-          <VSelect
-            v-model="form.keterangan_batal"
-            :items="masterStore.keteranganBatalList"
-            label="Keterangan_Batal *"
-            variant="outlined" density="compact"
-            prepend-inner-icon="ri-close-circle-line"
-            clearable class="mb-3" hide-details="auto"
-          />
+<!-- ── SECTION: Detail Batal ──────────────────────────────────────── -->
+<div class="form-section form-section--warning">
+<div class="fs-header fs-header--warning">
+<VIcon icon="ri-close-circle-line" size="14" />
+<span>Detail Pembatalan</span>
+<span class="fs-required-badge">Wajib Diisi</span>
+</div>
 
-          <!-- Status OK -->
-          <VSelect
-            v-model="form.status_ok"
-            :items="masterStore.statusOkList"
-            label="Status OK"
-            variant="outlined" density="compact"
-            clearable class="mb-3" hide-details="auto"
-            :prepend-inner-icon="form.status_ok === 'Bedah' ? 'ri-surgical-mask-line' : form.status_ok === 'Non Bedah' ? 'ri-hospital-line' : 'ri-question-line'"
-          />
+<div class="fs-body">
+<VSelect
+v-model="form.keterangan_batal"
+:items="masterStore.keteranganBatalList"
+label="Keterangan Batal *"
+variant="outlined" density="compact"
+prepend-inner-icon="ri-close-circle-line"
+clearable class="mb-3" hide-details="auto"
+/>
+<VSelect
+v-model="form.status_ok"
+:items="masterStore.statusOkList"
+label="Status OK (Opsional)"
+variant="outlined" density="compact"
+clearable class="mb-3" hide-details="auto"
+:prepend-inner-icon="form.status_ok === 'Bedah' ? 'ri-surgical-mask-line' : form.status_ok === 'Non Bedah' ? 'ri-hospital-line' : 'ri-question-line'"
+/>
+<VTextField
+v-model="form.ketersediaan_kamar"
+label="Ketersediaan Kamar Saat Ini"
+variant="outlined" density="compact"
+prepend-inner-icon="ri-door-line"
+class="mb-3" hide-details="auto"
+/>
+<VTextField
+v-model="form.diagnosa"
+label="Diagnosa"
+variant="outlined" density="compact"
+prepend-inner-icon="ri-stethoscope-line"
+hide-details="auto"
+/>
+</div>
+</div>
 
-          <!-- Ketersediaan Kamar -->
-          <VTextField
-            v-model="form.ketersediaan_kamar"
-            label="Ketersediaan Kamar Saat Ini"
-            variant="outlined" density="compact"
-            prepend-inner-icon="ri-door-line"
-            class="mb-3" hide-details="auto"
-          />
+<!-- ── SECTION: Petugas & Note ────────────────────────────────────── -->
+<div class="form-section form-section--info">
+<div class="fs-header fs-header--info">
+<VIcon icon="ri-nurse-line" size="14" />
+<span>Petugas &amp; Catatan</span>
+</div>
 
-          <!-- Diagnosa -->
-          <VTextField
-            v-model="form.diagnosa"
-            label="Diagnosa"
-            variant="outlined" density="compact"
-            prepend-inner-icon="ri-stethoscope-line"
-            class="mb-3" hide-details="auto"
-          />
-        </div>
+<div class="fs-body">
+<VAutocomplete
+v-model="form.petugas"
+:items="pegawaiStore.namaList"
+label="Petugas *"
+variant="outlined" density="compact"
+prepend-inner-icon="ri-nurse-line"
+clearable class="mb-3" hide-details="auto"
+:loading="pegawaiStore.loading"
+no-data-text="Memuat petugas..."
+/>
+<VTextarea
+v-model="form.note"
+label="Catatan Tambahan"
+variant="outlined" density="compact"
+rows="2" auto-grow
+prepend-inner-icon="ri-sticky-note-line"
+hide-details="auto"
+/>
+</div>
+</div>
 
-        <!-- ── Petugas & Note ──────────────────────────────────────────────── -->
-        <div class="fsec mb-4">
-          <p class="fsec-label">
-            <VIcon icon="ri-nurse-line" size="13" class="me-1" />Petugas & Catatan
-          </p>
+<!-- ── SECTION: Status Closing ────────────────────────────────────── -->
+<div class="form-section form-section--primary">
+<div class="fs-header fs-header--primary">
+<VIcon icon="ri-checkbox-circle-line" size="14" />
+<span>Status Closing</span>
+</div>
 
-          <!-- Note — textarea -->
-          <VTextarea
-            v-model="form.note"
-            label="Note"
-            variant="outlined" density="compact"
-            rows="3" auto-grow
-            class="mb-3" hide-details="auto"
-          />
+<div class="fs-body">
+<div class="d-flex gap-3">
+<div
+v-for="opt in statusClosingOpts"
+:key="opt.value"
+class="closing-option flex-grow-1 pa-3 rounded-xl cursor-pointer text-center"
+:class="form.status_closing === opt.value ? `closing-option--active closing-option--${opt.color}` : ''"
+@click="form.status_closing = form.status_closing === opt.value ? null : opt.value"
+>
+<p class="text-body-2 font-weight-bold mb-0"
+:class="form.status_closing === opt.value ? `text-${opt.color}` : 'text-medium-emphasis'">
+{{ opt.title }}
+</p>
+</div>
+</div>
 
-          <!-- Petugas -->
-          <VAutocomplete
-            v-model="form.petugas"
-            :items="pegawaiStore.namaList"
-            label="Petugas *"
-            variant="outlined" density="compact"
-            prepend-inner-icon="ri-nurse-line"
-            clearable hide-details="auto"
-            :loading="pegawaiStore.loading"
-            no-data-text="Memuat petugas..."
-          />
-        </div>
+<div v-if="form.status_closing" class="mt-2 d-flex align-center gap-2">
+<VChip :color="statusClosingColor(form.status_closing)" variant="tonal" size="small">
+{{ form.status_closing }}
+</VChip>
+<span class="text-caption text-disabled">terpilih</span>
+</div>
+</div>
+</div>
 
-        <!-- ── Status Closing ──────────────────────────────────────────────── -->
-        <div class="fsec">
-          <p class="fsec-label">
-            <VIcon icon="ri-checkbox-circle-line" size="13" class="me-1" />status_Closing
-          </p>
+</div>
+</VCardText>
 
-          <!-- Visual selector seperti AppSheet -->
-          <div class="d-flex gap-3">
-            <div
-              v-for="opt in statusClosingOpts"
-              :key="opt.value"
-              class="closing-option flex-grow-1 pa-3 rounded-xl cursor-pointer text-center"
-              :class="form.status_closing === opt.value ? `closing-option--active closing-option--${opt.color}` : ''"
-              @click="form.status_closing = form.status_closing === opt.value ? null : opt.value"
-            >
-              <p class="text-body-2 font-weight-bold mb-0"
-                :class="form.status_closing === opt.value ? `text-${opt.color}` : 'text-medium-emphasis'">
-                {{ opt.title }}
-              </p>
-            </div>
-          </div>
-
-          <div v-if="form.status_closing" class="mt-2 d-flex align-center gap-2">
-            <VChip :color="statusClosingColor(form.status_closing)" variant="tonal" size="small">
-              {{ form.status_closing }}
-            </VChip>
-            <span class="text-caption text-disabled">terpilih</span>
-          </div>
-        </div>
-
-        <!-- Info verifikasi -->
-        <div v-if="!editItem" class="mt-4 d-flex align-start gap-2 px-3 py-2 rounded-lg"
-          style="background:rgba(var(--v-theme-info),0.06);border:1px solid rgba(var(--v-theme-info),0.2)">
-          <VIcon icon="ri-information-line" size="15" color="info" />
-          <span class="text-caption text-medium-emphasis">
-            Setelah disimpan, gunakan aksi <strong>Verifikasi</strong> pada data untuk
-            konfirmasi dan update status bed management IGD.
-          </span>
-        </div>
-      </VCardText>
-
-      <VDivider />
-      <div class="d-flex gap-3 px-5 py-4">
-        <VBtn variant="outlined" rounded="lg" @click="close">Cancel</VBtn>
-        <VBtn
-          color="error" rounded="xl" class="flex-grow-1"
-          prepend-icon="ri-save-line"
-          :loading="saving || store.loading"
-          @click="handleSave"
-        >
-          Save
-        </VBtn>
-      </div>
-    </VCard>
-  </VDialog>
+<div class="dlg-footer">
+<VBtn variant="outlined" rounded="lg" size="small" @click="close">Batal</VBtn>
+<VBtn
+color="error" rounded="lg" class="flex-grow-1"
+prepend-icon="ri-save-line"
+:loading="saving || store.loading"
+@click="handleSave"
+>
+{{ editItem ? 'Simpan Perubahan' : 'Simpan Batal Ranap' }}
+</VBtn>
+</div>
+</VCard>
+</VDialog>
 </template>
 
 <style scoped>
-.dlg-header {
-  background: linear-gradient(135deg, rgba(var(--v-theme-error), 0.06), rgba(var(--v-theme-error), 0.02));
+/* ── Dialog card ── */
+.dlg-card { display: flex; flex-direction: column; max-height: 92dvh; }
+.v-card-text { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+
+/* ── Gradient Banner ── */
+.dlg-banner {
+flex-shrink: 0; position: relative; overflow: hidden;
+background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #60a5fa 100%);
+padding: 16px 18px 14px;
 }
-.fsec {
-  padding: 14px;
-  border-radius: 12px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+.db-blob { position: absolute; border-radius: 50%; background: #fff; }
+.db-blob--1 { width: 180px; height: 180px; opacity: 0.08; top: -60px; right: -40px; }
+.db-blob--2 { width: 80px; height: 80px; opacity: 0.06; bottom: -30px; right: 90px; }
+.db-inner { position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; }
+.db-icon {
+width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+background: rgba(255,255,255,0.22); border: 1.5px solid rgba(255,255,255,0.35);
+display: flex; align-items: center; justify-content: center;
 }
-.fsec--muted {
-  background: rgba(var(--v-theme-surface-variant), 0.3);
-  border-color: transparent;
+.db-text { flex: 1; min-width: 0; }
+.db-sub { font-size: 0.6rem; color: rgba(255,255,255,0.72); margin: 0 0 1px; letter-spacing: 0.05em; text-transform: uppercase; }
+.db-title { font-size: 0.95rem; font-weight: 800; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-clock {
+font-size: 0.58rem; color: rgba(255,255,255,0.75); flex-shrink: 0;
+background: rgba(0,0,0,0.15); border-radius: 20px; padding: 3px 8px;
+display: flex; align-items: center; white-space: nowrap;
 }
-.fsec-label {
-  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: rgba(var(--v-theme-on-surface), 0.45);
-  margin-bottom: 10px; display: flex; align-items: center;
+.db-close {
+flex-shrink: 0; background: rgba(255,255,255,0.2); border: none; cursor: pointer;
+width: 28px; height: 28px; border-radius: 50%;
+display: flex; align-items: center; justify-content: center;
+color: #fff; transition: background 0.15s;
+}
+.db-close:hover { background: rgba(255,255,255,0.35); }
+
+/* ── Auto trigger banner ── */
+.auto-trigger-banner {
+display: flex; align-items: center; gap: 10px;
+padding: 10px 14px; border-radius: 10px;
+background: rgba(var(--v-theme-info), 0.06);
+border: 1px solid rgba(var(--v-theme-info), 0.18);
+color: rgba(var(--v-theme-on-surface), 0.75);
 }
 
-/* Status Closing selector */
+/* ── Form sections ── */
+.form-section {
+border-radius: 14px;
+border: 1.5px solid rgba(var(--v-border-color), var(--v-border-opacity));
+overflow: hidden;
+transition: box-shadow 0.2s;
+}
+.form-section:focus-within {
+border-color: rgba(var(--v-theme-primary), 0.3);
+box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.07);
+}
+.form-section--error:focus-within { border-color: rgba(var(--v-theme-error), 0.35); box-shadow: 0 0 0 3px rgba(var(--v-theme-error), 0.08); }
+.form-section--primary:focus-within { border-color: rgba(var(--v-theme-primary), 0.35); box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.08); }
+.form-section--warning:focus-within { border-color: rgba(var(--v-theme-warning), 0.35); box-shadow: 0 0 0 3px rgba(var(--v-theme-warning), 0.08); }
+.form-section--info:focus-within { border-color: rgba(var(--v-theme-info), 0.35); box-shadow: 0 0 0 3px rgba(var(--v-theme-info), 0.08); }
+
+.fs-header {
+display: flex; align-items: center; gap: 7px;
+padding: 9px 14px;
+font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.fs-header--error { background: rgba(var(--v-theme-error), 0.07); color: rgb(var(--v-theme-error)); }
+.fs-header--primary { background: rgba(var(--v-theme-primary), 0.07); color: rgb(var(--v-theme-primary)); }
+.fs-header--warning { background: rgba(var(--v-theme-warning), 0.07); color: rgb(var(--v-theme-warning)); }
+.fs-header--info { background: rgba(var(--v-theme-info), 0.07); color: rgb(var(--v-theme-info)); }
+
+.fs-required-badge {
+margin-left: auto;
+font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+padding: 1px 6px; border-radius: 10px;
+background: rgba(var(--v-theme-error), 0.12);
+color: rgb(var(--v-theme-error));
+}
+
+.fs-body { padding: 14px; }
+
+/* ── Info chip grid ── */
+.info-chip-grid {
+display: grid; grid-template-columns: 1fr 1fr;
+gap: 1px;
+background: rgba(var(--v-border-color), var(--v-border-opacity));
+border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+border-radius: 10px; overflow: hidden;
+margin-top: 2px;
+}
+.icg-cell {
+display: flex; flex-direction: column; gap: 2px;
+padding: 9px 11px;
+background: rgba(var(--v-theme-surface), 1);
+transition: background 0.12s;
+}
+.icg-cell:hover { background: rgba(var(--v-theme-on-surface), 0.018); }
+.icg-cell--span2 { grid-column: span 2; }
+.icg-lbl {
+font-size: 0.58rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+color: rgba(var(--v-theme-on-surface), 0.38);
+display: flex; align-items: center;
+}
+.icg-val { font-size: 0.82rem; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.85); word-break: break-word; }
+.icg-val--accent { font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.92); }
+.icg-val--mono { font-family: monospace; font-size: 0.78rem; letter-spacing: 0.03em; }
+
+/* ── Status Closing selector ── */
 .closing-option {
-  border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  transition: all 0.18s;
+border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+transition: all 0.18s;
 }
 .closing-option:hover {
-  border-color: rgba(var(--v-theme-primary), 0.35);
-  background: rgba(var(--v-theme-primary), 0.04);
+border-color: rgba(var(--v-theme-primary), 0.35);
+background: rgba(var(--v-theme-primary), 0.04);
 }
-.closing-option--active  { border-width: 2px !important; }
+.closing-option--active { border-width: 2px !important; }
 .closing-option--success {
-  border-color: rgb(var(--v-theme-success)) !important;
-  background: rgba(var(--v-theme-success), 0.07) !important;
+border-color: rgb(var(--v-theme-success)) !important;
+background: rgba(var(--v-theme-success), 0.07) !important;
 }
 .closing-option--error {
-  border-color: rgb(var(--v-theme-error)) !important;
-  background: rgba(var(--v-theme-error), 0.07) !important;
+border-color: rgb(var(--v-theme-error)) !important;
+background: rgba(var(--v-theme-error), 0.07) !important;
 }
+
+/* ── Empty pasien ── */
+.empty-pasien {
+display: flex; flex-direction: column; align-items: center; justify-content: center;
+padding: 20px 10px; gap: 4px;
+border: 1.5px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+border-radius: 10px; margin-top: 2px;
+}
+
+/* ── Footer ── */
+.dlg-footer {
+flex-shrink: 0;
+display: flex; gap: 10px;
+padding: 14px 20px;
+border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+background: rgba(var(--v-theme-surface-variant), 0.25);
+}
+
+/* ── Transitions ── */
+.slide-down-enter-active { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }
+.slide-down-leave-active { transition: all 0.18s ease; }
+.slide-down-enter-from { opacity: 0; transform: translateY(-8px); }
+.slide-down-leave-to { opacity: 0; transform: translateY(-4px); }
 </style>
