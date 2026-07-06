@@ -14,10 +14,9 @@ const props = defineProps({
     class="nav-link"
     :class="{ disabled: item.disable }"
   >
-    <Component
-      :is="item.to ? 'RouterLink' : 'a'"
+    <RouterLink
+      v-if="item.to"
       :to="item.to"
-      :href="item.href"
       :target="item.target"
     >
       <!-- Render icon pakai @iconify/vue supaya pasti muncul -->
@@ -40,7 +39,31 @@ const props = defineProps({
       >
         {{ item.badgeContent }}
       </span>
-    </Component>
+    </RouterLink>
+
+    <a
+      v-else
+      :href="item.href"
+      :target="item.target"
+    >
+      <Icon
+        v-if="item.icon"
+        :icon="item.icon"
+        class="nav-item-icon"
+        width="22"
+        height="22"
+      />
+      <span class="nav-item-title">
+        {{ item.title }}
+      </span>
+      <span
+        v-if="item.badgeContent"
+        class="nav-item-badge"
+        :class="item.badgeClass"
+      >
+        {{ item.badgeContent }}
+      </span>
+    </a>
   </li>
 </template>
 

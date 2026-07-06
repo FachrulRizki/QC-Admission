@@ -3,9 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\ActivityLog;
@@ -132,79 +130,29 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get   ('batal-ranap/{id}/bed-history',           [BatalRanapController::class, 'bedHistory']);
     });
 
-    // Bed Management IGD proxy
+    // ── Bed Management IGD proxy ──────────────────────────────────────────────
+    // Semua logika (API / RSUS DB / mock) ada di BedIgdService.
     Route::prefix('bed-management')->group(function () {
 
+        // GET /api/bed-management/beds?no_reg=xxx
         Route::get('/beds', function (Request $request) {
-            $ruangan = $request->query('ruangan', '');
-
-            if (config('services.rsus_db_enabled', false)) {
-                try {
-                    $query = DB::connection('rsus')->table('BI_Bed_Igd');
-                    if ($ruangan) $query->where('Nama_Ruang', $ruangan);
-
-                    $beds = $query->get()->map(fn($r) => [
-                        'bed_id'  => $r->No_Bed     ?? $r->Kode_Bed    ?? null,
-                        'bed_code'=> $r->No_Bed     ?? $r->Kode_Bed    ?? null,
-                        'ruangan' => $r->Nama_Ruang ?? $ruangan,
-                        'status'  => $r->Status     ?? 'available',
-                        'pasien'  => $r->Nama_Pasien ?? null,
-                    ])->values();
-
-                    return response()->json(['beds' => $beds, 'source' => 'rsus_db']);
-                } catch (\Exception $e) {
-                    Log::warning('BI_Bed_Igd query failed: ' . $e->getMessage());
-                }
-            }
-
-            $url = config('services.bed_management.base_url');
-            if (! empty($url)) {
-                $resp = Http::withToken(config('services.bed_management.token'))
-                    ->get("{$url}/api/beds", $request->query());
-                return response()->json($resp->json(), $resp->status());
-            }
-
-            // Mock fallback
-            $mock = [
-                'IGD Umum'    => [['bed_id'=>'BED-IGD-01','status'=>'occupied'],['bed_id'=>'BED-IGD-02','status'=>'available']],
-                'ICU'         => [['bed_id'=>'ICU-01','status'=>'occupied']],
-                'Ruang Mawar' => [['bed_id'=>'MWR-01','status'=>'available'],['bed_id'=>'MWR-02','status'=>'occupied']],
-                'IGD Bedah'   => [['bed_id'=>'BED-BGH-01','status'=>'available'],['bed_id'=>'BED-BGH-02','status'=>'available']],
-            ];
-            return response()->json(['beds' => $mock[$ruangan] ?? [], 'source' => 'mock']);
+            $noReg  = trim($request->query('no_reg', ''));
+            /** @var \App\Services\QcAdmission\BedIgdService $bedIgd */
+            $bedIgd = app(\App\Services\QcAdmission\BedIgdService::class);
+            $result = $bedIgd->getBedsByNoReg($noReg);
+            return response()->json(['beds' => $result['beds'], 'source' => $result['source']]);
         });
 
+        // POST /api/bed-management/update-status
         Route::post('/update-status', function (Request $request) {
             $v = $request->validate([
-                'bed_id'  => 'required|string',
-                'ruangan' => 'required|string',
-                'status'  => 'required|in:available,occupied',
+                'no_reg'   => 'required|string',
+                'kode_bed' => 'required|string',
             ]);
-
-            if (config('services.rsus_db_enabled', false)) {
-                try {
-                    DB::connection('rsus')->table('BI_Bed_Igd')
-                        ->where('No_Bed', $v['bed_id'])
-                        ->update(['Status' => $v['status'] === 'available' ? 'Kosong' : 'Terisi', 'updated_at' => now()]);
-                    return response()->json(['success' => true, 'source' => 'rsus_db']);
-                } catch (\Exception $e) {
-                    Log::warning('BI_Bed_Igd update failed: ' . $e->getMessage());
-                }
-            }
-
-            $url = config('services.bed_management.base_url');
-            if (! empty($url)) {
-                $resp = Http::withToken(config('services.bed_management.token'))
-                    ->post("{$url}/api/beds/{$v['bed_id']}/status", [
-                        'status'    => $v['status'],
-                        'ruangan'   => $v['ruangan'],
-                        'timestamp' => now()->toISOString(),
-                    ]);
-                return response()->json($resp->json(), $resp->status());
-            }
-
-            Log::info('Bed Management mock update', $v);
-            return response()->json(['success' => true, 'source' => 'mock']);
+            /** @var \App\Services\QcAdmission\BedIgdService $bedIgd */
+            $bedIgd = app(\App\Services\QcAdmission\BedIgdService::class);
+            $result = $bedIgd->releaseBed($v['kode_bed'], $v['no_reg']);
+            return response()->json($result, $result['success'] ? 200 : 500);
         });
     });
 });

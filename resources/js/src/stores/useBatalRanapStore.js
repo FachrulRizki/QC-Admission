@@ -62,13 +62,17 @@ export const useBatalRanapStore = defineStore('batalRanap', {
       }
     },
 
-    async konfirmasiClosing(id, statusClosing) {
+    async konfirmasiClosing(id, statusClosing, kodeBed = null) {
       try {
-        const response = await axios.patch(`/api/batal-ranap/${id}/konfirmasi-closing`, {
-          status_closing: statusClosing,
-        })
+        const payload = { status_closing: statusClosing }
+        if (kodeBed) payload.kode_bed = kodeBed
+        const response = await axios.patch(`/api/batal-ranap/${id}/konfirmasi-closing`, payload)
         const idx = this.records.findIndex(r => r.id === id)
-        if (idx !== -1) this.records[idx] = { ...this.records[idx], status_closing: statusClosing }
+        if (idx !== -1) this.records[idx] = {
+          ...this.records[idx],
+          status_closing: statusClosing,
+          bed_id: kodeBed ?? this.records[idx].bed_id,
+        }
         return { success: true, data: response.data }
       } catch (err) {
         return { success: false, message: err.response?.data?.message ?? 'Gagal konfirmasi closing' }

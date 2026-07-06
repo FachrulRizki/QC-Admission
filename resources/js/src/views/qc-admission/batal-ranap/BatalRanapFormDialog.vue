@@ -56,6 +56,7 @@ const hit = pasienStore.results.find(p => p.no_reg === val)
 if (hit) {
 form.value.no_mr = hit.no_mr ?? ''
 form.value.nama_pasien = hit.nama_pasien ?? ''
+form.value.jaminan = hit.ket_bayar ?? ''
 form.value.tgl_daftar = hit.tgl_daftar ?? ''
 form.value.jam_daftar = hit.jam_daftar ?? ''
 form.value.diagnosa = hit.diagnosa ?? ''
@@ -83,6 +84,7 @@ return {
 no_reg: null,
 no_mr: '',
 nama_pasien: '',
+jaminan: '',
 tgl_daftar: '',
 jam_daftar: '',
 keterangan_batal: null,
@@ -241,6 +243,10 @@ class="mb-3" hide-details="auto"
 <div class="icg-cell">
 <span class="icg-lbl"><VIcon icon="ri-id-card-line" size="10" class="me-1" />No. MR</span>
 <span class="icg-val icg-val--mono">{{ form.no_mr || '—' }}</span>
+</div>
+<div class="icg-cell">
+<span class="icg-lbl"><VIcon icon="ri-shield-user-line" size="10" class="me-1" />Jaminan</span>
+<span class="icg-val">{{ form.jaminan || '—' }}</span>
 </div>
 <div class="icg-cell">
 <span class="icg-lbl"><VIcon icon="ri-door-line" size="10" class="me-1" />Ruangan</span>

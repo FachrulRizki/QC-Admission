@@ -54,7 +54,14 @@ function closingColor(s)   { return s === 'Siap Closing' ? 'success' : s === 'Be
 
 function openRow(item)  { detailItem.value = item; showDetail.value = true }
 function openAdd()      { editItem.value = null; showForm.value = true }
-function openEdit(item) { editItem.value = { ...item }; showDetail.value = false; showForm.value = true }
+function openEdit(item) {
+  if (item.status_closing === 'Siap Closing') {
+    // Sudah locked, tidak bisa edit
+    snackbar.value = { show: true, msg: 'Data sudah "Siap Closing" dan tidak dapat diedit.', color: 'warning' }
+    return
+  }
+  editItem.value = { ...item }; showDetail.value = false; showForm.value = true
+}
 
 function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
 
@@ -186,11 +193,15 @@ onMounted(load)
                 {{ statusOkLabel(item.status_ok) }}
               </VChip>
               <VChip v-if="item.status_closing" :color="closingColor(item.status_closing)" size="x-small" variant="tonal">
+                <VIcon v-if="item.status_closing === 'Siap Closing'" icon="ri-lock-line" size="10" class="me-1" />
                 {{ item.status_closing }}
               </VChip>
             </div>
             <div class="d-flex align-center gap-3 mt-1 flex-wrap">
               <span class="text-caption" style="color:var(--qc-text-2)">{{ item.no_reg }}</span>
+              <span v-if="item.bed_id" class="text-caption" style="color:var(--qc-text-2)">
+                <VIcon icon="ri-hotel-bed-line" size="11" class="me-1" />Bed: {{ item.bed_id }}
+              </span>
               <span v-if="item.keterangan_batal" class="text-caption" style="color:var(--qc-text-2)">
                 <VIcon icon="ri-error-warning-line" size="11" class="me-1" />{{ item.keterangan_batal }}
               </span>

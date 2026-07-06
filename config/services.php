@@ -44,11 +44,20 @@ return [
     |--------------------------------------------------------------------------
     | Bed Management IGD API
     |--------------------------------------------------------------------------
-    | Integration endpoint for updating bed availability on Batal Ranap approval.
+    | Autentikasi menggunakan username/password → ambil token → cache 55 menit.
+    | Endpoint yang digunakan:
+    |   GET  {base_url}/beds?no_reg=xxx    — daftar bed berdasarkan No. Reg
+    |   POST {base_url}/beds/update-status — update status bed (KOSONG/TERISI)
+    |
+    | bed_igd_enabled: true  = pakai API (butuh url + credential terisi)
+    |                  false = fallback ke RSUS DB langsung, atau mock jika RSUS juga off
     */
-    'bed_management' => [
-        'base_url' => env('BED_MANAGEMENT_URL', ''),
-        'token'    => env('BED_MANAGEMENT_TOKEN', ''),
+    'bed_igd' => [
+        'base_url'             => env('BED_IGD_API_URL', ''),
+        'username'             => env('BED_IGD_USERNAME', ''),
+        'password'             => env('BED_IGD_PASSWORD', ''),
+        'token_cache_minutes'  => 55,
+        'enabled'              => env('BED_IGD_ENABLED', false),
     ],
 
     /*

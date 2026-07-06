@@ -13,7 +13,7 @@ class BatalRanap extends Model
 
     protected $fillable = [
         'tanggal', 'jam_input', 'no_reg', 'no_mr',
-        'tgl_daftar', 'jam_daftar', 'nama_pasien',
+        'tgl_daftar', 'jam_daftar', 'nama_pasien', 'jaminan',
         'keterangan_batal', 'status_ok', 'status_closing',
         'ketersediaan_kamar', 'diagnosa', 'note',
         'petugas', 'bed_id', 'ruangan',

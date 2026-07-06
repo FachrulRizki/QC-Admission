@@ -5,15 +5,17 @@ namespace App\Http\Controllers\QcAdmission;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Services\QcAdmission\BatalRanapService;
+use App\Services\QcAdmission\BedIgdService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BatalRanapController extends Controller
 {
-    public function __construct(private readonly BatalRanapService $service) {}
+    public function __construct(
+        private readonly BatalRanapService $service,
+        private readonly BedIgdService     $bedIgd,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -32,6 +34,7 @@ class BatalRanapController extends Controller
             'tgl_daftar'         => 'nullable|string',
             'jam_daftar'         => 'nullable|string',
             'nama_pasien'        => 'nullable|string|max:100',
+            'jaminan'            => 'nullable|string|max:50',
             'keterangan_batal'   => 'required|string|max:100',
             'status_ok'          => 'nullable|in:Bedah,Non Bedah',
             'status_closing'     => 'nullable|in:Siap Closing,Belum Siap Closing',
@@ -56,10 +59,17 @@ class BatalRanapController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
+        $record = $this->service->findOrFail($id);
+
+        if ($record->status_closing === 'Siap Closing') {
+            return response()->json([
+                'message' => 'Data sudah dikonfirmasi "Siap Closing" dan tidak dapat diedit.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'keterangan_batal'   => 'sometimes|string|max:100',
             'status_ok'          => 'nullable|in:Bedah,Non Bedah',
-            'status_closing'     => 'nullable|in:Siap Closing,Belum Siap Closing',
             'ketersediaan_kamar' => 'nullable|string|max:100',
             'diagnosa'           => 'nullable|string|max:255',
             'note'               => 'nullable|string|max:1000',
@@ -90,19 +100,35 @@ class BatalRanapController extends Controller
     /** Update status_closing. Jika "Siap Closing" → trigger Bed Management API. */
     public function konfirmasiClosing(Request $request, int $id): JsonResponse
     {
+        $record = $this->service->findOrFail($id);
+
+        if ($record->status_closing === 'Siap Closing') {
+            return response()->json([
+                'message' => 'Status closing sudah dikonfirmasi "Siap Closing" dan tidak dapat diubah.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'status_closing' => 'required|in:Siap Closing,Belum Siap Closing',
+            'kode_bed'       => 'nullable|string|max:50',
         ]);
 
-        $record          = $this->service->update($id, $validated);
-        $bedUpdateResult = null;
+        // Simpan kode_bed jika dikirim dari frontend (hasil lookup BI_Bed_Igd)
+        $updateData = ['status_closing' => $validated['status_closing']];
+        if (! empty($validated['kode_bed'])) {
+            $updateData['bed_id'] = $validated['kode_bed'];
+        }
 
+        $record->update($updateData);
+        $record = $record->fresh();
+
+        $bedUpdateResult = null;
         if ($validated['status_closing'] === 'Siap Closing') {
             $bedUpdateResult = $this->updateBedManagement($record);
         }
 
         ActivityLog::record('batal-ranap', 'closing',
-            "Closing Batal Ranap {$record->no_reg} → {$record->status_closing}");
+            "Closing Batal Ranap {$record->no_reg} (Bed: {$record->bed_id}) → {$record->status_closing}");
 
         return response()->json([
             'data'       => $record,
@@ -111,50 +137,23 @@ class BatalRanapController extends Controller
         ]);
     }
 
-    /** Ambil history bed IGD pasien dari SIMRS. GET /api/batal-ranap/{id}/bed-history */
+    /** Ambil daftar bed IGD pasien dari Bed IGD API / RSUS DB. GET /api/batal-ranap/{id}/bed-history */
     public function bedHistory(int $id): JsonResponse
     {
         $record = $this->service->findOrFail($id);
-        $beds   = [];
-        $source = 'none';
+        $result = $this->bedIgd->getBedsByNoReg($record->no_reg);
+        $beds   = $result['beds'];
+        $source = $result['source'];
 
-        if (config('services.rsus_db_enabled', false)) {
-            try {
-                $rows = DB::connection('rsus')
-                    ->table('BI_Bed_Igd')
-                    ->where('No_Reg', $record->no_reg)
-                    ->orWhere('No_MR', $record->no_mr)
-                    ->orderByDesc('Tgl_Masuk')
-                    ->limit(10)
-                    ->get();
-
-                $beds   = $rows->map(fn($r) => [
-                    'bed_id'     => $r->No_Bed      ?? $r->Kode_Bed   ?? null,
-                    'bed_code'   => $r->No_Bed      ?? $r->Kode_Bed   ?? null,
-                    'ruangan'    => $r->Nama_Ruang  ?? null,
-                    'bangsal'    => $r->Nama_Bangsal ?? null,
-                    'tgl_masuk'  => $r->Tgl_Masuk   ?? null,
-                    'tgl_keluar' => $r->Tgl_Keluar  ?? null,
-                    'status'     => $r->Status       ?? null,
-                    'keterangan' => $r->Keterangan   ?? null,
-                ])->values()->all();
-                $source = 'rsus_db';
-            } catch (\Exception $e) {
-                Log::warning('bed-history RSUS query failed: ' . $e->getMessage());
-            }
-        }
-
-        // Fallback: data dari record batal_ranap sendiri
-        if (empty($beds) && ($record->bed_id || $record->ruangan)) {
+        // Fallback lokal: ambil dari field bed_id yang tersimpan di record
+        if (empty($beds) && $record->bed_id) {
             $beds   = [[
-                'bed_id'     => $record->bed_id,
-                'bed_code'   => $record->bed_id,
-                'ruangan'    => $record->ruangan,
-                'bangsal'    => $record->ruangan,
-                'tgl_masuk'  => $record->tgl_daftar,
-                'tgl_keluar' => null,
-                'status'     => 'occupied',
-                'keterangan' => 'Data dari entry Batal Ranap',
+                'kode_bed'       => $record->bed_id,
+                'bed_id'         => $record->bed_id,
+                'status'         => 'TERISI',
+                'no_reg'         => $record->no_reg,
+                'tanggal'        => $record->tgl_daftar,
+                'updated_reg_at' => null,
             ]];
             $source = 'local';
         }
@@ -177,56 +176,12 @@ class BatalRanapController extends Controller
         return response()->json(['message' => 'Data berhasil dihapus.']);
     }
 
-    /** Call Bed Management IGD API. Fallback ke RSUS DB, lalu mock jika belum dikonfigurasi. */
+    /** Delegasikan ke BedIgdService: API → RSUS DB → mock (sesuai konfigurasi .env). */
     private function updateBedManagement(object $record): array
     {
-        $bedId   = $record->bed_id  ?? null;
-        $ruangan = $record->ruangan ?? null;
-
-        if (! $bedId && ! $ruangan) {
-            return ['success' => false, 'source' => 'none', 'message' => 'bed_id dan ruangan kosong.'];
-        }
-
-        $url = config('services.bed_management.base_url', '');
-
-        if (! empty($url)) {
-            try {
-                $response = Http::withToken(config('services.bed_management.token', ''))
-                    ->timeout(8)
-                    ->post("{$url}/api/beds/update-status", [
-                        'bed_id'    => $bedId,
-                        'ruangan'   => $ruangan,
-                        'no_reg'    => $record->no_reg,
-                        'status'    => 'available',
-                        'timestamp' => now()->toISOString(),
-                    ]);
-
-                if ($response->successful()) {
-                    Log::info("Bed update OK — bed {$bedId} {$ruangan}");
-                    return ['success' => true, 'source' => 'api', 'data' => $response->json()];
-                }
-
-                Log::warning("Bed Management error {$response->status()}: " . $response->body());
-                return ['success' => false, 'source' => 'api', 'message' => $response->body()];
-            } catch (\Exception $e) {
-                Log::warning('Bed Management exception: ' . $e->getMessage());
-                return ['success' => false, 'source' => 'api', 'message' => $e->getMessage()];
-            }
-        }
-
-        if (config('services.rsus_db_enabled', false)) {
-            try {
-                DB::connection('rsus')->table('BI_Bed_Igd')
-                    ->where('No_Bed', $bedId)
-                    ->update(['Status' => 'Kosong', 'updated_at' => now()]);
-                return ['success' => true, 'source' => 'rsus_db'];
-            } catch (\Exception $e) {
-                Log::warning('Bed RSUS DB update failed: ' . $e->getMessage());
-                return ['success' => false, 'source' => 'rsus_db', 'message' => $e->getMessage()];
-            }
-        }
-
-        Log::info("Bed mock update — bed {$bedId} {$ruangan} → available");
-        return ['success' => true, 'source' => 'mock'];
+        return $this->bedIgd->releaseBed(
+            kodeBed: $record->bed_id ?? '',
+            noReg:   $record->no_reg ?? '',
+        );
     }
 }
