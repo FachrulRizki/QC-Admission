@@ -18,7 +18,7 @@ use App\Http\Controllers\QcAdmission\PasienController;
 use App\Http\Controllers\QcAdmission\MasterDataController;
 use App\Http\Controllers\QcAdmission\ActivityLogController;
 
-// ── Public ────────────────────────────────────────────────────────────────────
+// Public
 
 Route::prefix('auth')->group(function () {
     Route::post('/login',        [AuthController::class, 'login']);
@@ -33,7 +33,7 @@ Route::get('/config', fn() => response()->json([
     'keycloak_client_id' => config('services.keycloak.client_id', 'qc-admission'),
 ]));
 
-// ── Protected ─────────────────────────────────────────────────────────────────
+// Protected
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -130,20 +130,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get   ('batal-ranap/{id}/bed-history',           [BatalRanapController::class, 'bedHistory']);
     });
 
-    // ── Bed Management IGD proxy ──────────────────────────────────────────────
-    // Semua logika (API / RSUS DB / mock) ada di BedIgdService.
+    // Bed Management IGD proxy
     Route::prefix('bed-management')->group(function () {
-
-        // GET /api/bed-management/beds?no_reg=xxx
         Route::get('/beds', function (Request $request) {
             $noReg  = trim($request->query('no_reg', ''));
-            /** @var \App\Services\QcAdmission\BedIgdService $bedIgd */
             $bedIgd = app(\App\Services\QcAdmission\BedIgdService::class);
             $result = $bedIgd->getBedsByNoReg($noReg);
             return response()->json(['beds' => $result['beds'], 'source' => $result['source']]);
         });
 
-        // POST /api/bed-management/update-status
         Route::post('/update-status', function (Request $request) {
             $v = $request->validate([
                 'no_reg'   => 'required|string',

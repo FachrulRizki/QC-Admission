@@ -54,6 +54,18 @@ export default defineConfig({
   },
   // Proxy untuk Vite dev server → forward /api ke Laravel di Laragon
   server: {
+    host: '0.0.0.0',
+    port: 5174,
+    strictPort: true,
+    cors: {
+      origin: '*',
+      methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    },
+    hmr: {
+      host: '192.168.200.142',
+      clientPort: 5174,
+      protocol: 'ws',
+    },
     proxy: {
       '/api': {
         target: 'http://qc_admision.test',
