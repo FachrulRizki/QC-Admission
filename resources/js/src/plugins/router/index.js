@@ -8,7 +8,7 @@ const router = createRouter({
 
 // ── Navigation guard ──────────────────────────────────────────────────────────
 router.beforeEach((to) => {
-  const publicRoutes = ['/login']
+  const publicRoutes = ['/login', '/sso-callback', '/auth/keycloak/callback']
   const isPublic     = publicRoutes.includes(to.path)
   const token        = localStorage.getItem('qc_token')
 

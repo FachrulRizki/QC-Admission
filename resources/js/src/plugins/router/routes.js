@@ -65,8 +65,10 @@ export const routes = [
     path: '/',
     component: () => import('@/layouts/blank.vue'),
     children: [
-      { path: 'login', component: () => import('@/pages/login.vue') },
-      { path: '/:pathMatch(.*)*', component: () => import('@/pages/[...error].vue') },
+      { path: 'login',                    component: () => import('@/pages/login.vue') },
+      { path: 'sso-callback',             component: () => import('@/pages/sso-callback.vue') },
+      { path: 'auth/keycloak/callback',   component: () => import('@/pages/sso-callback.vue') },
+      { path: '/:pathMatch(.*)*',         component: () => import('@/pages/[...error].vue') },
     ],
   },
 ]

@@ -11,17 +11,8 @@ class BedIgdService
 {
     private const TOKEN_CACHE_KEY = 'bed_igd_api_token';
 
-    /**
-     * Mode update: 'direct' atau 'by_id'
-     * Ganti ke 'by_id' jika API hanya terima BedIgd.id (bukan Kode_Bed) di path.
-     */
     private const UPDATE_MODE = 'direct';
 
-    /**
-     * Path endpoint update.
-     * Mode 'direct' → path tanpa {id}, contoh: '/bed/release/trigger'
-     * Mode 'by_id'  → path dengan {id}, contoh: '/bed-igd/{id}/status'
-     */
     private const UPDATE_PATH = '/bed/release/trigger';
 
     // ── Public API────────
@@ -85,10 +76,6 @@ class BedIgdService
 
     /**
      * Update status bed → KOSONG saat Batal Ranap dikonfirmasi Siap Closing.
-     *
-     * Mode 'direct': langsung POST Kode_Bed + No_Reg ke API (1 request).
-     * Mode 'by_id':  GET /master-bed dulu untuk ambil BedIgd.id (2 request).
-     *
      * @return array{ success: bool, source: string, message?: string }
      */
     public function releaseBed(string $kodeBed, string $noReg): array

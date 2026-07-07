@@ -26,11 +26,12 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::get('/config', fn() => response()->json([
-    'sso_enabled'        => (bool) config('services.sso_enabled', false),
-    'rsus_db_enabled'    => (bool) config('services.rsus_db_enabled', false),
-    'keycloak_base_url'  => config('services.keycloak.base_url', ''),
-    'keycloak_realm'     => config('services.keycloak.realm', 'master'),
-    'keycloak_client_id' => config('services.keycloak.client_id', 'qc-admission'),
+    'sso_enabled'           => (bool) config('services.sso_enabled', false),
+    'rsus_db_enabled'       => (bool) config('services.rsus_db_enabled', false),
+    'keycloak_base_url'     => config('services.keycloak.base_url', ''),
+    'keycloak_realm'        => config('services.keycloak.realm', 'master'),
+    'keycloak_client_id'    => config('services.keycloak.client_id', 'qc-admission'),
+    'keycloak_redirect_uri' => env('KEYCLOAK_REDIRECT_URI', ''),
 ]));
 
 // Protected

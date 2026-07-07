@@ -13,10 +13,11 @@ const ssoLoading        = ref(false)
 const errorMsg          = ref('')
 
 // Config SSO dari backend
-const ssoEnabled       = ref(false)
-const keycloakUrl      = ref('')
-const keycloakRealm    = ref('master')
-const keycloakClientId = ref('qc-admission')
+const ssoEnabled         = ref(false)
+const keycloakUrl        = ref('')
+const keycloakRealm      = ref('master')
+const keycloakClientId   = ref('qc-admission')
+const keycloakRedirectUri = ref('')  // diambil dari backend, sesuai .env
 
 // Features list untuk brand panel
 const features = [
@@ -34,10 +35,11 @@ const detecting = ref(true)
 onMounted(async () => {
   try {
     const { data } = await axios.get('/api/config')
-    ssoEnabled.value       = data.sso_enabled === true || data.sso_enabled === 'true'
-    keycloakUrl.value      = data.keycloak_base_url  ?? ''
-    keycloakRealm.value    = data.keycloak_realm     ?? 'master'
-    keycloakClientId.value = data.keycloak_client_id ?? 'qc-admission'
+    ssoEnabled.value        = data.sso_enabled === true || data.sso_enabled === 'true'
+    keycloakUrl.value       = data.keycloak_base_url    ?? ''
+    keycloakRealm.value     = data.keycloak_realm       ?? 'master'
+    keycloakClientId.value  = data.keycloak_client_id   ?? 'qc-admission'
+    keycloakRedirectUri.value = data.keycloak_redirect_uri ?? (window.location.origin + '/sso-callback')
 
     if (ssoEnabled.value) {
       loginMode.value = 'sso'
@@ -72,8 +74,17 @@ async function handleLogin() {
 }
 
 function loginWithSSO() {
+  if (!keycloakUrl.value) {
+    errorMsg.value = 'Konfigurasi SSO belum lengkap. Hubungi administrator.'
+    return
+  }
+
   ssoLoading.value = true
-  const redirectUri = encodeURIComponent(window.location.origin + '/sso-callback')
+
+  const redirectUri = encodeURIComponent(
+    keycloakRedirectUri.value || (window.location.origin + '/auth/keycloak/callback')
+  )
+
   const url = keycloakUrl.value
     + '/realms/' + keycloakRealm.value
     + '/protocol/openid-connect/auth'
@@ -81,6 +92,9 @@ function loginWithSSO() {
     + '&redirect_uri=' + redirectUri
     + '&response_type=code'
     + '&scope=openid profile email'
+    + '&prompt=login' 
+
+  console.log('[SSO] Redirecting to:', url)  
   window.location.href = url
 }
 </script>
