@@ -14,7 +14,7 @@ export const usePasienStore = defineStore('pasien', {
 
   getters: {
     // Format untuk VAutocomplete :items
-    optionList: (state) => state.results.map(p => ({
+    optionList: (state) => (state.results ?? []).filter(Boolean).map(p => ({
       title: (p.no_reg ?? '') + ' — ' + (p.nama_pasien ?? ''),
       value: p.no_reg,
       data:  p,

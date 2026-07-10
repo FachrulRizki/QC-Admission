@@ -1,9 +1,6 @@
 <template>
-  <div
-    class="layout-wrapper layout-blank"
-    data-allow-mismatch
-  >
-    <RouterView />
+  <div class="layout-wrapper layout-blank" data-allow-mismatch>
+    <slot />
   </div>
 </template>
 

@@ -24,7 +24,7 @@ export const useEdukasiLanjutanStore = defineStore('edukasiLanjutan', {
 
     groupedByBulan: (state) => {
       const groups = {}
-      state.records.forEach(r => {
+      state.records.filter(Boolean).forEach(r => {
         const key = r.bulan ?? 'Lainnya'
         if (!groups[key]) groups[key] = []
         groups[key].push(r)

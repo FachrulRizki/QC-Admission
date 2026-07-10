@@ -12,9 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->web(append: [
+            \App\Http\Middleware\HandleInertiaRequests::class,
+        ]);
+
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
+            'keycloak.auth' => \App\Http\Middleware\KeycloakAuthenticate::class,
+            'keycloak.role' => \App\Http\Middleware\CheckKeycloakRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

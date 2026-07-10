@@ -4,9 +4,7 @@ import DefaultLayoutWithVerticalNav from './components/DefaultLayoutWithVertical
 
 <template>
   <DefaultLayoutWithVerticalNav>
-    <!-- RouterView di sini mengisi slot default layout,
-         yang kemudian dirender di dalam main content area -->
-    <RouterView />
+    <slot />
   </DefaultLayoutWithVerticalNav>
 </template>
 

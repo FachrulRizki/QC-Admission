@@ -201,7 +201,7 @@ onMounted(() => loadMasterData())
     <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-4" rounded />
 
     <!-- Groups -->
-    <div v-for="(groupItems, groupName) in groups" :key="groupName" class="mb-6">
+    <div v-for="(groupItems, groupName) in visibleGroups" :key="groupName" class="mb-6">
       <div class="d-flex align-center gap-2 mb-3">
         <VDivider />
         <VChip color="primary" variant="tonal" size="small" class="text-caption font-weight-bold text-uppercase flex-shrink-0">

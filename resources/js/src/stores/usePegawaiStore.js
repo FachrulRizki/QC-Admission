@@ -16,10 +16,9 @@ export const usePegawaiStore = defineStore('pegawai', {
 
   getters: {
     // Array nama saja — untuk VAutocomplete :items="namaList"
-    namaList: (state) => state.items.map(p => p.nama),
+    namaList: (state) => state.items.filter(Boolean).map(p => p.nama),
 
-    // Array objek lengkap — untuk autocomplete dengan label
-    optionList: (state) => state.items.map(p => ({
+    optionList: (state) => state.items.filter(Boolean).map(p => ({
       title: p.nama,
       value: p.nama,
       nip:   p.nip,

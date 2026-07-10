@@ -27,6 +27,7 @@
     "dependencies": {
         "@iconify/json": "^2.2.492",
         "@iconify/vue": "^5.0.1",
+        "@inertiajs/vue3": "3.6.1",
         "@mdi/font": "^7.4.47",
         "@vueuse/core": "^14.3.0",
         "apexcharts": "^5.15.2",

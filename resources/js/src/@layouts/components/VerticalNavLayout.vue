@@ -58,7 +58,10 @@ export default defineComponent({
       // 👉 Overlay
       const layoutOverlay = h('div', {
         class: ['layout-overlay', { visible: isLayoutOverlayVisible.value }],
-        onClick: () => { isLayoutOverlayVisible.value = !isLayoutOverlayVisible.value },
+        onClick: () => {
+          isOverlayNavActive.value = false
+          isLayoutOverlayVisible.value = false
+        },
       })
 
       return h('div', {

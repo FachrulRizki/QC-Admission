@@ -1,6 +1,7 @@
 <script setup>
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useDisplay } from 'vuetify'
+import { usePage } from '@inertiajs/vue3'
 import logo from '@images/logo.svg?raw'
 
 const props = defineProps({
@@ -20,14 +21,10 @@ const props = defineProps({
 })
 
 const { mdAndDown } = useDisplay()
-const refNav = ref()
 
-/*ℹ️ Close overlay side when route is changed
-Close overlay vertical nav when link is clicked
-*/
-const route = useRoute()
-
-watch(() => route.path, () => {
+// Tutup overlay nav saat halaman Inertia berubah (navigasi menu di mobile)
+const page = usePage()
+watch(() => page.url, () => {
   props.toggleIsOverlayNavActive(false)
 })
 

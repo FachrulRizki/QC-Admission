@@ -1,37 +1,25 @@
 <script setup>
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
-const router    = useRouter()
 
 const user = computed(() => authStore.user)
+
 const initials = computed(() => {
   const name = user.value?.name ?? 'U'
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 })
 
 const roleLabel = computed(() => {
-  const map = {
-    admin:        'Administrator',
-    qc_admission: 'QC Admission',
-    kasir:        'Kasir',
-  }
-  return map[user.value?.role] ?? 'Pengguna'
+  const roles = authStore.roles ?? []
+  if (roles.includes('admin'))        return 'Administrator'
+  if (roles.includes('qc_admission')) return 'QC Admission'
+  if (roles.includes('kasir'))        return 'Kasir'
+  return 'Pengguna'
 })
 
-async function handleLogout() {
-  try {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-        Accept: 'application/json',
-      },
-    })
-  } catch {}
+function handleLogout() {
   authStore.logout()
-  router.push('/login')
 }
 </script>
 

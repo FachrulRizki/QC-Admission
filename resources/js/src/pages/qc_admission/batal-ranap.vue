@@ -104,7 +104,7 @@ onMounted(load)
       color-to="#0369A1"
       :pills="[
         { icon: 'ri-database-line', text: `${stats.total} data` },
-        { icon: 'ri-time-line', text: `${stats.belum} blm verifikasi` },
+        { icon: 'ri-time-line', text: `${stats.belumClosing} blm verifikasi` },
       ]"
     >
       <template #actions>

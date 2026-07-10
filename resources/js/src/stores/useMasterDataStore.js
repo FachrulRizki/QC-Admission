@@ -64,7 +64,7 @@ export const useMasterDataStore = defineStore('masterData', {
           'cara_masuk', 'diagnosa', 'jaminan',
         ]
         keys.forEach(k => {
-          if (Array.isArray(data[k])) this[k] = data[k]
+          if (data && Array.isArray(data[k])) this[k] = data[k]
         })
 
         this.fetched = true

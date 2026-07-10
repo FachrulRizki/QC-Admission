@@ -3,6 +3,7 @@ import NavItems from '@/layouts/components/NavItems.vue'
 import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
+import { Link } from '@inertiajs/vue3'
 
 // Current date for navbar display
 const today = new Date().toLocaleDateString('id-ID', {
@@ -54,10 +55,7 @@ const today = new Date().toLocaleDateString('id-ID', {
 
     <!-- 👉 Vertical nav header -->
     <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
-      <RouterLink
-        to="/"
-        class="app-logo app-title-wrapper"
-      >
+      <Link href="/dashboard" class="app-logo app-title-wrapper">
         <div class="app-logo-icon d-flex align-center justify-center rounded-lg">
           <VIcon icon="ri-shield-check-fill" size="22" color="white" />
         </div>
@@ -65,7 +63,7 @@ const today = new Date().toLocaleDateString('id-ID', {
           <h1 class="app-logo-title">QC ADMISSION</h1>
           <p class="app-logo-subtitle mb-0">Quality Control</p>
         </div>
-      </RouterLink>
+      </Link>
 
       <IconBtn
         class="d-block d-lg-none"

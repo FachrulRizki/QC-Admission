@@ -1,129 +1,63 @@
 import { defineStore } from 'pinia'
+import { usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 
+// Auth dibaca dari Inertia shared props (session Laravel), bukan localStorage
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    user:            null,
-    token:           null,
-    isAuthenticated: false,
-  }),
-
   getters: {
-    currentUser:   (state) => state.user,
-    isLoggedIn:    (state) => state.isAuthenticated,
-    userRole:      (state) => state.user?.role ?? null,
-    isAdmin:       (state) => state.user?.role === 'admin',
-    isQcAdmission: (state) => state.user?.role === 'qc_admission',
-    isKasir:       (state) => state.user?.role === 'kasir',
-    canAccessMain: (state) => ['admin', 'qc_admission'].includes(state.user?.role),
+    user:          () => usePage().props.auth?.user  ?? null,
+    roles:         () => usePage().props.auth?.roles ?? [],
+    isLoggedIn:    () => !!usePage().props.auth?.user,
+    isAdmin:       () => usePage().props.auth?.roles?.includes('admin')        ?? false,
+    isQcAdmission: () => usePage().props.auth?.roles?.includes('qc_admission') ?? false,
+    isKasir:       () => usePage().props.auth?.roles?.includes('kasir')        ?? false,
+    canAccessMain: () => {
+      const roles = usePage().props.auth?.roles ?? []
+      return roles.includes('admin') || roles.includes('qc_admission')
+    },
   },
 
   actions: {
+    // Login lokal — simpan session lalu full-page redirect
     async login(credentials) {
       try {
-        const res = await axios.post('/api/auth/login', credentials)
-        const { user, token } = res.data
-        this._setSession(user, token)
-        return { success: true, role: user.role }
+        const res    = await axios.post('/auth/login', credentials)
+        const target = _defaultRouteForRoles(res.data.user?.roles ?? [])
+        window.location.href = target
+        return { success: true, user: res.data.user }
       } catch (err) {
         return { success: false, message: err.response?.data?.message ?? 'Login gagal.' }
       }
     },
 
-    async ssoLogin(keycloakAccessToken) {
-      try {
-        const res = await axios.post('/api/auth/sso/callback', { access_token: keycloakAccessToken })
-        const { user, token } = res.data
-        this._setSession(user, token)
-        return { success: true, role: user.role }
-      } catch (err) {
-        return { success: false, message: err.response?.data?.message ?? 'SSO login gagal.' }
-      }
-    },
-
+    // Logout — back-channel Keycloak + clear session
     async logout() {
-      try { await axios.post('/api/auth/logout') } catch {}
-      this._clearSession()
-    },
-
-    async fetchMe() {
       try {
-        const res = await axios.get('/api/auth/me')
-        this.user = res.data.user
-        this.isAuthenticated = true
-        localStorage.setItem('qc_user', JSON.stringify(res.data.user))
-      } catch {
-        // Jangan clear session — biarkan pakai data lokal
-        // _clearSession hanya dipanggil saat logout eksplisit atau 401 interceptor
-      }
-    },
-
-    /**
-     * Restore session dari localStorage tanpa harus menunggu server.
-     * Jika token ada → anggap sudah auth, pakai user dari localStorage.
-     * Refresh dari server dilakukan di background (tidak blocking).
-     */
-    async restoreSession() {
-      const token = localStorage.getItem('qc_token')
-      const storedUser = localStorage.getItem('qc_user')
-
-      if (!token) return
-
-      // Set state dari localStorage dulu — menu langsung tampil
-      this.token           = token
-      this.isAuthenticated = true
-      _setAxiosDefaults(token)
-
-      if (storedUser) {
-        try { this.user = JSON.parse(storedUser) } catch {}
-      }
-
-      // Refresh dari server di background — tidak blocking mount
-      this.fetchMe().catch(() => {})
-    },
-
-    _setSession(user, token) {
-      this.user            = user
-      this.token           = token
-      this.isAuthenticated = true
-      localStorage.setItem('qc_token', token)
-      localStorage.setItem('qc_user', JSON.stringify(user))
-      _setAxiosDefaults(token)
-    },
-
-    _clearSession() {
-      this.user            = null
-      this.token           = null
-      this.isAuthenticated = false
-      localStorage.removeItem('qc_token')
-      localStorage.removeItem('qc_user')
-      _setAxiosDefaults(null)
+        await axios.post('/auth/keycloak/logout')
+      } catch {}
+      window.location.href = '/login'
     },
   },
 })
 
-export function setupAxiosInterceptors() {
-  axios.defaults.baseURL = ''
+// Setup axios — session cookie + CSRF, tanpa Bearer token
+export function setupAxiosDefaults() {
+  axios.defaults.withCredentials = true
   axios.defaults.headers.common['Accept']            = 'application/json'
   axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest'
 
-  const existingToken = localStorage.getItem('qc_token')
-  if (existingToken) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${existingToken}`
-  }
-
   axios.interceptors.request.use(config => {
-    const token = localStorage.getItem('qc_token')
-    if (token) config.headers['Authorization'] = `Bearer ${token}`
+    const token = _getCsrfToken()
+    if (token) config.headers['X-CSRF-TOKEN'] = token
     return config
   })
 
+  // Redirect ke /login jika session expired
   axios.interceptors.response.use(
     res => res,
     err => {
-      if (err.response?.status === 401 && !window.location.pathname.includes('/login')) {
-        localStorage.removeItem('qc_token')
-        localStorage.removeItem('qc_user')
+      const status = err.response?.status
+      if ((status === 401 || status === 419) && !window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
       return Promise.reject(err)
@@ -131,10 +65,12 @@ export function setupAxiosInterceptors() {
   )
 }
 
-function _setAxiosDefaults(token) {
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-  } else {
-    delete axios.defaults.headers.common['Authorization']
-  }
+function _getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+    ?? document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1]
+    ?? ''
+}
+
+function _defaultRouteForRoles(roles) {
+  return roles.includes('kasir') ? '/view-data-input' : '/dashboard'
 }
