@@ -1,7 +1,13 @@
 <?php
 
-// Konfigurasi Keycloak untuk KeycloakService (introspect, refresh, logout)
-// OAuth2 redirect flow dihandle oleh config/services.php + Socialite
+/*
+|--------------------------------------------------------------------------
+| Keycloak Config — alias ke config/services.php
+|--------------------------------------------------------------------------
+| Semua config Keycloak dipusatkan di config/services.php['keycloak'].
+| File ini hanya menjadi alias agar kode lama yang membaca
+| config('keycloak.*') tetap berjalan tanpa perlu refactor.
+*/
 
 return [
     'base_url'     => env('KEYCLOAK_BASE_URL'),

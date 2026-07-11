@@ -2,45 +2,75 @@ import { defineStore } from 'pinia'
 import { usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 
-// Auth dibaca dari Inertia shared props (session Laravel), bukan localStorage
+/**
+ * useAuthStore — satu-satunya sumber kebenaran auth di frontend.
+ *
+ * Roles dan permissions berasal dari Keycloak (via Inertia shared props).
+ * Tidak ada hardcode role/permission di frontend — semua dicek terhadap
+ * array yang dikirim server.
+ */
 export const useAuthStore = defineStore('auth', {
   getters: {
-    user:          () => usePage().props.auth?.user  ?? null,
-    roles:         () => usePage().props.auth?.roles ?? [],
-    isLoggedIn:    () => !!usePage().props.auth?.user,
+    // ── Data user ──────────────────────────────────────────────────────────
+    user:        () => usePage().props.auth?.user        ?? null,
+    roles:       () => usePage().props.auth?.roles       ?? [],
+    permissions: () => usePage().props.auth?.permissions ?? [],
+    isLoggedIn:  () => !!usePage().props.auth?.user,
+
+    // ── Role helpers (baca dari Keycloak, bukan hardcode) ──────────────────
     isAdmin:       () => usePage().props.auth?.roles?.includes('admin')        ?? false,
     isQcAdmission: () => usePage().props.auth?.roles?.includes('qc_admission') ?? false,
     isKasir:       () => usePage().props.auth?.roles?.includes('kasir')        ?? false,
-    canAccessMain: () => {
-      const roles = usePage().props.auth?.roles ?? []
-      return roles.includes('admin') || roles.includes('qc_admission')
-    },
   },
 
   actions: {
-    // Login lokal — simpan session lalu full-page redirect
-    async login(credentials) {
-      try {
-        const res    = await axios.post('/auth/login', credentials)
-        const target = _defaultRouteForRoles(res.data.user?.roles ?? [])
-        window.location.href = target
-        return { success: true, user: res.data.user }
-      } catch (err) {
-        return { success: false, message: err.response?.data?.message ?? 'Login gagal.' }
-      }
+    /**
+     * Cek apakah user punya role tertentu.
+     * Nilai roles datang dari Keycloak — sesuaikan nama role dengan konfigurasi realm.
+     */
+    hasRole(role) {
+      const roles = usePage().props.auth?.roles ?? []
+      if (Array.isArray(role)) return role.some(r => roles.includes(r))
+      return roles.includes(role)
     },
 
-    // Logout — back-channel Keycloak + clear session
+    /**
+     * Cek permission granular dari Keycloak (UMA atau derived dari role).
+     * Format: 'resource:scope' contoh 'quality-control:write'
+     */
+    hasPermission(permission) {
+      const perms = usePage().props.auth?.permissions ?? []
+      if (Array.isArray(permission)) return permission.some(p => perms.includes(p))
+      return perms.includes(permission)
+    },
+
+    /**
+     * Cek satu atau lebih role ATAU permission sekaligus.
+     * Berguna untuk guard route dan tombol UI.
+     */
+    can(roleOrPermission) {
+      return this.hasRole(roleOrPermission) || this.hasPermission(roleOrPermission)
+    },
+
+    /**
+     * Logout — back-channel Keycloak + clear session lokal.
+     * Setelah logout, Keycloak session juga di-invalidate.
+     */
     async logout() {
       try {
-        await axios.post('/auth/keycloak/logout')
-      } catch {}
+        await axios.post('/auth/logout')
+      } catch {
+        // Tetap redirect meski request gagal
+      }
       window.location.href = '/login'
     },
   },
 })
 
-// Setup axios — session cookie + CSRF, tanpa Bearer token
+/**
+ * Setup axios defaults — session cookie + CSRF.
+ * Tidak ada Bearer token karena auth berbasis session SSO.
+ */
 export function setupAxiosDefaults() {
   axios.defaults.withCredentials = true
   axios.defaults.headers.common['Accept']            = 'application/json'
@@ -52,25 +82,23 @@ export function setupAxiosDefaults() {
     return config
   })
 
-  // Redirect ke /login jika session expired
   axios.interceptors.response.use(
     res => res,
     err => {
       const status = err.response?.status
+      // Session expired atau belum login
       if ((status === 401 || status === 419) && !window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
       return Promise.reject(err)
-    }
+    },
   )
 }
 
 function _getCsrfToken() {
-  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+  return (
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
     ?? document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1]
     ?? ''
-}
-
-function _defaultRouteForRoles(roles) {
-  return roles.includes('kasir') ? '/view-data-input' : '/dashboard'
+  )
 }

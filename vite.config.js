@@ -47,8 +47,15 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        // Matikan deprecation warning dari template Vuetify (bukan kode kita)
-        silenceDeprecations: ['if-function', 'legacy-js-api'],
+        // Suppress Sass deprecation warnings dari Vuetify template dan library pihak ketiga.
+        // Warning ini tidak berasal dari kode kita — akan hilang saat library update ke Sass modern API.
+        silenceDeprecations: [
+          'legacy-js-api',
+          'if-function',
+          'color-functions',
+          'global-builtin',
+          'import',
+        ],
       },
     },
   },

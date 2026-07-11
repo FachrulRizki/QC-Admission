@@ -11,16 +11,10 @@ class BedIgdService
 {
     private const TOKEN_CACHE_KEY = 'bed_igd_api_token';
 
-    private const UPDATE_MODE = 'direct';
-
-    private const UPDATE_PATH = '/bed/release/trigger';
-
-    // ── Public API────────
+    // ── Public API ────────────────────────────────────────────────────────────
 
     /**
      * Ambil bed yang sedang ditempati pasien berdasarkan No_Reg.
-     * GET /master-bed → filter client-side berdasarkan BedIgd.No_Reg.
-     *
      * @return array{ beds: array, source: string }
      */
     public function getBedsByNoReg(string $noReg): array
@@ -39,7 +33,6 @@ class BedIgdService
                 }
 
                 $allBeds  = $response->json()['data'] ?? [];
-
                 $filtered = collect($allBeds)->filter(
                     fn($b) => ($b['BedIgd']['No_Reg'] ?? null) === $noReg
                 );
@@ -84,16 +77,19 @@ class BedIgdService
             return ['success' => false, 'source' => 'none', 'message' => 'Kode_Bed tidak boleh kosong.'];
         }
 
-        // Bed IGD API
+        // Mode dan path diambil dari config (tidak hardcode)
+        $updateMode = config('services.bed_igd.update_mode', 'direct');
+        $updatePath = config('services.bed_igd.update_path', '/bed/release/trigger');
+
         if ($this->isApiEnabled()) {
             try {
                 $token = $this->getToken();
 
-                if (self::UPDATE_MODE === 'direct') {
+                if ($updateMode === 'direct') {
                     $response = Http::withToken($token)
                         ->timeout(10)
                         ->acceptJson()
-                        ->post(config('services.bed_igd.base_url') . self::UPDATE_PATH, [
+                        ->post(config('services.bed_igd.base_url') . $updatePath, [
                             'Kode_Bed' => $kodeBed,
                             'No_Reg'   => null,
                             'Status'   => 'KOSONG',
@@ -102,11 +98,10 @@ class BedIgdService
                     $bedIgdId = $this->fetchBedIgdId($token, $kodeBed);
                     if (! $bedIgdId) {
                         throw new \RuntimeException(
-                            "BedIgd.id tidak ditemukan untuk Kode_Bed={$kodeBed}. "
-                            . "Coba ganti UPDATE_MODE ke 'direct'."
+                            "BedIgd.id tidak ditemukan untuk Kode_Bed={$kodeBed}."
                         );
                     }
-                    $path     = str_replace('{id}', (string) $bedIgdId, self::UPDATE_PATH);
+                    $path     = str_replace('{id}', (string) $bedIgdId, $updatePath);
                     $response = Http::withToken($token)
                         ->timeout(10)
                         ->acceptJson()
@@ -136,7 +131,6 @@ class BedIgdService
             }
         }
 
-        // RSUS DB langsung
         if ($this->isRsusEnabled()) {
             try {
                 DB::connection('rsus')->table('BI_Bed_Igd')
@@ -152,12 +146,11 @@ class BedIgdService
             }
         }
 
-        // Mock
         Log::info("BedIgdService: mock — Kode_Bed={$kodeBed} No_Reg={$noReg} → KOSONG");
         return ['success' => true, 'source' => 'mock', 'kode_bed' => $kodeBed];
     }
 
-    // Token
+    // ── Token management ──────────────────────────────────────────────────────
 
     private function getToken(): string
     {
@@ -194,9 +187,8 @@ class BedIgdService
         return $token;
     }
 
-    // Helpers
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /** Fetch BedIgd.id dari /master-bed (dipakai mode 'by_id'). */
     private function fetchBedIgdId(string $token, string $kodeBed): ?int
     {
         $response = Http::withToken($token)->timeout(10)->acceptJson()
@@ -221,27 +213,25 @@ class BedIgdService
         return (bool) config('services.rsus_db_enabled', false);
     }
 
-    /** Normalisasi item dari GET /master-bed ke format standar. */
     private function normalizeBed(array $bed): array
     {
         $b = $bed['BedIgd'] ?? [];
         return [
-            'kode_bed'       => $bed['Kode_Bed']          ?? null,
-            'bed_id'         => $bed['Kode_Bed']          ?? null,
-            'nama_bed'       => $bed['Nama_Bed']          ?? null,
-            'ket_bed'        => $bed['Ket_Bed']           ?? null,
-            'kode_triase'    => $bed['Kode_Triase']       ?? null,
-            'kode_ruang'     => $bed['Kode_Ruang']        ?? null,
-            'kode_bangsal'   => $bed['Kode_Bangsal']      ?? 'IGD',
-            'bed_igd_id'     => $b['id']                  ?? null,
-            'status'         => strtoupper($b['Status']   ?? ''),
-            'no_reg'         => $b['No_Reg']              ?? null,
-            'tanggal'        => $b['Tanggal']             ?? null,
-            'updated_reg_at' => $b['updated_reg_at']      ?? null,
+            'kode_bed'       => $bed['Kode_Bed']     ?? null,
+            'bed_id'         => $bed['Kode_Bed']     ?? null,
+            'nama_bed'       => $bed['Nama_Bed']     ?? null,
+            'ket_bed'        => $bed['Ket_Bed']      ?? null,
+            'kode_triase'    => $bed['Kode_Triase']  ?? null,
+            'kode_ruang'     => $bed['Kode_Ruang']   ?? null,
+            'kode_bangsal'   => $bed['Kode_Bangsal'] ?? 'IGD',
+            'bed_igd_id'     => $b['id']             ?? null,
+            'status'         => strtoupper($b['Status']  ?? ''),
+            'no_reg'         => $b['No_Reg']         ?? null,
+            'tanggal'        => $b['Tanggal']        ?? null,
+            'updated_reg_at' => $b['updated_reg_at'] ?? null,
         ];
     }
 
-    /** Normalisasi baris dari BI_Bed_Igd (RSUS DB). */
     private function normalizeRow(object $r): array
     {
         return [
@@ -263,12 +253,18 @@ class BedIgdService
     private function mockBeds(string $noReg): array
     {
         return [[
-            'kode_bed' => 'ED001', 'bed_id' => 'ED001',
-            'nama_bed' => 'EMERGENCY BED 01', 'ket_bed' => 'EMERGENCY BED',
-            'kode_triase' => 'MERAH', 'kode_ruang' => 'EDR001', 'kode_bangsal' => 'IGD',
-            'bed_igd_id' => 221,
-            'status' => 'TERISI', 'no_reg' => $noReg,
-            'tanggal' => now()->toDateString(), 'updated_reg_at' => null,
+            'kode_bed'       => 'ED001',
+            'bed_id'         => 'ED001',
+            'nama_bed'       => 'EMERGENCY BED 01',
+            'ket_bed'        => 'EMERGENCY BED',
+            'kode_triase'    => 'MERAH',
+            'kode_ruang'     => 'EDR001',
+            'kode_bangsal'   => 'IGD',
+            'bed_igd_id'     => 221,
+            'status'         => 'TERISI',
+            'no_reg'         => $noReg,
+            'tanggal'        => now()->toDateString(),
+            'updated_reg_at' => null,
         ]];
     }
 }

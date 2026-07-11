@@ -31,12 +31,13 @@ class ActivityLog extends Model
         ?array  $payload = null,
         ?string $ipAddress = null
     ): void {
-        $user = auth('sanctum')->user();
+        // Auth disimpan di session (SSO Keycloak), bukan Sanctum token
+        $authUser = session('auth_user');
 
         static::create([
-            'user_id'    => $user?->id,
-            'user_name'  => $user?->name,
-            'user_role'  => $user?->role,
+            'user_id'    => $authUser['id']       ?? null,
+            'user_name'  => $authUser['name']     ?? null,
+            'user_role'  => $authUser['roles'][0] ?? null,
             'module'     => $module,
             'action'     => $action,
             'subject'    => $subject,

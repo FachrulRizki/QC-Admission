@@ -3,7 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Laravel\Socialite\Contracts\Factory;
+use Illuminate\Support\Facades\Event;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Keycloak\KeycloakExtendSocialite;
 
 class AppServiceProvider extends ServiceProvider
@@ -12,14 +13,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Daftarkan Keycloak driver ke Socialite
-        $socialite = $this->app->make(Factory::class);
-        $socialite->extend('keycloak', function () use ($socialite) {
-            $config = config('services.keycloak');
-            return $socialite->buildProvider(
-                \SocialiteProviders\Keycloak\Provider::class,
-                $config
-            );
-        });
+        // Cara resmi socialiteproviders — via event listener, bukan extend manual
+        Event::listen(SocialiteWasCalled::class, KeycloakExtendSocialite::class);
     }
 }

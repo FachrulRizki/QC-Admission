@@ -17,6 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
 
+        // API routes butuh session agar keycloak.auth bisa baca session cookie
+        // (auth berbasis session SSO, bukan Bearer token)
+        $middleware->api(prepend: [
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+        ]);
+
         $middleware->alias([
             'keycloak.auth' => \App\Http\Middleware\KeycloakAuthenticate::class,
             'keycloak.role' => \App\Http\Middleware\CheckKeycloakRole::class,

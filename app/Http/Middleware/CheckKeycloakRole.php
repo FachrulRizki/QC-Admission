@@ -7,28 +7,39 @@ use Illuminate\Http\Request;
 
 class CheckKeycloakRole
 {
-    public function handle(Request $request, Closure $next, string ...$roles)
+    public function handle(Request $request, Closure $next, string ...$required)
     {
-        $userRoles = session('auth_user.roles', []);
+        $authUser    = session('auth_user', []);
+        $userRoles   = $authUser['roles']       ?? [];
+        $userPerms   = $authUser['permissions'] ?? [];
 
-        // Flatten comma-separated dalam satu argumen
-        $required = [];
-        foreach ($roles as $role) {
-            foreach (explode(',', $role) as $r) {
-                $required[] = trim($r);
+        $checks = [];
+        foreach ($required as $item) {
+            foreach (explode(',', $item) as $r) {
+                $checks[] = trim($r);
             }
         }
 
-        foreach ($required as $role) {
-            if (in_array($role, $userRoles, true)) {
-                return $next($request);
+        foreach ($checks as $check) {
+            if (str_contains($check, ':')) {
+                if (in_array($check, $userPerms, true)) {
+                    return $next($request);
+                }
+            } else {
+                if (in_array($check, $userRoles, true)) {
+                    return $next($request);
+                }
             }
         }
 
-        if ($request->inertia()) {
-            return redirect()->route('akses.ditolak');
+        // Akses ditolak
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'message' => 'Akses ditolak. Role atau permission tidak memadai.',
+                'required' => $checks,
+            ], 403);
         }
 
-        return response()->json(['message' => 'Akses ditolak — role tidak memadai.'], 403);
+        return redirect()->route('akses.ditolak');
     }
 }
