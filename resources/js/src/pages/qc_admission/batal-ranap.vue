@@ -66,7 +66,16 @@ function openEdit(item) {
 function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
 
 async function onSaved()    { showForm.value = false; toast('Data disimpan.'); await load() }
-async function onVerified() { toast('Verifikasi disimpan.'); await load() }
+async function onVerified(result) {
+  if (result?.bedTriggered === true) {
+    toast(`✅ Siap Closing tersimpan. Bed ${result.kodeBed} berhasil dibebaskan via ${result.source}.`, 'success')
+  } else if (result?.bedTriggered === false) {
+    toast(`⚠️ Siap Closing tersimpan, tapi trigger Bed IGD gagal: ${result.bedError ?? 'cek log server'}`, 'warning')
+  } else {
+    toast('Verifikasi disimpan.')
+  }
+  await load()
+}
 
 function resetFilter() { search.value = ''; filterClosing.value = null; dateFrom.value = todayStr(); dateTo.value = todayStr() }
 

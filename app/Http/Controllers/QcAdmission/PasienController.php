@@ -10,14 +10,6 @@ use Illuminate\Support\Facades\Log;
 
 class PasienController extends Controller
 {
-    /**
-     * Search pasien rawat inap.
-     * Query params:
-     *   search  — cari No_Reg / No_MR / Nama_Pasien (min 2 karakter)
-     *   no_reg  — lookup tepat satu pasien (untuk autofill form)
-     *
-     * Jika RSUS_DB_ENABLED=false → kembalikan mock.
-     */
     public function index(Request $request): JsonResponse
     {
         $search = trim($request->query('search', ''));
@@ -44,8 +36,6 @@ class PasienController extends Controller
 
     private function queryRsus(string $search, string $noReg): array
     {
-        // Subquery menggunakan query lengkap dari requirement (tanpa filter tanggal di inner,
-        // filter tanggal ada di WHERE outer agar search by No_Reg lama tetap bisa)
         $innerSql = "
             SELECT
                 P.No_Reg, P.No_MR, R.Nama_Pasien, CB.KET_BAYAR,
@@ -53,18 +43,18 @@ class PasienController extends Controller
                 CONVERT(varchar, P.Jam, 108) AS Jam_Daftar_Str,
                 { fn CONCAT({ fn CONCAT(CONVERT(varchar, P.Tanggal, 23), ' ') }, CONVERT(varchar, P.Jam, 108)) } AS Time_Daftar,
                 C.Nama_Ruang, K.Nama_Kelas, D.Nama_Bangsal, G.KET_MASUK,
+                BED.Kode_Bed, BED.Status AS Bed_Status,
                 CASE
-                    WHEN E.Tgl_SPRI IS NULL THEN 'Observasi'
-                    ELSE CASE
-                        WHEN E.Status = 'Belum' THEN 'Antri Admisi'
-                        ELSE CASE
-                            WHEN E.Status = 'Sudah' AND (SELECT TOP(1) Tgl_Mulai FROM dbo.TR_KAMAR WHERE No_Reg=P.No_Reg) IS NULL THEN 'Belum Dapat Kamar'
-                            ELSE CASE
-                                WHEN (SELECT TOP(1) TglPindah FROM dbo.ASESMEN_TRANSFER_PASIEN WHERE No_Reg=P.No_Reg AND NamaPetugasMenerima<>'') IS NOT NULL THEN 'Sudah Masuk Kamar'
-                                ELSE 'Belum Diantar'
-                            END
-                        END
-                    END
+                    WHEN E.Status IS NULL THEN 'Observasi'
+                    WHEN E.Status = 'Belum' THEN 'Antri Admisi'
+                    WHEN E.Status = 'Sudah'
+                         AND (SELECT TOP(1) Tgl_Mulai FROM dbo.TR_KAMAR WHERE No_Reg=P.No_Reg) IS NULL
+                         THEN 'Belum Dapat Kamar'
+                    WHEN (SELECT TOP(1) TglPindah
+                          FROM dbo.ASESMEN_TRANSFER_PASIEN
+                          WHERE No_Reg=P.No_Reg AND NamaPetugasMenerima<>'') IS NOT NULL
+                         THEN 'Sudah Masuk Kamar'
+                    ELSE 'Belum Diantar'
                 END AS Keterangan
             FROM dbo.PENDAFTARAN AS P
             LEFT OUTER JOIN dbo.TR_KAMAR AS B ON P.No_Reg=B.No_Reg
@@ -76,6 +66,7 @@ class PasienController extends Controller
             LEFT OUTER JOIN dbo.REGISTER_PASIEN AS R ON P.No_MR=R.No_MR
             LEFT OUTER JOIN dbo.DOKTER AS DO ON E.NamaUser=DO.Kode_Dokter
             LEFT OUTER JOIN dbo.M_KELAS AS K ON C.Kode_Kelas=K.Kode_Kelas
+            LEFT OUTER JOIN dbo.BI_Bed_Igd AS BED ON P.No_Reg=BED.No_Reg AND BED.Status='TERISI'
             WHERE (P.Kode_Masuk IN ('1','2','3'))
               AND (P.No_MR <> '000000')
         ";
@@ -111,7 +102,6 @@ class PasienController extends Controller
 
     private function mapRow(array $r): array
     {
-        // Format tgl_daftar + jam_daftar dari Time_Daftar atau Tgl_Daftar + Jam_Daftar_Str
         $tglDaftar  = '';
         $jamDaftar  = '';
         if (!empty($r['Time_Daftar'])) {
@@ -133,7 +123,9 @@ class PasienController extends Controller
             'nama_kelas'   => $r['Nama_Kelas']   ?? '',
             'tgl_daftar'   => $tglDaftar,
             'jam_daftar'   => $jamDaftar,
-            'keterangan'   => $r['Keterangan']   ?? '',   // status keterangan dari field, bukan dropdown
+            'keterangan'   => $r['Keterangan']   ?? '',
+            'kode_bed'     => $r['Kode_Bed']     ?? null,
+            'bed_status'   => $r['Bed_Status']   ?? null,
             'label'        => trim(($r['No_Reg'] ?? '') . ' — ' . trim($r['Nama_Pasien'] ?? '')),
         ];
     }
@@ -141,21 +133,14 @@ class PasienController extends Controller
     private function mockPasien(string $search = ''): array
     {
         $data = [
-            ['no_reg'=>'14-00041470','no_mr'=>'353245','nama_pasien'=>'LE WI BY',        'ket_bayar'=>'PRIBADI/MANDIRI',               'nama_ruang'=>'PERINA 02',     'nama_bangsal'=>'PERINA',         'nama_kelas'=>'NEONATUS', 'tgl_daftar'=>'2414-04-26','jam_daftar'=>'18:02:00','keterangan'=>'Observasi'],
-            ['no_reg'=>'16-00018027','no_mr'=>'129451','nama_pasien'=>'KM ID TN',         'ket_bayar'=>'TANGGUNGAN INSTANSI/PERUSAHAAN','nama_ruang'=>'',              'nama_bangsal'=>'',               'nama_kelas'=>'',         'tgl_daftar'=>'6016-02-12','jam_daftar'=>'10:25:00','keterangan'=>'Observasi'],
-            ['no_reg'=>'21-00017029','no_mr'=>'588414','nama_pasien'=>'HA TN',            'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DELIMA A18 D',  'nama_bangsal'=>'DELIMA ATAS',    'nama_kelas'=>'KELAS III','tgl_daftar'=>'2121-02-25','jam_daftar'=>'09:00:00','keterangan'=>'Observasi'],
-            // Data pakai format tahun normal untuk mock lokal
-            ['no_reg'=>'569142',    'no_mr'=>'569142','nama_pasien'=>'ONGKI SAPUTRA, TN','ket_bayar'=>'BPJS',                          'nama_ruang'=>'PS ATAS 01',    'nama_bangsal'=>'PAHLAWAN ATAS',  'nama_kelas'=>'KELAS VIP','tgl_daftar'=>'2026-06-28','jam_daftar'=>'19:56:40','keterangan'=>'Antri Admisi'],
-            ['no_reg'=>'REG001',    'no_mr'=>'813500','nama_pasien'=>'ELLY MAYA, NY',    'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DAHLIA 2',      'nama_bangsal'=>'DAHLIA',         'nama_kelas'=>'Kelas 1',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'08:00:00','keterangan'=>'Belum Dapat Kamar'],
-            ['no_reg'=>'REG002',    'no_mr'=>'575360','nama_pasien'=>'IDH SUBINGSEN, NY','ket_bayar'=>'BPJS',                          'nama_ruang'=>'MAWAR 3',       'nama_bangsal'=>'MAWAR',          'nama_kelas'=>'Kelas 2',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'10:30:00','keterangan'=>'Antri Admisi'],
-            ['no_reg'=>'REG003',    'no_mr'=>'087220','nama_pasien'=>'RUSMINI, NY',      'ket_bayar'=>'Umum',                          'nama_ruang'=>'ANGGREK 1',     'nama_bangsal'=>'ANGGREK',        'nama_kelas'=>'Kelas 3',  'tgl_daftar'=>'2026-06-28','jam_daftar'=>'14:15:00','keterangan'=>'Sudah Masuk Kamar'],
-            ['no_reg'=>'REG004',    'no_mr'=>'816302','nama_pasien'=>'PUSPA SARI, AN',   'ket_bayar'=>'BPJS',                          'nama_ruang'=>'ICU 2',         'nama_bangsal'=>'ICU',            'nama_kelas'=>'VIP',      'tgl_daftar'=>'2026-06-27','jam_daftar'=>'09:00:00','keterangan'=>'Sudah Masuk Kamar'],
-            ['no_reg'=>'REG005',    'no_mr'=>'712405','nama_pasien'=>'BUDI SANTOSO, TN', 'ket_bayar'=>'Asuransi',                      'nama_ruang'=>'MAWAR 1',       'nama_bangsal'=>'MAWAR',          'nama_kelas'=>'Kelas 1',  'tgl_daftar'=>'2026-06-27','jam_daftar'=>'11:00:00','keterangan'=>'Belum Dapat Kamar'],
-            ['no_reg'=>'REG006',    'no_mr'=>'654321','nama_pasien'=>'SRI WAHYUNI, NY',  'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DAHLIA 3',      'nama_bangsal'=>'DAHLIA',         'nama_kelas'=>'Kelas 2',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'07:30:00','keterangan'=>'Antri Admisi'],
-            ['no_reg'=>'REG007',    'no_mr'=>'789012','nama_pasien'=>'AHMAD FAUZI, TN',  'ket_bayar'=>'Umum',                          'nama_ruang'=>'ANGGREK 2',     'nama_bangsal'=>'ANGGREK',        'nama_kelas'=>'Kelas 3',  'tgl_daftar'=>'2026-06-28','jam_daftar'=>'16:00:00','keterangan'=>'Belum Diantar'],
-            ['no_reg'=>'REG008',    'no_mr'=>'345678','nama_pasien'=>'DEWI RAHAYU, NY',  'ket_bayar'=>'BPJS',                          'nama_ruang'=>'MAWAR 2',       'nama_bangsal'=>'MAWAR',          'nama_kelas'=>'Kelas 1',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'09:15:00','keterangan'=>'Antri Admisi'],
-            ['no_reg'=>'REG009',    'no_mr'=>'901234','nama_pasien'=>'HENDRA WIJAYA, TN','ket_bayar'=>'Asuransi',                      'nama_ruang'=>'ICU 1',         'nama_bangsal'=>'ICU',            'nama_kelas'=>'VIP',      'tgl_daftar'=>'2026-06-28','jam_daftar'=>'13:45:00','keterangan'=>'Sudah Masuk Kamar'],
-            ['no_reg'=>'REG010',    'no_mr'=>'567890','nama_pasien'=>'SITI AMINAH, NY',  'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DAHLIA 1',      'nama_bangsal'=>'DAHLIA',         'nama_kelas'=>'Kelas 2',  'tgl_daftar'=>'2026-06-27','jam_daftar'=>'15:00:00','keterangan'=>'Belum Dapat Kamar'],
+            ['no_reg'=>'14-00041470','no_mr'=>'353245','nama_pasien'=>'LE WI BY',        'ket_bayar'=>'PRIBADI/MANDIRI',               'nama_ruang'=>'PERINA 02',   'nama_bangsal'=>'PERINA',        'nama_kelas'=>'NEONATUS', 'tgl_daftar'=>'2026-04-26','jam_daftar'=>'18:02:00','keterangan'=>'Observasi',         'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'16-00018027','no_mr'=>'129451','nama_pasien'=>'KM ID TN',        'ket_bayar'=>'TANGGUNGAN INSTANSI/PERUSAHAAN','nama_ruang'=>'IGD',         'nama_bangsal'=>'IGD',           'nama_kelas'=>'',         'tgl_daftar'=>'2026-02-12','jam_daftar'=>'10:25:00','keterangan'=>'Observasi',         'kode_bed'=>'ED001','bed_status'=>'TERISI'],
+            ['no_reg'=>'17-00104854','no_mr'=>'200123','nama_pasien'=>'AGUS SALIM, TN',  'ket_bayar'=>'BPJS',                          'nama_ruang'=>'IGD',         'nama_bangsal'=>'IGD',           'nama_kelas'=>'',         'tgl_daftar'=>'2026-04-22','jam_daftar'=>'08:30:00','keterangan'=>'Observasi',         'kode_bed'=>'ED002','bed_status'=>'TERISI'],
+            ['no_reg'=>'21-00017029','no_mr'=>'588414','nama_pasien'=>'HA TN',           'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DELIMA A18 D','nama_bangsal'=>'DELIMA ATAS',   'nama_kelas'=>'KELAS III','tgl_daftar'=>'2026-02-25','jam_daftar'=>'09:00:00','keterangan'=>'Sudah Masuk Kamar',  'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'569142',     'no_mr'=>'569142','nama_pasien'=>'ONGKI SAPUTRA, TN','ket_bayar'=>'BPJS',                         'nama_ruang'=>'PS ATAS 01',  'nama_bangsal'=>'PAHLAWAN ATAS', 'nama_kelas'=>'KELAS VIP','tgl_daftar'=>'2026-06-28','jam_daftar'=>'19:56:40','keterangan'=>'Antri Admisi',       'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'REG001',     'no_mr'=>'813500','nama_pasien'=>'ELLY MAYA, NY',   'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DAHLIA 2',    'nama_bangsal'=>'DAHLIA',        'nama_kelas'=>'Kelas 1',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'08:00:00','keterangan'=>'Belum Dapat Kamar',  'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'REG002',     'no_mr'=>'575360','nama_pasien'=>'IDH SUBINGSEN, NY','ket_bayar'=>'BPJS',                         'nama_ruang'=>'MAWAR 3',     'nama_bangsal'=>'MAWAR',         'nama_kelas'=>'Kelas 2',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'10:30:00','keterangan'=>'Antri Admisi',       'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'REG003',     'no_mr'=>'087220','nama_pasien'=>'RUSMINI, NY',     'ket_bayar'=>'Umum',                          'nama_ruang'=>'ANGGREK 1',   'nama_bangsal'=>'ANGGREK',       'nama_kelas'=>'Kelas 3',  'tgl_daftar'=>'2026-06-28','jam_daftar'=>'14:15:00','keterangan'=>'Sudah Masuk Kamar',  'kode_bed'=>null,   'bed_status'=>null],
         ];
 
         $data = array_map(fn($d) => array_merge($d, [

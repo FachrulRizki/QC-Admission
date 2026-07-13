@@ -47,6 +47,12 @@ return [
         'enabled'             => env('BED_IGD_ENABLED', false),
         'update_mode'         => env('BED_IGD_UPDATE_MODE', 'direct'),
         'update_path'         => env('BED_IGD_UPDATE_PATH', '/bed/release/trigger'),
+        // auth_mode: 'static' | 'login' | 'keycloak'
+        'auth_mode'           => env('BED_IGD_AUTH_MODE', 'login'),
+        'static_token'        => env('BED_IGD_STATIC_TOKEN', ''),
+        // Keycloak client credentials (untuk auth_mode=keycloak nanti)
+        'keycloak_client_id'  => env('BED_IGD_KEYCLOAK_CLIENT_ID', ''),
+        'keycloak_secret'     => env('BED_IGD_KEYCLOAK_SECRET', ''),
     ],
 
     /*

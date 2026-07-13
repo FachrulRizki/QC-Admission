@@ -12,6 +12,52 @@ class BedIgdService
     private const TOKEN_CACHE_KEY = 'bed_igd_api_token';
 
     // ── Public API ────────────────────────────────────────────────────────────
+    public function getKodeBedByNoReg(string $noReg): ?string
+    {
+        if (! $noReg) return null;
+
+        // via API
+        if ($this->isApiEnabled()) {
+            try {
+                $token    = $this->getToken();
+                $response = Http::withToken($token)
+                    ->timeout(10)
+                    ->acceptJson()
+                    ->get(config('services.bed_igd.base_url') . '/master-bed');
+
+                if ($response->successful()) {
+                    $found = collect($response->json()['data'] ?? [])
+                        ->first(fn($b) => ($b['BedIgd']['No_Reg'] ?? null) === $noReg
+                            && strtoupper($b['BedIgd']['Status'] ?? '') === 'TERISI');
+
+                    if ($found) {
+                        return $found['Kode_Bed'] ?? null;
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('BedIgdService::getKodeBedByNoReg API failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Coba via RSUS DB langsung
+        if ($this->isRsusEnabled()) {
+            try {
+                $row = DB::connection('rsus')
+                    ->table('BI_Bed_Igd')
+                    ->where('No_Reg', $noReg)
+                    ->where('Status', 'TERISI')
+                    ->orderByDesc('updated_reg_at')
+                    ->orderByDesc('Tanggal')
+                    ->first(['Kode_Bed']);
+
+                return $row?->Kode_Bed ?? null;
+            } catch (\Exception $e) {
+                Log::warning('BedIgdService::getKodeBedByNoReg RSUS failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return null;
+    }
 
     /**
      * Ambil bed yang sedang ditempati pasien berdasarkan No_Reg.
@@ -23,7 +69,7 @@ class BedIgdService
             try {
                 $token    = $this->getToken();
                 $response = Http::withToken($token)
-                    ->timeout(15)
+                    ->timeout(3)
                     ->acceptJson()
                     ->get(config('services.bed_igd.base_url') . '/master-bed');
 
@@ -69,7 +115,9 @@ class BedIgdService
 
     /**
      * Update status bed → KOSONG saat Batal Ranap dikonfirmasi Siap Closing.
-     * @return array{ success: bool, source: string, message?: string }
+     * Endpoint: POST {base_url}/bed/release/trigger
+     * Body: { Kode_Bed, No_Reg, Status }
+     * @return array{ success: bool, source: string, message?: string, data?: array }
      */
     public function releaseBed(string $kodeBed, string $noReg): array
     {
@@ -77,48 +125,59 @@ class BedIgdService
             return ['success' => false, 'source' => 'none', 'message' => 'Kode_Bed tidak boleh kosong.'];
         }
 
-        // Mode dan path diambil dari config (tidak hardcode)
         $updateMode = config('services.bed_igd.update_mode', 'direct');
         $updatePath = config('services.bed_igd.update_path', '/bed/release/trigger');
 
         if ($this->isApiEnabled()) {
             try {
-                $token = $this->getToken();
+                $baseUrl  = config('services.bed_igd.base_url');
+                $fullUrl  = rtrim($baseUrl, '/') . $updatePath;
+                $payload  = [
+                    'Kode_Bed' => $kodeBed,
+                    'No_Reg'   => null,
+                    'Status'   => 'KOSONG',
+                ];
 
-                if ($updateMode === 'direct') {
+                Log::info("BedIgdService: trigger release bed", [
+                    'url'      => $fullUrl,
+                    'kode_bed' => $kodeBed,
+                    'no_reg'   => $noReg,
+                ]);
+
+                // Coba dengan token auth dulu
+                $response = null;
+                try {
+                    $token    = $this->getToken();
                     $response = Http::withToken($token)
                         ->timeout(10)
                         ->acceptJson()
-                        ->post(config('services.bed_igd.base_url') . $updatePath, [
-                            'Kode_Bed' => $kodeBed,
-                            'No_Reg'   => null,
-                            'Status'   => 'KOSONG',
-                        ]);
-                } else {
-                    $bedIgdId = $this->fetchBedIgdId($token, $kodeBed);
-                    if (! $bedIgdId) {
-                        throw new \RuntimeException(
-                            "BedIgd.id tidak ditemukan untuk Kode_Bed={$kodeBed}."
-                        );
-                    }
-                    $path     = str_replace('{id}', (string) $bedIgdId, $updatePath);
-                    $response = Http::withToken($token)
-                        ->timeout(10)
+                        ->post($fullUrl, $payload);
+                } catch (\Exception $authErr) {
+                    // Jika auth gagal, coba tanpa token (beberapa internal API tidak butuh auth)
+                    Log::warning("BedIgdService: auth gagal, coba tanpa token", ['error' => $authErr->getMessage()]);
+                    $response = Http::timeout(10)
                         ->acceptJson()
-                        ->post(config('services.bed_igd.base_url') . $path, [
-                            'Status' => 'KOSONG',
-                            'No_Reg' => null,
-                        ]);
+                        ->post($fullUrl, $payload);
                 }
 
                 if (! $response->successful()) {
+                    $errBody = $response->body();
+                    // Clear semua cache token agar retry dapat token segar
                     Cache::forget(self::TOKEN_CACHE_KEY);
+                    Cache::forget(self::TOKEN_CACHE_KEY . '_kc');
+                    Log::warning("BedIgdService: release bed gagal", [
+                        'status' => $response->status(),
+                        'body'   => $errBody,
+                    ]);
                     throw new \RuntimeException(
-                        "Bed IGD update gagal: HTTP {$response->status()} — {$response->body()}"
+                        "Bed IGD update gagal: HTTP {$response->status()} — {$errBody}"
                     );
                 }
 
-                Log::info("BedIgdService: Kode_Bed={$kodeBed} No_Reg={$noReg} → KOSONG [API]");
+                Log::info("BedIgdService: Kode_Bed={$kodeBed} No_Reg={$noReg} → KOSONG [API]", [
+                    'response' => $response->json(),
+                ]);
+
                 return [
                     'success'  => true,
                     'source'   => 'bed_igd_api',
@@ -133,12 +192,12 @@ class BedIgdService
 
         if ($this->isRsusEnabled()) {
             try {
-                DB::connection('rsus')->table('BI_Bed_Igd')
+                $affected = DB::connection('rsus')->table('BI_Bed_Igd')
                     ->where('Kode_Bed', $kodeBed)
                     ->where('No_Reg',   $noReg)
                     ->update(['Status' => 'KOSONG', 'No_Reg' => null, 'update_at' => now()]);
 
-                Log::info("BedIgdService: Kode_Bed={$kodeBed} → KOSONG [RSUS DB]");
+                Log::info("BedIgdService: Kode_Bed={$kodeBed} → KOSONG [RSUS DB]", ['affected' => $affected]);
                 return ['success' => true, 'source' => 'rsus_db', 'kode_bed' => $kodeBed];
             } catch (\Exception $e) {
                 Log::warning('BedIgdService::releaseBed RSUS failed', ['error' => $e->getMessage()]);
@@ -151,14 +210,35 @@ class BedIgdService
     }
 
     // ── Token management ──────────────────────────────────────────────────────
-
     private function getToken(): string
+    {
+        $authMode = config('services.bed_igd.auth_mode', 'login');
+
+        // ── Mode static: token tetap dari .env ────────────────────────────────
+        if ($authMode === 'static') {
+            $token = config('services.bed_igd.static_token', '');
+            if (! $token) {
+                throw new \RuntimeException('BED_IGD_STATIC_TOKEN belum diset di .env');
+            }
+            return $token;
+        }
+
+        // ── Mode keycloak: client credentials grant ───────────────────────────
+        if ($authMode === 'keycloak') {
+            return $this->getKeycloakToken();
+        }
+
+        // ── Mode login (default): POST /auth/login ────────────────────────────
+        return $this->getLoginToken();
+    }
+
+    private function getLoginToken(): string
     {
         if ($token = Cache::get(self::TOKEN_CACHE_KEY)) {
             return $token;
         }
 
-        $response = Http::timeout(15)
+        $response = Http::timeout(3)
             ->acceptJson()
             ->post(config('services.bed_igd.base_url') . '/auth/login', [
                 'username' => config('services.bed_igd.username'),
@@ -184,6 +264,41 @@ class BedIgdService
 
         $ttl = (int) config('services.bed_igd.token_cache_minutes', 55);
         Cache::put(self::TOKEN_CACHE_KEY, $token, now()->addMinutes($ttl));
+        return $token;
+    }
+    
+    private function getKeycloakToken(): string
+    {
+        $cacheKey = self::TOKEN_CACHE_KEY . '_kc';
+        if ($token = Cache::get($cacheKey)) {
+            return $token;
+        }
+
+        $tokenUrl = config('services.keycloak.base_url')
+            . '/realms/' . config('services.keycloak.realm')
+            . '/protocol/openid-connect/token';
+
+        $response = Http::timeout(5)
+            ->asForm()
+            ->post($tokenUrl, [
+                'grant_type'    => 'client_credentials',
+                'client_id'     => config('services.bed_igd.keycloak_client_id'),
+                'client_secret' => config('services.bed_igd.keycloak_secret'),
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException(
+                "Bed IGD Keycloak token gagal: HTTP {$response->status()} — {$response->body()}"
+            );
+        }
+
+        $token = $response->json()['access_token'] ?? null;
+        if (! $token) {
+            throw new \RuntimeException('Bed IGD Keycloak: access_token tidak ditemukan.');
+        }
+
+        $ttl = (int) ($response->json()['expires_in'] ?? 300);
+        Cache::put($cacheKey, $token, now()->addSeconds($ttl - 30));
         return $token;
     }
 

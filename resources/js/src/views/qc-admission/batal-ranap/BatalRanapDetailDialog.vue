@@ -60,13 +60,29 @@ watch(() => props.modelValue, async (open) => {
 // Ambil daftar bed IGD dari BI_Bed_Igd berdasarkan No_Reg
 async function fetchBedList() {
   if (!props.item?.no_reg) return
+
+  // Jika bed_id sudah tersimpan di record, pakai langsung tanpa hit API
+  // Ini menghindari timeout saat API/RSUS tidak bisa dijangkau
+  if (props.item?.bed_id) {
+    bedList.value = [{
+      kode_bed:   props.item.bed_id,
+      bed_id:     props.item.bed_id,
+      status:     'TERISI',
+      no_reg:     props.item.no_reg,
+      tanggal:    props.item.tgl_daftar ?? null,
+      source:     'record',
+    }]
+    selectedBed.value = props.item.bed_id
+    return
+  }
+
+  // Tidak ada bed_id tersimpan — fetch dari API/RSUS
   bedLoading.value = true
   try {
     const { data } = await axios.get('/api/bed-management/beds', {
       params: { no_reg: props.item.no_reg }
     })
     bedList.value = data.beds ?? []
-    // Auto-pilih bed pertama yang statusnya TERISI (aktif)
     const aktif = bedList.value.find(b => (b.status ?? '').toUpperCase() !== 'KOSONG')
     if (aktif && !selectedBed.value) selectedBed.value = aktif.kode_bed ?? aktif.bed_id
   } catch { bedList.value = [] }
@@ -77,14 +93,31 @@ async function fetchBedList() {
 async function saveClosing() {
   closingErrMsg.value = ''
   if (!closingStatus.value) { closingErrMsg.value = 'Pilih status closing.'; return }
-  if (closingStatus.value === 'Siap Closing' && !selectedBed.value) {
-    closingErrMsg.value = 'Pilih Kode Bed yang akan dibebaskan.'; return
-  }
+
   savingClosing.value = true
   try {
-    const result = await store.konfirmasiClosing(props.item.id, closingStatus.value, selectedBed.value)
+    // Kirim tanpa kode_bed — backend auto-lookup dari No_Reg di BI_Bed_Igd
+    const result = await store.konfirmasiClosing(props.item.id, closingStatus.value, null)
     if (!result?.success) { closingErrMsg.value = result?.message ?? 'Gagal menyimpan.'; return }
-    emit('verified')
+
+    const bedUpdate = result?.data?.bed_update
+    if (closingStatus.value === 'Siap Closing' && bedUpdate) {
+      if (bedUpdate.success) {
+        emit('verified', {
+          bedTriggered: true,
+          source: bedUpdate.source,
+          kodeBed: bedUpdate.kode_bed,
+          message: result?.data?.message,
+        })
+      } else {
+        emit('verified', { bedTriggered: false, bedError: bedUpdate.message })
+        closingErrMsg.value = `⚠️ Status "Siap Closing" tersimpan, tapi trigger Bed IGD gagal: ${bedUpdate.message ?? 'cek log server'}`
+        savingClosing.value = false
+        return
+      }
+    } else {
+      emit('verified')
+    }
     close()
   } catch { closingErrMsg.value = 'Terjadi kesalahan.' }
   finally { savingClosing.value = false }
@@ -289,7 +322,7 @@ function close() { emit('update:modelValue', false) }
             type="warning" variant="tonal" density="compact" class="mb-4" icon="ri-time-line"
           >
             <span class="text-caption font-weight-semibold">Status saat ini: Belum Siap Closing</span><br>
-            <span class="text-caption">Update ke "Siap Closing" jika administrasi sudah selesai dan bed siap dibebaskan.</span>
+            <span class="text-caption">Update ke "Siap Closing" jika administrasi sudah selesai.</span>
           </VAlert>
           <VAlert
             v-else-if="!item.status_closing"
@@ -298,49 +331,47 @@ function close() { emit('update:modelValue', false) }
             <span class="text-caption">Tentukan apakah administrasi sudah siap untuk closing atau masih perlu tindakan lanjut.</span>
           </VAlert>
 
-          <!-- Pilih Kode Bed yang akan dibebaskan -->
+          <!-- Info Bed IGD — ditampilkan dari data yang sudah ada / bed list -->
           <div class="bed-confirm-box mb-4">
             <p class="sec-label mb-2">
-              <VIcon icon="ri-hotel-bed-line" size="13" class="me-1" />Pilih Kode Bed IGD yang dibebaskan
+              <VIcon icon="ri-hotel-bed-line" size="13" class="me-1" />Informasi Bed IGD
             </p>
             <div v-if="bedLoading" class="text-center py-3">
               <VProgressCircular indeterminate size="20" color="primary" />
             </div>
-            <div v-else-if="!bedList.length" class="text-caption py-2" style="color:var(--qc-text-2)">
-              Tidak ada bed ditemukan untuk No. Reg ini. Isi manual di bawah.
-            </div>
-            <div v-else class="d-flex flex-column gap-2 mb-2">
-              <div
-                v-for="bed in bedList" :key="bed.kode_bed"
-                class="bed-select-item"
-                :class="selectedBed === (bed.kode_bed ?? bed.bed_id) ? 'bed-select-item--active' : ''"
-                @click="selectedBed = bed.kode_bed ?? bed.bed_id"
-              >
-                <VAvatar color="primary" variant="tonal" size="32" rounded="md">
-                  <VIcon icon="ri-hotel-bed-line" size="16" />
+            <!-- Bed ditemukan dari BI_Bed_Igd -->
+            <div v-else-if="bedList.length" class="d-flex flex-column gap-2">
+              <div v-for="bed in bedList" :key="bed.kode_bed ?? bed.bed_id" class="d-flex align-center gap-2 py-1">
+                <VAvatar color="primary" variant="tonal" size="28" rounded="md">
+                  <VIcon icon="ri-hotel-bed-line" size="14" />
                 </VAvatar>
                 <div class="flex-grow-1">
-                  <p class="text-body-2 font-weight-semibold mb-0">{{ bed.kode_bed || bed.bed_id }}</p>
-                  <p class="text-caption mb-0" style="color:var(--qc-text-2)">
-                    No. Reg: {{ bed.no_reg || item.no_reg }}
-                    <template v-if="bed.tanggal"> · Tgl: {{ bed.tanggal }}</template>
-                  </p>
+                  <span class="text-body-2 font-weight-bold">{{ bed.kode_bed ?? bed.bed_id }}</span>
+                  <span class="text-caption ms-2" style="color:var(--qc-text-2)">No. Reg: {{ bed.no_reg || item.no_reg }}</span>
                 </div>
                 <VChip :color="bedStatusColor(bed.status)" size="x-small" variant="tonal">
                   {{ (bed.status ?? '').toUpperCase() || '—' }}
                 </VChip>
-                <VIcon v-if="selectedBed === (bed.kode_bed ?? bed.bed_id)"
-                  icon="ri-checkbox-circle-fill" size="18" color="success" />
               </div>
+              <p class="text-caption mt-1 mb-0" style="color:var(--qc-text-2)">
+                <VIcon icon="ri-information-line" size="12" class="me-1" />
+                Kode bed di atas akan otomatis dibebaskan saat pilih "Siap Closing"
+              </p>
             </div>
-            <!-- Input manual jika tidak ada di list -->
-            <VTextField
-              v-model="selectedBed"
-              label="Kode Bed (input manual jika tidak ada di list)"
-              variant="outlined" density="compact" hide-details
-              prepend-inner-icon="ri-hotel-bed-line"
-              class="mt-1"
-            />
+            <!-- Bed sudah tersimpan di record sebelumnya -->
+            <div v-else-if="item.bed_id" class="d-flex align-center gap-2">
+              <VAvatar color="primary" variant="tonal" size="28" rounded="md">
+                <VIcon icon="ri-hotel-bed-line" size="14" />
+              </VAvatar>
+              <span class="text-body-2 font-weight-bold">{{ item.bed_id }}</span>
+              <span class="text-caption ms-1" style="color:var(--qc-text-2)">(dari data tersimpan)</span>
+            </div>
+            <!-- Tidak ada bed sama sekali -->
+            <div v-else class="text-caption py-1" style="color:var(--qc-text-2)">
+              <VIcon icon="ri-information-line" size="12" class="me-1" />
+              Tidak ada bed ditemukan. Sistem akan mencari otomatis dari No. Reg
+              <strong>{{ item.no_reg }}</strong> saat closing.
+            </div>
           </div>
 
           <p class="sec-label mb-3">PILIH STATUS CLOSING</p>
@@ -354,7 +385,7 @@ function close() { emit('update:modelValue', false) }
                 </div>
                 <p class="text-subtitle-2 font-weight-bold mb-1"
                   :class="closingStatus==='Siap Closing'?'text-success':''">👍 Siap Closing</p>
-                <p class="text-caption text-medium-emphasis mb-0">Bed akan dibebaskan</p>
+                <p class="text-caption text-medium-emphasis mb-0">Bed dibebaskan otomatis</p>
               </div>
             </VCol>
             <VCol cols="6">
@@ -371,11 +402,11 @@ function close() { emit('update:modelValue', false) }
             </VCol>
           </VRow>
 
-          <VAlert v-if="closingStatus==='Siap Closing' && selectedBed" type="success"
+          <VAlert v-if="closingStatus==='Siap Closing'" type="success"
             variant="tonal" density="compact" class="mb-3 text-caption">
             <VIcon icon="ri-hotel-bed-line" size="14" class="me-1" />
-            Bed <strong>{{ selectedBed }}</strong> (No. Reg: {{ item.no_reg }})
-            akan diset <strong>KOSONG</strong> di Bed Management IGD.
+            Bed untuk No. Reg <strong>{{ item.no_reg }}</strong>
+            akan otomatis dicari dan diset <strong>KOSONG</strong> di Bed Management IGD.
           </VAlert>
         </template>
 

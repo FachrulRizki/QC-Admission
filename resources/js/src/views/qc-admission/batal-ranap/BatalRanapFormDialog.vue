@@ -23,6 +23,10 @@ const saving = ref(false)
 const nowDisplay = ref('')
 let clockTimer = null
 
+// ── Bed IGD state ─────────────────────────────────────────────────────────────
+const bedList    = ref([])
+const bedLoading = ref(false)
+
 function tickClock() {
 const d = new Date()
 const p = n => String(n).padStart(2, '0')
@@ -50,7 +54,10 @@ noRegLoading.value = false
 })
 
 watch(() => form.value.no_reg, async (val) => {
-if (!val) return
+if (!val) {
+bedList.value = []
+return
+}
 const hit = pasienStore.results.find(p => p.no_reg === val)
 ?? await pasienStore.lookup(val)
 if (hit) {
@@ -61,8 +68,50 @@ form.value.tgl_daftar = hit.tgl_daftar ?? ''
 form.value.jam_daftar = hit.jam_daftar ?? ''
 form.value.diagnosa = hit.diagnosa ?? ''
 form.value.ruangan = hit.nama_bangsal ?? hit.nama_ruang ?? ''
+
+// Jika query pasien sudah join BI_Bed_Igd, gunakan langsung
+if (hit.kode_bed) {
+  form.value.bed_id = hit.kode_bed
+  bedList.value = [{
+    kode_bed:   hit.kode_bed,
+    bed_id:     hit.kode_bed,
+    status:     hit.bed_status ?? 'TERISI',
+    no_reg:     val,
+    tanggal:    null,
+  }]
+  bedLoading.value = false
+  return
 }
+}
+// Fallback: fetch bed terpisah jika tidak dapat dari query pasien
+await fetchBedList(val)
 })
+
+// Ambil daftar bed IGD berdasarkan No_Reg (sama seperti di DetailDialog)
+async function fetchBedList(noReg) {
+if (!noReg) return
+bedLoading.value = true
+bedList.value = []
+try {
+const { data } = await axios.get('/api/bed-management/beds', {
+params: { no_reg: noReg }
+})
+bedList.value = data.beds ?? []
+// Auto-pilih bed pertama yang TERISI jika belum ada pilihan
+if (bedList.value.length && !form.value.bed_id) {
+const aktif = bedList.value.find(b => (b.status ?? '').toUpperCase() !== 'KOSONG')
+if (aktif) form.value.bed_id = aktif.kode_bed ?? aktif.bed_id
+}
+} catch {
+bedList.value = []
+} finally {
+bedLoading.value = false
+}
+}
+
+function bedStatusColor(s) {
+return (s ?? '').toUpperCase() === 'KOSONG' ? 'success' : 'warning'
+}
 
 watch(() => props.modelValue, (open) => {
 if (open) {
@@ -70,10 +119,13 @@ form.value = props.editItem ? { ...initialForm(), ...props.editItem } : initialF
 errorMsg.value = ''
 pasienStore.clear()
 noRegSearch.value = ''
+bedList.value = []
 pegawaiStore.fetch()
 masterStore.fetch()
 tickClock()
 clockTimer = setInterval(tickClock, 1000)
+// Jika edit dan sudah ada no_reg, fetch bed langsung
+if (props.editItem?.no_reg) fetchBedList(props.editItem.no_reg)
 } else {
 clearInterval(clockTimer)
 }
@@ -95,6 +147,7 @@ diagnosa: '',
 note: '',
 petugas: null,
 ruangan: '',
+bed_id: null,
 }
 }
 
@@ -271,6 +324,53 @@ class="mb-3" hide-details="auto"
 <div v-if="!hasPasien" class="empty-pasien">
 <VIcon icon="ri-user-search-line" size="28" class="mb-1 opacity-30" />
 <p class="text-caption text-disabled mb-0">Cari pasien untuk mengisi data otomatis</p>
+</div>
+</div>
+</div>
+
+<!-- ── SECTION: Bed IGD ───────────────────────────────────────────── -->
+<div v-if="hasPasien" class="form-section form-section--primary">
+<div class="fs-header fs-header--primary">
+<VIcon icon="ri-hotel-bed-line" size="14" />
+<span>Bed IGD</span>
+<VProgressCircular v-if="bedLoading" indeterminate size="12" width="2" class="ms-2" />
+<VChip v-else-if="bedList.length" size="x-small" color="primary" variant="tonal" class="ms-auto">
+{{ bedList.length }} bed ditemukan
+</VChip>
+</div>
+<div class="fs-body">
+<div v-if="bedLoading" class="text-center py-3">
+<VProgressCircular indeterminate size="20" color="primary" />
+<p class="text-caption mt-2 text-disabled">Mencari bed IGD...</p>
+</div>
+
+<!-- Ada bed — tampilkan info saja, bed_id di-set otomatis -->
+<div v-else-if="bedList.length" class="d-flex flex-column gap-2">
+<div v-for="bed in bedList" :key="bed.kode_bed ?? bed.bed_id" class="d-flex align-center gap-3 py-1">
+<VAvatar color="primary" variant="tonal" size="30" rounded="md">
+<VIcon icon="ri-hotel-bed-line" size="14" />
+</VAvatar>
+<div class="flex-grow-1">
+<span class="text-body-2 font-weight-bold">{{ bed.kode_bed ?? bed.bed_id }}</span>
+<span class="text-caption ms-2" style="color:var(--qc-text-2)">No. Reg: {{ bed.no_reg }}</span>
+</div>
+<VChip :color="bedStatusColor(bed.status)" size="x-small" variant="tonal">
+{{ (bed.status ?? '').toUpperCase() || '—' }}
+</VChip>
+</div>
+<VAlert type="success" variant="tonal" density="compact" class="mt-1 text-caption">
+<VIcon icon="ri-checkbox-circle-line" size="13" class="me-1" />
+Kode bed akan otomatis dibebaskan saat status "Siap Closing"
+</VAlert>
+</div>
+
+<!-- Tidak ada bed — info saja, backend tetap akan auto-lookup saat closing -->
+<div v-else class="empty-beds">
+<VIcon icon="ri-hotel-bed-line" size="20" class="opacity-30 me-2" />
+<div>
+<p class="text-caption text-disabled mb-0">Tidak ada bed aktif ditemukan untuk No. Reg ini</p>
+<p class="text-caption text-disabled mb-0">Sistem akan mencari otomatis saat konfirmasi closing</p>
+</div>
 </div>
 </div>
 </div>
@@ -545,4 +645,15 @@ background: rgba(var(--v-theme-surface-variant), 0.25);
 .slide-down-leave-active { transition: all 0.18s ease; }
 .slide-down-enter-from { opacity: 0; transform: translateY(-8px); }
 .slide-down-leave-to { opacity: 0; transform: translateY(-4px); }
+
+/* ── Bed select items ── */
+/* dihapus — bed dipilih otomatis oleh backend dari BI_Bed_Igd */
+
+/* ── Empty beds ── */
+.empty-beds {
+display: flex; align-items: flex-start; gap: 10px;
+padding: 12px 14px; border-radius: 10px;
+background: rgba(var(--v-theme-on-surface), 0.02);
+border: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+}
 </style>

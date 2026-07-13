@@ -97,7 +97,7 @@ class BatalRanapController extends Controller
         return response()->json(['data' => $record, 'message' => 'Verifikasi berhasil.']);
     }
 
-    /** Update status_closing. Jika "Siap Closing" → trigger Bed Management API. */
+    /** Update status_closing. Jika "Siap Closing" → auto-lookup kode bed dari No_Reg → trigger Bed Management API. */
     public function konfirmasiClosing(Request $request, int $id): JsonResponse
     {
         $record = $this->service->findOrFail($id);
@@ -113,10 +113,17 @@ class BatalRanapController extends Controller
             'kode_bed'       => 'nullable|string|max:50',
         ]);
 
-        // Simpan kode_bed jika dikirim dari frontend (hasil lookup BI_Bed_Igd)
+        // Auto-resolve kode_bed dari No_Reg jika tidak dikirim dari frontend
+        $kodeBed = $validated['kode_bed'] ?? null;
+
+        if ($validated['status_closing'] === 'Siap Closing' && ! $kodeBed) {
+            $kodeBed = $this->bedIgd->getKodeBedByNoReg($record->no_reg);
+            Log::info("konfirmasiClosing: auto-lookup kode_bed untuk No_Reg={$record->no_reg} → {$kodeBed}");
+        }
+
         $updateData = ['status_closing' => $validated['status_closing']];
-        if (! empty($validated['kode_bed'])) {
-            $updateData['bed_id'] = $validated['kode_bed'];
+        if ($kodeBed) {
+            $updateData['bed_id'] = $kodeBed;
         }
 
         $record->update($updateData);
@@ -124,15 +131,39 @@ class BatalRanapController extends Controller
 
         $bedUpdateResult = null;
         if ($validated['status_closing'] === 'Siap Closing') {
-            $bedUpdateResult = $this->updateBedManagement($record);
+            if (! $kodeBed) {
+                // Tidak ada bed ditemukan di BI_Bed_Igd untuk No_Reg ini
+                $bedUpdateResult = [
+                    'success' => false,
+                    'source'  => 'none',
+                    'message' => "Tidak ada bed aktif di BI_Bed_Igd untuk No_Reg={$record->no_reg}. Status closing tersimpan tapi bed tidak dibebaskan.",
+                ];
+                Log::warning("konfirmasiClosing: tidak ada kode_bed untuk No_Reg={$record->no_reg}");
+            } else {
+                $bedUpdateResult = $this->updateBedManagement($record);
+            }
+
+            $bedStatus = $bedUpdateResult['success'] ? 'berhasil' : 'gagal';
+            $bedSource = $bedUpdateResult['source'] ?? '?';
+            ActivityLog::record('batal-ranap', 'closing',
+                "Closing {$record->no_reg} (Bed: {$record->bed_id}) → {$record->status_closing} | Bed IGD: {$bedStatus} [{$bedSource}]");
+        } else {
+            ActivityLog::record('batal-ranap', 'closing',
+                "Closing {$record->no_reg} → {$record->status_closing}");
         }
 
-        ActivityLog::record('batal-ranap', 'closing',
-            "Closing Batal Ranap {$record->no_reg} (Bed: {$record->bed_id}) → {$record->status_closing}");
+        $message = 'Status closing berhasil disimpan.';
+        if ($bedUpdateResult !== null) {
+            if ($bedUpdateResult['success']) {
+                $message .= " Bed {$record->bed_id} berhasil dibebaskan via {$bedUpdateResult['source']}.";
+            } else {
+                $message .= ' ⚠️ ' . ($bedUpdateResult['message'] ?? 'Trigger Bed IGD gagal.');
+            }
+        }
 
         return response()->json([
             'data'       => $record,
-            'message'    => 'Status closing berhasil disimpan.',
+            'message'    => $message,
             'bed_update' => $bedUpdateResult,
         ]);
     }
@@ -167,14 +198,14 @@ class BatalRanapController extends Controller
         ]);
     }
 
-    public function destroy(int $id): JsonResponse
-    {
-        $record = $this->service->findOrFail($id);
-        ActivityLog::record('batal-ranap', 'delete', "Batal Ranap dihapus — {$record->no_reg}");
-        $this->service->delete($id);
+    // public function destroy(int $id): JsonResponse
+    // {
+    //     $record = $this->service->findOrFail($id);
+    //     ActivityLog::record('batal-ranap', 'delete', "Batal Ranap dihapus — {$record->no_reg}");
+    //     $this->service->delete($id);
 
-        return response()->json(['message' => 'Data berhasil dihapus.']);
-    }
+    //     return response()->json(['message' => 'Data berhasil dihapus.']);
+    // }
 
     /** Delegasikan ke BedIgdService: API → RSUS DB → mock (sesuai konfigurasi .env). */
     private function updateBedManagement(object $record): array

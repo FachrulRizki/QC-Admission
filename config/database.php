@@ -43,24 +43,26 @@ return [
             'password' => env('DB_PASSWORD', ''),
             'charset'  => env('DB_CHARSET', 'utf8'),
             'prefix'   => '',
-            'prefix_indexes' => true,
-            'encrypt'                  => env('DB_ENCRYPT', 'false'),
-            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'true'),
+            'prefix_indexes'           => true,
+            // ODBC Driver 18: gunakan 'no'/'yes'/'strict', bukan boolean
+            'encrypt'                  => env('DB_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'yes'),
         ],
 
         // ── RSUS — SQL Server khusus data pasien (koneksi terpisah, selalu sqlsrv)
         'rsus' => [
             'driver'                   => 'sqlsrv',
             'host'                     => env('RSUS_DB_HOST', '127.0.0.1'),
-            'port'                     => env('RSUS_DB_PORT', '1433'),
+            'port'                     => (int) env('RSUS_DB_PORT', 1433),
             'database'                 => env('RSUS_DB_DATABASE', 'RSUS'),
             'username'                 => env('RSUS_DB_USERNAME', 'sa'),
             'password'                 => env('RSUS_DB_PASSWORD', ''),
             'charset'                  => 'utf8',
             'prefix'                   => '',
             'prefix_indexes'           => true,
-            'encrypt'                  => env('RSUS_DB_ENCRYPT', 'false'),
-            'trust_server_certificate' => env('RSUS_DB_TRUST_SERVER_CERTIFICATE', 'true'),
+            // ODBC Driver 18 butuh string 'no'/'yes'/'strict', bukan boolean
+            'encrypt'                  => env('RSUS_DB_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('RSUS_DB_TRUST_SERVER_CERTIFICATE', 'yes'),
         ],
 
     ],
