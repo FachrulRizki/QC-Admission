@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\KeycloakController;
+use App\Http\Controllers\QcAdmission\AuthController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -10,11 +11,21 @@ Route::get ('/auth/keycloak/redirect', [KeycloakController::class, 'redirect'])-
 Route::get ('/auth/keycloak/callback', [KeycloakController::class, 'callback'])->name('keycloak.callback');
 Route::post('/auth/keycloak/logout',   [KeycloakController::class, 'logout'])->name('keycloak.logout');
 
-// Alias logout untuk frontend (POST /auth/logout juga diterima)
-Route::post('/auth/logout', [KeycloakController::class, 'logout'])->name('auth.logout');
+// ── Auth Lokal (hanya aktif saat SSO_ENABLED=false) ───────────────────────────
+Route::post('/auth/local/login',  [AuthController::class, 'localLogin'])->name('auth.local.login');
+Route::post('/auth/local/logout', [AuthController::class, 'localLogout'])->name('auth.local.logout');
+
+// Alias logout untuk frontend — cek login_type untuk pilih handler
+Route::post('/auth/logout', function (\Illuminate\Http\Request $request) {
+    $loginType = session('auth_user.login_type', 'sso');
+    if ($loginType === 'local') {
+        return app(AuthController::class)->localLogout($request);
+    }
+    return app(KeycloakController::class)->logout($request);
+})->name('auth.logout');
 
 // Session info (non-sensitive, untuk debug / health check)
-Route::get('/auth/me', [\App\Http\Controllers\QcAdmission\AuthController::class, 'me'])->name('auth.me');
+Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
 
 // ── Halaman publik ────────────────────────────────────────────────────────────
 Route::get('/', fn () => redirect()->route('login'));

@@ -18,6 +18,12 @@ class KeycloakAuthenticate
             return $this->unauthenticated($request, 'Sesi tidak ditemukan. Silakan login kembali.');
         }
 
+        // ── Mode login lokal (SSO_ENABLED=false) ─────────────────────────────
+        // Jika user login secara lokal, tidak perlu validasi token Keycloak.
+        if (($authUser['login_type'] ?? 'sso') === 'local') {
+            return $next($request);
+        }
+
         $accessToken = session('keycloak_access_token');
         if (! $accessToken) {
             $request->session()->flush();
@@ -99,7 +105,6 @@ class KeycloakAuthenticate
 
             $request->session()->put('auth_user', $authUser);
         } catch (\Throwable) {
-            // Biarkan permissions lama jika refresh gagal
         }
     }
 

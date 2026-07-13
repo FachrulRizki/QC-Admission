@@ -21,6 +21,12 @@ export const useAuthStore = defineStore('auth', {
     isAdmin:       () => usePage().props.auth?.roles?.includes('admin')        ?? false,
     isQcAdmission: () => usePage().props.auth?.roles?.includes('qc_admission') ?? false,
     isKasir:       () => usePage().props.auth?.roles?.includes('kasir')        ?? false,
+
+    // ── Akses menu utama — admin atau qc_admission ─────────────────────────
+    canAccessMain: () => {
+      const roles = usePage().props.auth?.roles ?? []
+      return roles.includes('admin') || roles.includes('qc_admission')
+    },
   },
 
   actions: {

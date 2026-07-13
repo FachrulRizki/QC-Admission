@@ -5,12 +5,6 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
-/**
- * KeycloakService — sumber kebenaran auth SSO.
- *
- * Roles dan permissions berasal sepenuhnya dari Keycloak.
- * Tidak ada hardcode role di app — semua dikonfigurasi di Keycloak Admin Console.
- */
 class KeycloakService
 {
     private string $baseUrl;
@@ -77,21 +71,8 @@ class KeycloakService
     }
 
     // ── Roles ─────────────────────────────────────────────────────────────────
-
-    /**
-     * Ambil roles dari introspect payload.
-     *
-     * Sumber roles (urutan prioritas):
-     *  1. resource_access[client_id].roles  → role spesifik client qc-admission
-     *  2. realm_access.roles                → role realm-level (jika ada)
-     *
-     * Role di-assign di Keycloak Admin:
-     *  Clients → qc-admission → Roles → buat: admin, qc_admission, kasir
-     *  Users → [user] → Role mapping → assign dari client qc-admission
-     */
     public function getRoles(array $introspection): array
     {
-        // System roles Keycloak yang tidak relevan untuk app
         $systemRoles = [
             'uma_authorization',
             'offline_access',
@@ -101,10 +82,7 @@ class KeycloakService
             'view-profile',
         ];
 
-        // Roles dari client qc-admission
         $clientRoles = $introspection['resource_access'][$this->clientId]['roles'] ?? [];
-
-        // Realm roles (biasanya untuk role yang berlaku di semua client)
         $realmRoles = $introspection['realm_access']['roles'] ?? [];
 
         $all = array_values(array_unique(array_merge($realmRoles, $clientRoles)));
@@ -113,12 +91,6 @@ class KeycloakService
     }
 
     // ── Permissions ───────────────────────────────────────────────────────────
-
-    /**
-     * Derive permissions dari roles.
-     * Mapping dikontrol via env KEYCLOAK_ROLE_PERMISSION_MAP (JSON),
-     * atau gunakan default map di bawah.
-     */
     public function getPermissions(string $accessToken): array
     {
         $cacheKey = 'kc_perms:' . hash('sha256', $accessToken);

@@ -31,7 +31,7 @@ class HandleInertiaRequests extends Middleware
                 'error'   => session('error'),
                 'success' => session('success'),
             ],
-            'ssoEnabled'      => true,
+            'ssoEnabled'      => (bool) config('services.sso_enabled', true),
         ]);
     }
 }

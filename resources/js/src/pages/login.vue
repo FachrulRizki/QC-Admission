@@ -1,11 +1,18 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3'
+import axios from 'axios'
 
 const page       = usePage()
+const ssoEnabled = computed(() => page.props.ssoEnabled ?? true)
 const ssoLoading = ref(false)
 
 // Flash error dari redirect (mis. setelah SSO callback gagal)
 const errorMsg = ref(page.props.flash?.error ?? '')
+
+// Form login lokal
+const localForm    = reactive({ username: '', password: '' })
+const localLoading = ref(false)
+const showPassword = ref(false)
 
 const features = [
   { icon: 'ri-shield-check-line',    text: 'Monitoring Quality Control Admisi' },
@@ -17,8 +24,37 @@ const features = [
 
 function loginWithSSO() {
   ssoLoading.value = true
-  // Socialite handle state + PKCE + redirect ke Keycloak
   window.location.href = '/auth/keycloak/redirect'
+}
+
+async function loginLocal() {
+  if (!localForm.username || !localForm.password) {
+    errorMsg.value = 'Username dan password harus diisi.'
+    return
+  }
+
+  localLoading.value = true
+  errorMsg.value     = ''
+
+  try {
+    // Ambil CSRF cookie dulu
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''
+
+    await axios.post('/auth/local/login', {
+      username: localForm.username,
+      password: localForm.password,
+    }, {
+      headers: { 'X-CSRF-TOKEN': csrfToken },
+      withCredentials: true,
+    })
+
+    // Redirect sesuai role — server sudah set session, reload untuk Inertia pick-up
+    window.location.href = '/dashboard'
+  } catch (err) {
+    errorMsg.value = err.response?.data?.message ?? 'Login gagal. Periksa username dan password.'
+  } finally {
+    localLoading.value = false
+  }
 }
 </script>
 
@@ -64,17 +100,21 @@ function loginWithSSO() {
 
           <!-- Header -->
           <div class="mb-8">
-            <h2 class="login-form__title">Login SSO</h2>
+            <h2 class="login-form__title">
+              {{ ssoEnabled ? 'Login SSO' : 'Login Lokal' }}
+            </h2>
             <p class="login-form__sub">
-              Gunakan akun jaringan rumah sakit (Keycloak SSO)
+              {{ ssoEnabled
+                ? 'Gunakan akun jaringan rumah sakit (Keycloak SSO)'
+                : 'Mode testing — login dengan akun lokal' }}
             </p>
           </div>
 
           <!-- Network badge -->
           <div class="login-net-badge mb-6">
-            <div class="login-net-badge__dot dot--online" />
+            <div :class="['login-net-badge__dot', ssoEnabled ? 'dot--online' : 'dot--local']" />
             <span class="text-caption font-weight-semibold">
-              Login SSO Rumah Sakit
+              {{ ssoEnabled ? 'Login SSO Rumah Sakit' : 'Mode Lokal (Testing)' }}
             </span>
           </div>
 
@@ -88,25 +128,85 @@ function loginWithSSO() {
             <VIcon icon="ri-error-warning-line" class="me-1" size="16" />{{ errorMsg }}
           </VAlert>
 
-          <!-- SSO Login -->
-          <div class="login-sso-card mb-5">
-            <VAvatar color="info" variant="tonal" size="52" rounded="xl" class="mb-4">
-              <VIcon icon="ri-key-2-line" size="26" />
-            </VAvatar>
-            <h3 class="text-subtitle-1 font-weight-bold mb-1">Login dengan SSO</h3>
-            <p class="text-caption text-medium-emphasis mb-5">
-              Anda akan diarahkan ke halaman login SSO rumah sakit
-            </p>
-            <VBtn
-              block size="large" color="info" rounded="xl"
-              :loading="ssoLoading"
-              prepend-icon="ri-shield-keyhole-line"
-              class="login-btn"
-              @click="loginWithSSO"
-            >
-              Masuk dengan SSO Rumah Sakit
-            </VBtn>
-          </div>
+          <!-- ── SSO Login ── -->
+          <template v-if="ssoEnabled">
+            <div class="login-sso-card mb-5">
+              <VAvatar color="info" variant="tonal" size="52" rounded="xl" class="mb-4">
+                <VIcon icon="ri-key-2-line" size="26" />
+              </VAvatar>
+              <h3 class="text-subtitle-1 font-weight-bold mb-1">Login dengan SSO</h3>
+              <p class="text-caption text-medium-emphasis mb-5">
+                Anda akan diarahkan ke halaman login SSO rumah sakit
+              </p>
+              <VBtn
+                block size="large" color="info" rounded="xl"
+                :loading="ssoLoading"
+                prepend-icon="ri-shield-keyhole-line"
+                class="login-btn"
+                @click="loginWithSSO"
+              >
+                Masuk dengan SSO Rumah Sakit
+              </VBtn>
+            </div>
+          </template>
+
+          <!-- ── Local Login ── -->
+          <template v-else>
+            <div class="login-local-card mb-5">
+              <!-- Info banner testing -->
+              <VAlert
+                type="warning" variant="tonal" density="compact"
+                rounded="lg" class="mb-5" icon="ri-flask-line"
+              >
+                <span class="text-caption">Mode testing aktif — SSO dinonaktifkan</span>
+              </VAlert>
+
+              <form @submit.prevent="loginLocal">
+                <div class="mb-4">
+                  <label class="login-field__label">Username / Email</label>
+                  <VTextField
+                    v-model="localForm.username"
+                    placeholder="Masukkan username atau email"
+                    variant="outlined"
+                    density="comfortable"
+                    rounded="lg"
+                    hide-details
+                    autocomplete="username"
+                    prepend-inner-icon="ri-user-line"
+                    class="login-input"
+                  />
+                </div>
+
+                <div class="mb-6">
+                  <label class="login-field__label">Password</label>
+                  <VTextField
+                    v-model="localForm.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    placeholder="Masukkan password"
+                    variant="outlined"
+                    density="comfortable"
+                    rounded="lg"
+                    hide-details
+                    autocomplete="current-password"
+                    prepend-inner-icon="ri-lock-line"
+                    :append-inner-icon="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'"
+                    class="login-input"
+                    @click:append-inner="showPassword = !showPassword"
+                  />
+                </div>
+
+                <VBtn
+                  block size="large" color="primary" rounded="xl"
+                  :loading="localLoading"
+                  type="submit"
+                  prepend-icon="ri-login-circle-line"
+                  class="login-btn"
+                >
+                  Masuk
+                </VBtn>
+              </form>
+            </div>
+          </template>
 
           <p class="text-caption text-center text-disabled mt-8 mb-0">
             &copy; {{ new Date().getFullYear() }} QC Admission — RSUS
@@ -211,7 +311,7 @@ function loginWithSSO() {
 
   &__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .dot--online { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.25); animation: pulse 2s infinite; }
-  .dot--local  { background: #94a3b8; }
+  .dot--local  { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
 }
 @keyframes pulse {
   0%, 100% { box-shadow: 0 0 0 3px rgba(34,197,94,0.25); }
@@ -224,6 +324,13 @@ function loginWithSSO() {
   border-radius: 16px;
   background: rgba(var(--v-theme-info), 0.05);
   border: 1px solid rgba(var(--v-theme-info), 0.2);
+}
+
+.login-local-card {
+  padding: 24px 20px;
+  border-radius: 16px;
+  background: rgba(var(--v-theme-warning), 0.04);
+  border: 1px solid rgba(var(--v-theme-warning), 0.2);
 }
 
 .login-field__label {

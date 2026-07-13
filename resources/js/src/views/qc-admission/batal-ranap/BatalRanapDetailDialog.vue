@@ -31,10 +31,16 @@ const verifErrMsg    = ref('')
 const bedList        = ref([])
 const bedLoading     = ref(false)
 
-const isAdmin = computed(() => ['admin', 'qc_admission'].includes(authStore.userRole))
+// isAdmin di sini berarti "bisa aksi" — mencakup role admin & qc_admission
+const isAdmin = computed(() => authStore.isAdmin || authStore.isQcAdmission)
 
-// Sudah closing terkunci
+// Sudah closing terkunci — hanya 'Siap Closing' jika, 'Belum Siap Closing' masih bisa diupdate
 const isLocked = computed(() => props.item?.status_closing === 'Siap Closing')
+
+// Tab closing muncul jika: sudah diverifikasi (status_ok terisi) DAN belum Siap Closing
+const canUpdateClosing = computed(() =>
+  isAdmin.value && !!props.item?.status_ok && !isLocked.value
+)
 
 // ── Init saat dialog buka ────────────────────────────────────────────────────
 watch(() => props.modelValue, async (open) => {
@@ -101,11 +107,6 @@ async function saveVerifikasi() {
 const statusOkColor = s => ({ Bedah: 'success', 'Non Bedah': 'info' }[s] ?? 'secondary')
 const closingColor  = s => s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
 const bedStatusColor = s => (s ?? '').toUpperCase() === 'KOSONG' ? 'success' : 'warning'
-
-// Tab closing muncul jika: sudah diverifikasi (status_ok terisi) DAN belum Siap Closing
-const canUpdateClosing = computed(() =>
-  isAdmin.value && props.item?.status_ok && !isLocked.value
-)
 
 function close() { emit('update:modelValue', false) }
 </script>
@@ -177,6 +178,31 @@ function close() { emit('update:modelValue', false) }
               <p class="text-body-2 font-weight-semibold mb-0 text-success">Data Terkunci — Siap Closing</p>
               <p class="text-caption mb-0" style="color:var(--qc-text-2)">
                 Bed <strong>{{ item.bed_id || '—' }}</strong> telah dikonfirmasi dan dikirim ke Bed Management IGD.
+              </p>
+            </div>
+          </div>
+
+          <!-- Notice: belum siap closing, administrasi masih proses -->
+          <div v-else-if="item.status_closing === 'Belum Siap Closing'" class="pending-notice mb-3">
+            <VIcon icon="ri-time-line" size="16" color="warning" class="me-2" />
+            <div>
+              <p class="text-body-2 font-weight-semibold mb-0 text-warning">Administrasi Belum Siap Closing</p>
+              <p class="text-caption mb-0" style="color:var(--qc-text-2)">
+                Perlu diupdate saat administrasi sudah siap.
+                <template v-if="canUpdateClosing">
+                  <span class="font-weight-semibold" style="color:rgb(var(--v-theme-warning))">Klik "Update Closing" untuk mengubah status.</span>
+                </template>
+              </p>
+            </div>
+          </div>
+
+          <!-- Notice: sudah verifikasi, belum ada status closing sama sekali -->
+          <div v-else-if="item.status_ok && !item.status_closing && canUpdateClosing" class="info-notice mb-3">
+            <VIcon icon="ri-information-line" size="16" color="info" class="me-2" />
+            <div>
+              <p class="text-body-2 font-weight-semibold mb-0 text-info">Menunggu Konfirmasi Closing</p>
+              <p class="text-caption mb-0" style="color:var(--qc-text-2)">
+                Data sudah diverifikasi. Klik <strong>"Update Closing"</strong> jika administrasi sudah siap.
               </p>
             </div>
           </div>
@@ -255,6 +281,21 @@ function close() { emit('update:modelValue', false) }
         <template v-else-if="tab==='closing'">
           <VAlert v-if="closingErrMsg" type="error" variant="tonal" density="compact" class="mb-3" closable @click:close="closingErrMsg=''">
             {{ closingErrMsg }}
+          </VAlert>
+
+          <!-- Info konteks status saat ini -->
+          <VAlert
+            v-if="item.status_closing === 'Belum Siap Closing'"
+            type="warning" variant="tonal" density="compact" class="mb-4" icon="ri-time-line"
+          >
+            <span class="text-caption font-weight-semibold">Status saat ini: Belum Siap Closing</span><br>
+            <span class="text-caption">Update ke "Siap Closing" jika administrasi sudah selesai dan bed siap dibebaskan.</span>
+          </VAlert>
+          <VAlert
+            v-else-if="!item.status_closing"
+            type="info" variant="tonal" density="compact" class="mb-4" icon="ri-information-line"
+          >
+            <span class="text-caption">Tentukan apakah administrasi sudah siap untuk closing atau masih perlu tindakan lanjut.</span>
           </VAlert>
 
           <!-- Pilih Kode Bed yang akan dibebaskan -->
@@ -600,6 +641,22 @@ function close() { emit('update:modelValue', false) }
   padding: 10px 14px; border-radius: 10px;
   background: rgba(var(--v-theme-success), 0.06);
   border: 1px solid rgba(var(--v-theme-success), 0.25);
+}
+
+/* ── Pending closing notice ──────────────────────────────────────────── */
+.pending-notice {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; border-radius: 10px;
+  background: rgba(var(--v-theme-warning), 0.07);
+  border: 1px solid rgba(var(--v-theme-warning), 0.3);
+}
+
+/* ── Info notice ─────────────────────────────────────────────────────── */
+.info-notice {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; border-radius: 10px;
+  background: rgba(var(--v-theme-info), 0.06);
+  border: 1px solid rgba(var(--v-theme-info), 0.25);
 }
 
 /* ── Locked tab ──────────────────────────────────────────────────────── */
