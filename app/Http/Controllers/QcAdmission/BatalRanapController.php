@@ -47,7 +47,7 @@ class BatalRanapController extends Controller
         ]);
 
         $record = $this->service->create($validated);
-        ActivityLog::record('batal-ranap', 'create', "Batal Ranap {$record->no_reg} — {$record->keterangan_batal}");
+        ActivityLog::record('batal-ranap', 'create', "Batal Ranap {$record->no_reg} — {$record->keterangan_batal}", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil disimpan.'], 201);
     }
@@ -78,7 +78,7 @@ class BatalRanapController extends Controller
         ]);
 
         $record = $this->service->update($id, $validated);
-        ActivityLog::record('batal-ranap', 'update', "Batal Ranap diupdate — {$record->no_reg}");
+        ActivityLog::record('batal-ranap', 'update', "Batal Ranap diupdate — {$record->no_reg}", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }

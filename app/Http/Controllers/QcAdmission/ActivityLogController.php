@@ -17,7 +17,8 @@ class ActivityLogController extends Controller
             $query->where(function ($q) use ($s) {
                 $q->where('user_name', 'like', "%{$s}%")
                   ->orWhere('subject',   'like', "%{$s}%")
-                  ->orWhere('module',    'like', "%{$s}%");
+                  ->orWhere('module',    'like', "%{$s}%")
+                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload, '$.petugas')) LIKE ?", ["%{$s}%"]);
             });
         }
 

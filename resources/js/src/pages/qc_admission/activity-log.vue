@@ -29,6 +29,7 @@ const headers = [
   { title: 'Role',       key: 'user_role',   align: 'center', width: '110px' },
   { title: 'IP Address', key: 'ip_address',  align: 'center', width: '130px' },
   { title: 'Modul',      key: 'module',      align: 'center', width: '140px' },
+  { title: 'Petugas',    key: 'petugas',     align: 'center', width: '140px' },
   { title: 'Aksi',       key: 'action',      align: 'center', width: '110px' },
   { title: 'Keterangan', key: 'subject' },
 ]
@@ -162,6 +163,12 @@ onMounted(load)
         </template>
         <template #item.module="{ item }">
           <VChip :color="moduleColor(item.module)" size="x-small" variant="tonal">{{ item.module || '—' }}</VChip>
+        </template>
+        <template #item.petugas="{ item }">
+          <span v-if="item.petugas" class="text-caption font-weight-medium" style="color:var(--qc-text)">
+            <VIcon icon="ri-user-3-line" size="11" class="me-1 opacity-60" />{{ item.petugas }}
+          </span>
+          <span v-else class="text-caption" style="color:var(--qc-text-2)">—</span>
         </template>
         <template #item.action="{ item }">
           <VChip :color="actionColor(item.action)" size="x-small" variant="tonal">{{ item.action }}</VChip>

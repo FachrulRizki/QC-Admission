@@ -41,7 +41,7 @@ class QualityControlController extends Controller
         ]);
 
         $record = $this->service->create($validated);
-        ActivityLog::record('quality-control', 'create', "QC {$record->nama_pasien} ({$record->no_reg})");
+        ActivityLog::record('quality-control', 'create', "QC {$record->nama_pasien} ({$record->no_reg})", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil disimpan.'], 201);
     }
@@ -68,7 +68,7 @@ class QualityControlController extends Controller
         ]);
 
         $record = $this->service->update($id, $validated);
-        ActivityLog::record('quality-control', 'update', "QC diupdate — {$record->nama_pasien} ({$record->no_reg})");
+        ActivityLog::record('quality-control', 'update', "QC diupdate — {$record->nama_pasien} ({$record->no_reg})", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }

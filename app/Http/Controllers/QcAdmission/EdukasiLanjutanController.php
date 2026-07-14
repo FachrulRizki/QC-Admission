@@ -39,7 +39,7 @@ class EdukasiLanjutanController extends Controller
 
         $record = $this->service->create($validated);
         ActivityLog::record('edukasi-lanjutan', 'create',
-            "Sesi edukasi lanjutan — {$record->nama_pasien} ({$record->no_mr})");
+            "Sesi edukasi lanjutan — {$record->nama_pasien} ({$record->no_mr})", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Sesi edukasi lanjutan berhasil dicatat.'], 201);
     }
@@ -64,7 +64,7 @@ class EdukasiLanjutanController extends Controller
 
         $record = $this->service->update($id, $validated);
         ActivityLog::record('edukasi-lanjutan', 'update',
-            "Edukasi lanjutan diupdate — {$record->nama_pasien} ({$record->no_mr})");
+            "Edukasi lanjutan diupdate — {$record->nama_pasien} ({$record->no_mr})", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }

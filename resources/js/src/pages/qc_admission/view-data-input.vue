@@ -28,7 +28,6 @@ const CLOSING_OPTIONS = [
   { title: 'Semua Status',          value: '' },
   { title: '👍 Siap Closing',       value: 'Siap Closing' },
   { title: '⏳ Belum Siap',         value: 'Belum Siap Closing' },
-  { title: '❓ Belum Diverifikasi', value: null },
 ]
 
 const isKasir = computed(() => auth.isKasir)
@@ -138,6 +137,14 @@ function closingColor(s) {
   return s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
 }
 
+const pageBannerColor = computed(() => ({
+  'summary':          'primary',
+  'quality-control':  'primary',
+  'batal-ranap':      'error',
+  'edukasi-lanjutan': 'warning',
+  'up-selling':       'success',
+})[activeTab.value] ?? 'primary')
+
 function exportCSV() {
   const cols = activeHeaders.value
   const csv  = [cols.map(h=>h.title).join(','), ...filteredData.value.map(r => cols.map(h => `"${r[h.key]??''}"`).join(','))].join('\n')
@@ -237,6 +244,15 @@ watch(() => auth.userRole, (role, prev) => {
           {{ xs ? t.shortLabel : t.label }}
         </VTab>
       </VTabs>
+      <VDivider />
+
+      <!-- Penanda halaman aktif -->
+      <div class="vdi-page-banner" :class="`vdi-page-banner--${activeTab}`">
+        <VIcon :icon="tabs.find(t=>t.key===activeTab)?.icon ?? 'ri-table-line'" size="14" class="me-1" />
+        <span>Anda sedang melihat: <strong>{{ tabs.find(t=>t.key===activeTab)?.label ?? activeTab }}</strong></span>
+        <VChip size="x-small" variant="tonal" :color="pageBannerColor" class="ms-2">{{ filteredData.length }} data</VChip>
+      </div>
+
       <VDivider />
 
       <!-- Filter row -->
@@ -404,4 +420,22 @@ watch(() => auth.userRole, (role, prev) => {
   .vdi-right { display: none; }
   .vdi-row { padding: 12px 12px; }
 }
+
+/* ── Page banner (penanda halaman aktif) ── */
+.vdi-page-banner {
+  display: flex;
+  align-items: center;
+  padding: 7px 16px;
+  font-size: 0.78rem;
+  color: var(--qc-text-2, #64748b);
+  background: rgba(14,165,233,0.04);
+  transition: background 0.2s, color 0.2s;
+}
+.vdi-page-banner strong { color: var(--qc-text, #1e293b); }
+
+.vdi-page-banner--quality-control  { background: rgba(99,102,241,0.06); }
+.vdi-page-banner--batal-ranap       { background: rgba(239,68,68,0.06); }
+.vdi-page-banner--edukasi-lanjutan  { background: rgba(245,158,11,0.06); }
+.vdi-page-banner--up-selling        { background: rgba(34,197,94,0.06); }
+.vdi-page-banner--summary           { background: rgba(14,165,233,0.06); }
 </style>

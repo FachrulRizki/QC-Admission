@@ -47,7 +47,7 @@ class UpSellingController extends Controller
         $record = $this->service->create($validated);
 
         ActivityLog::record('up-selling', 'create',
-            "Up Selling {$record->nama_pasien} ({$record->no_reg}) — {$record->status}");
+            "Up Selling {$record->nama_pasien} ({$record->no_reg}) — {$record->status}", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil disimpan.'], 201);
     }
@@ -71,7 +71,7 @@ class UpSellingController extends Controller
         $record = $this->service->update($id, $validated);
 
         ActivityLog::record('up-selling', 'update',
-            "Up Selling diupdate — {$record->nama_pasien} ({$record->no_reg})");
+            "Up Selling diupdate — {$record->nama_pasien} ({$record->no_reg})", null, null, $record->petugas);
 
         return response()->json(['data' => $record, 'message' => 'Data berhasil diperbarui.']);
     }
