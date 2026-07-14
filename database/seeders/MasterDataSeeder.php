@@ -70,7 +70,7 @@ class MasterDataSeeder extends Seeder
         foreach ($defaults as $category => $items) {
             foreach ($items as $order => $item) {
                 // upsert agar aman di-run ulang tanpa duplikasi
-                DB::table('master_data')->upsert(
+                DB::table('qcw_master_data')->upsert(
                     [
                         'category'   => $category,
                         'item'       => $item,

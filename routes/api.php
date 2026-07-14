@@ -2,10 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
-use App\Models\User;
-use App\Models\ActivityLog;
 use App\Http\Controllers\QcAdmission\DashboardController;
 use App\Http\Controllers\QcAdmission\QualityControlController;
 use App\Http\Controllers\QcAdmission\BatalRanapController;
@@ -91,44 +88,30 @@ Route::middleware(['keycloak.auth'])->group(function () {
         // Activity Log
         Route::get('/activity-log', [ActivityLogController::class, 'index']);
 
-        // User Management — inline (admin langsung kelola user lokal / SSO)
+        // User Management — read-only dari Keycloak
         Route::get('/users', function () {
-            return response()->json(
-                User::select('id', 'name', 'username', 'email', 'role', 'login_type', 'created_at')->get()
-            );
+            try {
+                $keycloak = app(\App\Services\KeycloakService::class);
+                $users    = $keycloak->getUsers();
+                return response()->json(['data' => $users, 'source' => 'keycloak', 'total' => count($users)]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Keycloak Admin API gagal saat fetch users.', [
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json([
+                    'data'    => [],
+                    'source'  => 'error',
+                    'total'   => 0,
+                    'message' => 'Tidak dapat memuat data user dari Keycloak. Pastikan service account memiliki role view-users.',
+                ], 503);
+            }
         });
 
-        Route::post('/users', function (Request $request) {
-            // User yang dibuat dari sini adalah akun service / fallback
-            // Untuk produksi, user sebaiknya dikelola di Keycloak
-            $data = $request->validate([
-                'name'     => 'required|string|max:100',
-                'username' => 'required|string|unique:users|max:50',
-                'email'    => 'required|email|unique:users',
-                'role'     => 'required|string|max:50',
-            ]);
-            $user = User::create([...$data, 'login_type' => 'sso']);
-            ActivityLog::record('user', 'create', "User baru: {$user->name} ({$user->role})");
-            return response()->json(['user' => $user], 201);
-        });
-
-        Route::put('/users/{id}', function (Request $request, $id) {
-            $user = User::findOrFail($id);
-            $data = $request->validate([
-                'name'  => 'sometimes|string|max:100',
-                'email' => "sometimes|email|unique:users,email,{$id}",
-                'role'  => 'sometimes|string|max:50',
-            ]);
-            $user->update($data);
-            ActivityLog::record('user', 'update', "User diupdate: {$user->name} ({$user->role})");
-            return response()->json(['user' => $user]);
-        });
-
-        Route::delete('/users/{id}', function ($id) {
-            $user = User::findOrFail($id);
-            ActivityLog::record('user', 'delete', "User dihapus: {$user->name}");
-            $user->delete();
-            return response()->json(['message' => 'User dihapus.']);
+        // Refresh cache user (admin bisa trigger manual setelah ubah di Keycloak)
+        Route::post('/users/refresh-cache', function () {
+            $keycloak = app(\App\Services\KeycloakService::class);
+            $keycloak->flushUsersCache();
+            return response()->json(['message' => 'Cache user berhasil direset. Data akan diambil ulang dari Keycloak.']);
         });
     });
 });

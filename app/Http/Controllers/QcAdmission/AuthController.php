@@ -105,25 +105,24 @@ class AuthController extends Controller
     {
         return match ($role) {
             'admin' => [
-                'quality-control:read', 'quality-control:write',
-                'batal-ranap:read',     'batal-ranap:write',
-                'edukasi-lanjutan:read','edukasi-lanjutan:write',
-                'up-selling:read',      'up-selling:write',
-                'master-data:read',     'master-data:write',
-                'activity-log:read',
-                'user-management:read', 'user-management:write',
-                'bed-management:read',  'bed-management:write',
+                'dashboard:view',
+                'quality-control:view',   'quality-control:write',   'quality-control:delete',
+                'edukasi-lanjutan:view',  'edukasi-lanjutan:write',  'edukasi-lanjutan:delete',
+                'batal-ranap:view',       'batal-ranap:write',       'batal-ranap:delete',       'batal-ranap:closing',
+                'up-selling:view',        'up-selling:write',        'up-selling:delete',
+                'master-data:view',       'master-data:write',       'master-data:delete',
+                'activity-log:view',
+                'user-management:view',   // CRUD dikelola di Keycloak
             ],
             'qc_admission' => [
-                'quality-control:read', 'quality-control:write',
-                'batal-ranap:read',     'batal-ranap:write',
-                'edukasi-lanjutan:read','edukasi-lanjutan:write',
-                'up-selling:read',      'up-selling:write',
-                'bed-management:read',  'bed-management:write',
+                'dashboard:view',
+                'quality-control:view',   'quality-control:write',   'quality-control:delete',
+                'edukasi-lanjutan:view',  'edukasi-lanjutan:write',  'edukasi-lanjutan:delete',
+                'batal-ranap:view',       'batal-ranap:write',       'batal-ranap:delete',       'batal-ranap:closing',
+                'up-selling:view',        'up-selling:write',        'up-selling:delete',
             ],
             'kasir' => [
-                'batal-ranap:read',
-                'bed-management:read',
+                'batal-ranap:view',
             ],
             default => [],
         };

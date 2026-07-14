@@ -117,7 +117,7 @@ class KeycloakService
                     'up-selling:view', 'up-selling:write', 'up-selling:delete',
                     'master-data:view', 'master-data:write', 'master-data:delete',
                     'activity-log:view',
-                    'user-management:view', 'user-management:write', 'user-management:delete',
+                    'user-management:view',  // CRUD dikelola di Keycloak, hanya view di sini
                     'bed-management:view', 'bed-management:write',
                     'pegawai:view', 'pasien:view',
                 ],
@@ -146,6 +146,151 @@ class KeycloakService
         }
 
         return array_values(array_unique($perms));
+    }
+
+    // ── Admin API — Users ─────────────────────────────────────────────────────
+
+    /**
+     * Ambil daftar user dari Keycloak Admin API menggunakan client credentials.
+     * Memerlukan service account dengan role view-users di realm.
+     */
+    public function getUsers(int $max = 200): array
+    {
+        $cacheKey = "kc_users:{$this->realm}";
+
+        return Cache::remember($cacheKey, 30, function () use ($max) {
+            $adminToken = $this->getAdminToken();
+
+            $response = Http::timeout($this->timeout + 10)
+                ->withToken($adminToken)
+                ->acceptJson()
+                ->get("{$this->baseUrl}/admin/realms/{$this->realm}/users", [
+                    'max'     => $max,
+                    'enabled' => true,
+                ]);
+
+            if (! $response->successful()) {
+                throw new \RuntimeException(
+                    "Keycloak Admin API gagal: HTTP {$response->status()} — {$response->body()}"
+                );
+            }
+
+            $users = $response->json() ?? [];
+
+            // Ambil roles per user
+            return collect($users)->map(function (array $u) {
+                $roles = $this->getUserRoles($u['id'] ?? '');
+
+                return [
+                    'id'         => $u['id']                    ?? null,
+                    'name'       => trim(($u['firstName'] ?? '') . ' ' . ($u['lastName'] ?? '')) ?: ($u['username'] ?? '—'),
+                    'username'   => $u['username']              ?? '—',
+                    'email'      => $u['email']                 ?? '—',
+                    'roles'      => $roles,
+                    'role'       => $roles[0]                   ?? null,   
+                    'enabled'    => $u['enabled']               ?? true,
+                    'created_at' => isset($u['createdTimestamp'])
+                        ? date('Y-m-d H:i:s', (int) ($u['createdTimestamp'] / 1000))
+                        : null,
+                    'login_type' => 'sso',
+                ];
+            })->values()->toArray();
+        });
+    }
+
+    /**
+     * Ambil client-level roles user dari Keycloak Admin API.
+     */
+    private function getUserRoles(string $userId): array
+    {
+        if (! $userId) return [];
+
+        try {
+            $adminToken = $this->getAdminToken();
+
+            // Coba ambil client roles dulu (lebih spesifik)
+            $clientsResp = Http::timeout($this->timeout)
+                ->withToken($adminToken)
+                ->acceptJson()
+                ->get("{$this->baseUrl}/admin/realms/{$this->realm}/clients", [
+                    'clientId' => $this->clientId,
+                ]);
+
+            $clientUuid = $clientsResp->json()[0]['id'] ?? null;
+
+            $appRoles = [];
+            if ($clientUuid) {
+                $roleResp = Http::timeout($this->timeout)
+                    ->withToken($adminToken)
+                    ->acceptJson()
+                    ->get("{$this->baseUrl}/admin/realms/{$this->realm}/users/{$userId}/role-mappings/clients/{$clientUuid}");
+
+                $appRoles = collect($roleResp->json() ?? [])
+                    ->pluck('name')
+                    ->toArray();
+            }
+
+            // Fallback ke realm roles jika tidak ada client roles
+            if (empty($appRoles)) {
+                $realmResp = Http::timeout($this->timeout)
+                    ->withToken($adminToken)
+                    ->acceptJson()
+                    ->get("{$this->baseUrl}/admin/realms/{$this->realm}/users/{$userId}/role-mappings/realm");
+
+                $systemRoles = [
+                    'uma_authorization', 'offline_access',
+                    'default-roles-' . $this->realm,
+                    'manage-account', 'manage-account-links', 'view-profile',
+                ];
+
+                $appRoles = collect($realmResp->json() ?? [])
+                    ->pluck('name')
+                    ->reject(fn($r) => in_array($r, $systemRoles, true))
+                    ->values()
+                    ->toArray();
+            }
+
+            return $appRoles;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Dapatkan admin token via client_credentials (service account).
+     * Di-cache 55 detik agar tidak flood Keycloak.
+     */
+    private function getAdminToken(): string
+    {
+        $cacheKey = "kc_admin_token:{$this->realm}:{$this->clientId}";
+
+        return Cache::remember($cacheKey, 55, function () {
+            $response = Http::timeout($this->timeout)
+                ->asForm()
+                ->post($this->tokenUrl(), [
+                    'grant_type'    => 'client_credentials',
+                    'client_id'     => $this->clientId,
+                    'client_secret' => $this->clientSecret,
+                ]);
+
+            $token = $response->json()['access_token'] ?? null;
+
+            if (! $token) {
+                throw new \RuntimeException(
+                    'Gagal mendapatkan admin token dari Keycloak: ' . $response->body()
+                );
+            }
+
+            return $token;
+        });
+    }
+
+    /**
+     * Hapus cache daftar user (dipanggil setelah perubahan di Keycloak).
+     */
+    public function flushUsersCache(): void
+    {
+        Cache::forget("kc_users:{$this->realm}");
     }
 
     // ── Token ops ─────────────────────────────────────────────────────────────
