@@ -132,13 +132,13 @@ class BatalRanapController extends Controller
         $bedUpdateResult = null;
         if ($validated['status_closing'] === 'Siap Closing') {
             if (! $kodeBed) {
-                // Tidak ada bed ditemukan di BI_Bed_Igd untuk No_Reg ini
+                // Pasien tidak memiliki bed IGD — kemungkinan menunggu di rumah.
                 $bedUpdateResult = [
-                    'success' => false,
+                    'success' => true,
                     'source'  => 'none',
-                    'message' => "Tidak ada bed aktif di BI_Bed_Igd untuk No_Reg={$record->no_reg}. Status closing tersimpan tapi bed tidak dibebaskan.",
+                    'message' => "Pasien No_Reg={$record->no_reg} tidak memiliki bed IGD (kemungkinan menunggu di luar). Bed tidak dibebaskan.",
                 ];
-                Log::warning("konfirmasiClosing: tidak ada kode_bed untuk No_Reg={$record->no_reg}");
+                Log::info("konfirmasiClosing: tidak ada bed IGD untuk No_Reg={$record->no_reg} — pasien mungkin tunggu di rumah, skip release bed");
             } else {
                 $bedUpdateResult = $this->updateBedManagement($record);
             }

@@ -17,7 +17,7 @@ const tab = ref('detail')
 
 // ── Closing state ─────────────────────────────────────────────────────────────
 const closingStatus  = ref(null)
-const selectedBed    = ref(null)   // Kode_Bed yang dipilih dari BI_Bed_Igd
+const selectedBed    = ref(null) 
 const savingClosing  = ref(false)
 const closingErrMsg  = ref('')
 
@@ -62,7 +62,6 @@ async function fetchBedList() {
   if (!props.item?.no_reg) return
 
   // Jika bed_id sudah tersimpan di record, pakai langsung tanpa hit API
-  // Ini menghindari timeout saat API/RSUS tidak bisa dijangkau
   if (props.item?.bed_id) {
     bedList.value = [{
       kode_bed:   props.item.bed_id,
@@ -83,7 +82,10 @@ async function fetchBedList() {
       params: { no_reg: props.item.no_reg }
     })
     bedList.value = data.beds ?? []
-    const aktif = bedList.value.find(b => (b.status ?? '').toUpperCase() !== 'KOSONG')
+    const aktif = bedList.value.find(b =>
+      (b.status ?? '').toUpperCase() === 'TERISI' &&
+      (b.no_reg ?? '') === props.item.no_reg
+    )
     if (aktif && !selectedBed.value) selectedBed.value = aktif.kode_bed ?? aktif.bed_id
   } catch { bedList.value = [] }
   finally { bedLoading.value = false }
@@ -102,13 +104,16 @@ async function saveClosing() {
 
     const bedUpdate = result?.data?.bed_update
     if (closingStatus.value === 'Siap Closing' && bedUpdate) {
-      if (bedUpdate.success) {
+      if (bedUpdate.success && bedUpdate.source !== 'none') {
         emit('verified', {
           bedTriggered: true,
           source: bedUpdate.source,
           kodeBed: bedUpdate.kode_bed,
           message: result?.data?.message,
         })
+      } else if (bedUpdate.success && bedUpdate.source === 'none') {
+        // Pasien tidak punya bed IGD — wajar, closing tetap sukses
+        emit('verified', { bedTriggered: null })
       } else {
         emit('verified', { bedTriggered: false, bedError: bedUpdate.message })
         closingErrMsg.value = `⚠️ Status "Siap Closing" tersimpan, tapi trigger Bed IGD gagal: ${bedUpdate.message ?? 'cek log server'}`
@@ -354,7 +359,6 @@ function close() { emit('update:modelValue', false) }
                 </VChip>
               </div>
               <p class="text-caption mt-1 mb-0" style="color:var(--qc-text-2)">
-                <VIcon icon="ri-information-line" size="12" class="me-1" />
                 Kode bed di atas akan otomatis dibebaskan saat pilih "Siap Closing"
               </p>
             </div>
@@ -369,8 +373,8 @@ function close() { emit('update:modelValue', false) }
             <!-- Tidak ada bed sama sekali -->
             <div v-else class="text-caption py-1" style="color:var(--qc-text-2)">
               <VIcon icon="ri-information-line" size="12" class="me-1" />
-              Tidak ada bed ditemukan. Sistem akan mencari otomatis dari No. Reg
-              <strong>{{ item.no_reg }}</strong> saat closing.
+              Tidak ada bed IGD ditemukan untuk No. Reg <strong>{{ item.no_reg }}</strong>.
+              Pasien kemungkinan menunggu di luar / di rumah.
             </div>
           </div>
 
@@ -401,13 +405,6 @@ function close() { emit('update:modelValue', false) }
               </div>
             </VCol>
           </VRow>
-
-          <VAlert v-if="closingStatus==='Siap Closing'" type="success"
-            variant="tonal" density="compact" class="mb-3 text-caption">
-            <VIcon icon="ri-hotel-bed-line" size="14" class="me-1" />
-            Bed untuk No. Reg <strong>{{ item.no_reg }}</strong>
-            akan otomatis dicari dan diset <strong>KOSONG</strong> di Bed Management IGD.
-          </VAlert>
         </template>
 
         <!-- ══ VERIFIKASI STATUS OK ════════════════════════════════════════ -->

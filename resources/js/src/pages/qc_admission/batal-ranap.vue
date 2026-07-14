@@ -71,6 +71,8 @@ async function onVerified(result) {
     toast(`✅ Siap Closing tersimpan. Bed ${result.kodeBed} berhasil dibebaskan via ${result.source}.`, 'success')
   } else if (result?.bedTriggered === false) {
     toast(`⚠️ Siap Closing tersimpan, tapi trigger Bed IGD gagal: ${result.bedError ?? 'cek log server'}`, 'warning')
+  } else if (result?.bedTriggered === null) {
+    toast('✅ Siap Closing tersimpan. Pasien tidak memiliki bed IGD (menunggu di rumah).', 'success')
   } else {
     toast('Verifikasi disimpan.')
   }
@@ -94,9 +96,6 @@ async function load() {
 
 // Watch date filter — re-fetch dari API saat tanggal berubah
 watch([dateFrom, dateTo], () => load())
-
-// Watch filterOk — filter client-side sudah jalan, tidak perlu re-fetch
-// tapi kalau mau server-side bisa tambah: watch(filterOk, () => load())
 
 onMounted(load)
 </script>

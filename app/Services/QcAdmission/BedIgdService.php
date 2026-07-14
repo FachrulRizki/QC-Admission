@@ -110,14 +110,12 @@ class BedIgdService
             }
         }
 
-        return ['beds' => $this->mockBeds($noReg), 'source' => 'mock'];
+        // Pasien mungkin menunggu di rumah dan memang tidak punya bed IGD.
+        return ['beds' => [], 'source' => 'none'];
     }
 
     /**
      * Update status bed → KOSONG saat Batal Ranap dikonfirmasi Siap Closing.
-     * Endpoint: POST {base_url}/bed/release/trigger
-     * Body: { Kode_Bed, No_Reg, Status }
-     * @return array{ success: bool, source: string, message?: string, data?: array }
      */
     public function releaseBed(string $kodeBed, string $noReg): array
     {
