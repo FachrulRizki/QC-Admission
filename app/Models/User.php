@@ -15,10 +15,12 @@ class User extends Authenticatable
         'username',
         'email',
         'password',   // dipakai untuk login lokal (testing)
-        'role',       // snapshot role untuk display (sumber kebenaran tetap Keycloak)
-        'sso_id',     // ID user di Keycloak (sub claim)
+        'role',       // snapshot role untuk display
+        'sso_id',     // ID user di Keycloak
         'login_type', // 'sso' atau 'local'
     ];
+
+    protected $table = 'qcw_users';
 
     protected $hidden = [
         'remember_token',

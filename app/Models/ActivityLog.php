@@ -12,6 +12,8 @@ class ActivityLog extends Model
         'payload', 'ip_address',
     ];
 
+    protected $table = 'qcw_activity_logs';
+
     protected $casts = [
         'payload' => 'array',
     ];

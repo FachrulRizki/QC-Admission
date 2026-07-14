@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class MasterData extends Model
 {
-    protected $table    = 'master_data';
+    protected $table    = 'qcw_master_data';
     protected $fillable = ['category', 'item', 'sort_order'];
 
     /** Ambil semua kategori sebagai array [category => [item, ...]] */

@@ -10,7 +10,7 @@ class EdukasiLanjutan extends Model
 {
     use HasFactory;
 
-    protected $table = 'edukasi_lanjutans';
+    protected $table = 'qcw_edukasi_lanjutans';
 
     protected $fillable = [
         'tanggal', 'no_mr', 'no_reg', 'nama_pasien', 'jaminan',

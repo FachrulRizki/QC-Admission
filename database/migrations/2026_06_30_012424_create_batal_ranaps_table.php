@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('batal_ranaps', function (Blueprint $table) {
+        Schema::create('qcw_batal_ranaps', function (Blueprint $table) {
             $table->id();
             $table->string('tanggal', 30);
             $table->string('jam_input', 20);
@@ -36,6 +36,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('batal_ranaps');
+        Schema::dropIfExists('qcw_batal_ranaps');
     }
 };

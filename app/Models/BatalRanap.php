@@ -9,7 +9,7 @@ class BatalRanap extends Model
 {
     use HasFactory;
 
-    protected $table = 'batal_ranaps';
+    protected $table = 'qcw_batal_ranaps';
 
     protected $fillable = [
         'tanggal', 'jam_input', 'no_reg', 'no_mr',

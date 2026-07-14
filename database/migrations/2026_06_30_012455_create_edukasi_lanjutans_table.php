@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('edukasi_lanjutans', function (Blueprint $table) {
+        Schema::create('qcw_edukasi_lanjutans', function (Blueprint $table) {
             $table->id();
             $table->string('tanggal', 30);
             $table->string('no_mr', 20);
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('status_ranap', 30)->nullable();
             $table->timestamp('ranap_at')->nullable();
             $table->unsignedBigInteger('quality_control_id')->nullable();
-            $table->foreign('quality_control_id')->references('id')->on('quality_controls')->nullOnDelete();
+            $table->foreign('quality_control_id')->references('id')->on('qcw_quality_controls')->nullOnDelete();
             $table->timestamps();
 
             $table->index('no_mr');
@@ -35,6 +35,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('edukasi_lanjutans');
+        Schema::dropIfExists('qcw_edukasi_lanjutans');
     }
 };

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('master_data', function (Blueprint $table) {
+        Schema::create('qcw_master_data', function (Blueprint $table) {
             $table->id();
             $table->string('category', 50)->index()
                   ->comment('Nama kategori, e.g. ruangan, kelas, jaminan');
@@ -23,6 +23,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('master_data');
+        Schema::dropIfExists('qcw_master_data');
     }
 };

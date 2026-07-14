@@ -9,7 +9,7 @@ class QualityControl extends Model
 {
     use HasFactory;
 
-    protected $table = 'quality_controls';
+    protected $table = 'qcw_quality_controls';
 
     protected $fillable = [
         'tanggal', 'jam_input', 'tgl_daftar', 'jam_daftar',

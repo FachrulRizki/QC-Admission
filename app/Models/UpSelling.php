@@ -9,7 +9,7 @@ class UpSelling extends Model
 {
     use HasFactory;
 
-    protected $table = 'up_sellings';
+    protected $table = 'qcw_up_sellings';
 
     protected $fillable = [
         'tanggal',
