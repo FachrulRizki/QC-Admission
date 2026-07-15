@@ -48,23 +48,47 @@ Route::get('/akses-ditolak', function () {
 // ── Halaman terproteksi ───────────────────────────────────────────────────────
 Route::middleware(['keycloak.auth'])->group(function () {
 
-    // Akses untuk semua role yang valid (admin, qc_admission, kasir)
+    // Semua user terautentikasi — tidak butuh permission khusus
     Route::get('/view-data-input',  fn () => Inertia::render('qc_admission/view-data-input'));
     Route::get('/batal-ranap-view', fn () => Inertia::render('qc_admission/batal-ranap-view'));
 
-    // Akses admin + qc_admission
-    Route::middleware(['keycloak.role:admin,qc_admission'])->group(function () {
-        Route::get('/dashboard',        fn () => Inertia::render('dashboard'))->name('dashboard');
-        Route::get('/quality-control',  fn () => Inertia::render('qc_admission/quality-control'));
-        Route::get('/edukasi-lanjutan', fn () => Inertia::render('qc_admission/edukasi-lanjutan'));
-        Route::get('/batal-ranap',      fn () => Inertia::render('qc_admission/batal-ranap'));
-        Route::get('/up-selling',       fn () => Inertia::render('qc_admission/up-selling'));
+    // Butuh permission dashboard:view
+    Route::middleware(['keycloak.role:dashboard:view'])->group(function () {
+        Route::get('/dashboard', fn () => Inertia::render('dashboard'))->name('dashboard');
     });
 
-    // Akses admin only
-    Route::middleware(['keycloak.role:admin'])->group(function () {
-        Route::get('/activity-log',    fn () => Inertia::render('qc_admission/activity-log'))->name('activity-log');
-        Route::get('/master-data',     fn () => Inertia::render('qc_admission/master-data'))->name('master-data');
+    // Butuh permission quality-control:view
+    Route::middleware(['keycloak.role:quality-control:view'])->group(function () {
+        Route::get('/quality-control', fn () => Inertia::render('qc_admission/quality-control'));
+    });
+
+    // Butuh permission edukasi-lanjutan:view
+    Route::middleware(['keycloak.role:edukasi-lanjutan:view'])->group(function () {
+        Route::get('/edukasi-lanjutan', fn () => Inertia::render('qc_admission/edukasi-lanjutan'));
+    });
+
+    // Butuh permission batal-ranap:view
+    Route::middleware(['keycloak.role:batal-ranap:view'])->group(function () {
+        Route::get('/batal-ranap', fn () => Inertia::render('qc_admission/batal-ranap'));
+    });
+
+    // Butuh permission up-selling:view
+    Route::middleware(['keycloak.role:up-selling:view'])->group(function () {
+        Route::get('/up-selling', fn () => Inertia::render('qc_admission/up-selling'));
+    });
+
+    // Butuh permission activity-log:view
+    Route::middleware(['keycloak.role:activity-log:view'])->group(function () {
+        Route::get('/activity-log', fn () => Inertia::render('qc_admission/activity-log'))->name('activity-log');
+    });
+
+    // Butuh permission master-data:view
+    Route::middleware(['keycloak.role:master-data:view'])->group(function () {
+        Route::get('/master-data', fn () => Inertia::render('qc_admission/master-data'))->name('master-data');
+    });
+
+    // Butuh permission user-management:view
+    Route::middleware(['keycloak.role:user-management:view'])->group(function () {
         Route::get('/user-management', fn () => Inertia::render('qc_admission/user-management'))->name('user-management');
     });
 });

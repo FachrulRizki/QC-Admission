@@ -15,7 +15,7 @@ use App\Http\Controllers\QcAdmission\ActivityLogController;
 
 Route::middleware(['keycloak.auth'])->group(function () {
 
-    // ── Read-only — semua role yang sudah terautentikasi ─────────────────────
+    // Read-only — semua role yang sudah terautentikasi 
     Route::get('/master-data', [MasterDataController::class, 'index']);
     Route::get('/pegawai',     [PegawaiController::class,    'index']);
     Route::get('/pasien',      [PasienController::class,     'index']);
@@ -31,13 +31,19 @@ Route::middleware(['keycloak.auth'])->group(function () {
         return response()->json(['beds' => $result['beds'], 'source' => $result['source']]);
     });
 
-    // ── Admin + QC Admission ──────────────────────────────────────────────────
-    Route::middleware(['keycloak.role:admin,qc_admission'])->group(function () {
-
-        // Dashboard
+    // Butuh permission dashboard:view 
+    Route::middleware(['keycloak.role:dashboard:view'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index']);
+    });
 
-        // Quality Control
+    // Butuh permission quality-control:view
+    Route::middleware(['keycloak.role:quality-control:view'])->group(function () {
+        Route::get('quality-control',         [QualityControlController::class, 'index']);
+        Route::get('quality-control/{id}',    [QualityControlController::class, 'show']);
+    });
+
+    // Butuh permission quality-control:write ─
+    Route::middleware(['keycloak.role:quality-control:write'])->group(function () {
         Route::post('quality-control/process-edukasi-lanjutan', function () {
             try {
                 Artisan::call('qc:process-edukasi-lanjutan');
@@ -48,27 +54,73 @@ Route::middleware(['keycloak.auth'])->group(function () {
                 return response()->json(['success' => false, 'message' => $e->getMessage(), 'count' => 0], 500);
             }
         });
-        Route::apiResource('quality-control', QualityControlController::class);
-        Route::patch('quality-control/{id}/ranap', [QualityControlController::class, 'updateRanap']);
+        Route::post  ('quality-control',        [QualityControlController::class, 'store']);
+        Route::put   ('quality-control/{id}',   [QualityControlController::class, 'update']);
+        Route::patch ('quality-control/{id}/ranap', [QualityControlController::class, 'updateRanap']);
+    });
 
-        // Edukasi Lanjutan
+    // Butuh permission quality-control:delete 
+    Route::middleware(['keycloak.role:quality-control:delete'])->group(function () {
+        Route::delete('quality-control/{id}', [QualityControlController::class, 'destroy']);
+    });
+
+    // Butuh permission edukasi-lanjutan:view 
+    Route::middleware(['keycloak.role:edukasi-lanjutan:view'])->group(function () {
         Route::get('edukasi-lanjutan/sync-rsus', [EdukasiLanjutanController::class, 'syncRsus']);
-        Route::get('edukasi-lanjutan-pending',    [EdukasiLanjutanController::class, 'pending']);
-        Route::apiResource('edukasi-lanjutan', EdukasiLanjutanController::class);
+        Route::get('edukasi-lanjutan-pending',   [EdukasiLanjutanController::class, 'pending']);
+        Route::get('edukasi-lanjutan',           [EdukasiLanjutanController::class, 'index']);
+        Route::get('edukasi-lanjutan/{id}',      [EdukasiLanjutanController::class, 'show']);
+    });
+
+    // Butuh permission edukasi-lanjutan:write 
+    Route::middleware(['keycloak.role:edukasi-lanjutan:write'])->group(function () {
+        Route::post ('edukasi-lanjutan',            [EdukasiLanjutanController::class, 'store']);
+        Route::put  ('edukasi-lanjutan/{id}',       [EdukasiLanjutanController::class, 'update']);
         Route::patch('edukasi-lanjutan/{id}/ranap', [EdukasiLanjutanController::class, 'updateRanap']);
+    });
 
-        // Up Selling
-        Route::apiResource('up-selling', UpSellingController::class);
+    // Butuh permission edukasi-lanjutan:delete 
+    Route::middleware(['keycloak.role:edukasi-lanjutan:delete'])->group(function () {
+        Route::delete('edukasi-lanjutan/{id}', [EdukasiLanjutanController::class, 'destroy']);
+    });
 
-        // Batal Ranap write
-        Route::post  ('batal-ranap',                         [BatalRanapController::class, 'store']);
-        Route::put   ('batal-ranap/{id}',                    [BatalRanapController::class, 'update']);
-        Route::delete('batal-ranap/{id}',                    [BatalRanapController::class, 'destroy']);
-        Route::patch ('batal-ranap/{id}/verifikasi',         [BatalRanapController::class, 'verifikasi']);
-        Route::patch ('batal-ranap/{id}/konfirmasi-closing', [BatalRanapController::class, 'konfirmasiClosing']);
-        Route::get   ('batal-ranap/{id}/bed-history',        [BatalRanapController::class, 'bedHistory']);
+    // Butuh permission up-selling:view 
+    Route::middleware(['keycloak.role:up-selling:view'])->group(function () {
+        Route::get('up-selling',      [UpSellingController::class, 'index']);
+        Route::get('up-selling/{id}', [UpSellingController::class, 'show']);
+    });
 
-        // Bed management write
+    // Butuh permission up-selling:write 
+    Route::middleware(['keycloak.role:up-selling:write'])->group(function () {
+        Route::post('up-selling',       [UpSellingController::class, 'store']);
+        Route::put ('up-selling/{id}',  [UpSellingController::class, 'update']);
+    });
+
+    // Butuh permission up-selling:delete─
+    Route::middleware(['keycloak.role:up-selling:delete'])->group(function () {
+        Route::delete('up-selling/{id}', [UpSellingController::class, 'destroy']);
+    });
+
+    // Butuh permission batal-ranap:write─
+    Route::middleware(['keycloak.role:batal-ranap:write'])->group(function () {
+        Route::post('batal-ranap',                [BatalRanapController::class, 'store']);
+        Route::put ('batal-ranap/{id}',           [BatalRanapController::class, 'update']);
+        Route::patch('batal-ranap/{id}/verifikasi', [BatalRanapController::class, 'verifikasi']);
+    });
+
+    // Butuh permission batal-ranap:delete
+    Route::middleware(['keycloak.role:batal-ranap:delete'])->group(function () {
+        Route::delete('batal-ranap/{id}', [BatalRanapController::class, 'destroy']);
+    });
+
+    // Butuh permission batal-ranap:closing─
+    Route::middleware(['keycloak.role:batal-ranap:closing'])->group(function () {
+        Route::patch('batal-ranap/{id}/konfirmasi-closing', [BatalRanapController::class, 'konfirmasiClosing']);
+        Route::get  ('batal-ranap/{id}/bed-history',        [BatalRanapController::class, 'bedHistory']);
+    });
+
+    // Butuh permission bed-management:write
+    Route::middleware(['keycloak.role:bed-management:write'])->group(function () {
         Route::post('bed-management/update-status', function (Request $request) {
             $v      = $request->validate(['no_reg' => 'required|string', 'kode_bed' => 'required|string']);
             $bedIgd = app(\App\Services\QcAdmission\BedIgdService::class);
@@ -77,18 +129,24 @@ Route::middleware(['keycloak.auth'])->group(function () {
         });
     });
 
-    // ── Admin only ────────────────────────────────────────────────────────────
-    Route::middleware(['keycloak.role:admin'])->group(function () {
+    // Butuh permission master-data:write─
+    Route::middleware(['keycloak.role:master-data:write'])->group(function () {
+        Route::post('/master-data',              [MasterDataController::class, 'store']);
+        Route::put ('/master-data/{category}',   [MasterDataController::class, 'update']);
+    });
 
-        // Master Data write
-        Route::post  ('/master-data',                    [MasterDataController::class, 'store']);
-        Route::put   ('/master-data/{category}',         [MasterDataController::class, 'update']);
+    // Butuh permission master-data:delete
+    Route::middleware(['keycloak.role:master-data:delete'])->group(function () {
         Route::delete('/master-data/{category}/{index}', [MasterDataController::class, 'destroy']);
+    });
 
-        // Activity Log
+    // Butuh permission activity-log:view─
+    Route::middleware(['keycloak.role:activity-log:view'])->group(function () {
         Route::get('/activity-log', [ActivityLogController::class, 'index']);
+    });
 
-        // User Management — read-only dari Keycloak
+    // Butuh permission user-management:view
+    Route::middleware(['keycloak.role:user-management:view'])->group(function () {
         Route::get('/users', function () {
             try {
                 $keycloak = app(\App\Services\KeycloakService::class);
@@ -107,7 +165,6 @@ Route::middleware(['keycloak.auth'])->group(function () {
             }
         });
 
-        // Refresh cache user (admin bisa trigger manual setelah ubah di Keycloak)
         Route::post('/users/refresh-cache', function () {
             $keycloak = app(\App\Services\KeycloakService::class);
             $keycloak->flushUsersCache();

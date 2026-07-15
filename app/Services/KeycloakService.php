@@ -24,7 +24,7 @@ class KeycloakService
         $this->cacheTtl     = (int) config('services.keycloak.cache_ttl', 60);
     }
 
-    // ── URL helpers ───────────────────────────────────────────────────────────
+    // URL helpers
 
     private function tokenUrl(): string
     {
@@ -46,7 +46,7 @@ class KeycloakService
         return "{$this->baseUrl}/realms/{$this->realm}/protocol/openid-connect/userinfo";
     }
 
-    // ── Introspect ────────────────────────────────────────────────────────────
+    // Introspect
 
     /**
      * Introspect access token ke Keycloak (cached).
@@ -70,7 +70,7 @@ class KeycloakService
         Cache::forget('kc_token:' . hash('sha256', $accessToken));
     }
 
-    // ── Roles ─────────────────────────────────────────────────────────────────
+    // Roles
     public function getRoles(array $introspection): array
     {
         $systemRoles = [
@@ -90,65 +90,33 @@ class KeycloakService
         return array_values(array_filter($all, fn($r) => ! in_array($r, $systemRoles, true)));
     }
 
-    // ── Permissions ───────────────────────────────────────────────────────────
+    // Permissions
     public function getPermissions(string $accessToken): array
     {
         $cacheKey = 'kc_perms:' . hash('sha256', $accessToken);
 
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($accessToken) {
             $introspection = $this->introspect($accessToken);
-            $roles         = $this->getRoles($introspection);
-            return $this->derivePermissionsFromRoles($roles);
+            return $this->extractPermissions($introspection);
         });
     }
 
-    private function derivePermissionsFromRoles(array $roles): array
+    /**
+     * Permissions diambil dari resource_access[client_id].roles di token.
+     */
+    public function extractPermissions(array $introspection): array
     {
-        $mapJson = config('services.keycloak.role_permission_map', null);
+        $clientRoles = $introspection['resource_access'][$this->clientId]['roles'] ?? [];
 
-        $map = $mapJson
-            ? (json_decode($mapJson, true) ?? [])
-            : [
-                'admin' => [
-                    'dashboard:view',
-                    'quality-control:view', 'quality-control:write', 'quality-control:delete',
-                    'edukasi-lanjutan:view', 'edukasi-lanjutan:write', 'edukasi-lanjutan:delete',
-                    'batal-ranap:view', 'batal-ranap:write', 'batal-ranap:delete', 'batal-ranap:closing',
-                    'up-selling:view', 'up-selling:write', 'up-selling:delete',
-                    'master-data:view', 'master-data:write', 'master-data:delete',
-                    'activity-log:view',
-                    'user-management:view',  // CRUD dikelola di Keycloak, hanya view di sini
-                    'bed-management:view', 'bed-management:write',
-                    'pegawai:view', 'pasien:view',
-                ],
-                'qc_admission' => [
-                    'dashboard:view',
-                    'quality-control:view', 'quality-control:write',
-                    'edukasi-lanjutan:view', 'edukasi-lanjutan:write',
-                    'batal-ranap:view', 'batal-ranap:write', 'batal-ranap:closing',
-                    'up-selling:view', 'up-selling:write',
-                    'master-data:view',
-                    'bed-management:view', 'bed-management:write',
-                    'pegawai:view', 'pasien:view',
-                ],
-                'kasir' => [
-                    'batal-ranap:view',
-                    'master-data:view',
-                    'pasien:view',
-                ],
-            ];
+        $permissions = array_values(array_filter(
+            $clientRoles,
+            fn(string $r) => str_contains($r, ':')
+        ));
 
-        $perms = [];
-        foreach ($roles as $role) {
-            if (isset($map[$role])) {
-                $perms = array_merge($perms, $map[$role]);
-            }
-        }
-
-        return array_values(array_unique($perms));
+        return array_values(array_unique($permissions));
     }
 
-    // ── Admin API — Users ─────────────────────────────────────────────────────
+    // Admin API — Users 
 
     /**
      * Ambil daftar user dari Keycloak Admin API menggunakan client credentials.
@@ -258,7 +226,6 @@ class KeycloakService
 
     /**
      * Dapatkan admin token via client_credentials (service account).
-     * Di-cache 55 detik agar tidak flood Keycloak.
      */
     private function getAdminToken(): string
     {
@@ -293,8 +260,7 @@ class KeycloakService
         Cache::forget("kc_users:{$this->realm}");
     }
 
-    // ── Token ops ─────────────────────────────────────────────────────────────
-
+    // Token ops
     public function refreshToken(string $refreshToken): array
     {
         $response = Http::timeout($this->timeout)
