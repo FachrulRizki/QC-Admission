@@ -83,11 +83,50 @@ class KeycloakService
         ];
 
         $clientRoles = $introspection['resource_access'][$this->clientId]['roles'] ?? [];
-        $realmRoles = $introspection['realm_access']['roles'] ?? [];
+        $realmRoles  = $introspection['realm_access']['roles'] ?? [];
 
         $all = array_values(array_unique(array_merge($realmRoles, $clientRoles)));
 
-        return array_values(array_filter($all, fn($r) => ! in_array($r, $systemRoles, true)));
+        // Pisahkan role aplikasi (tidak mengandung ':') dari permission-format ('module:action')
+        $appRoles = array_values(array_filter(
+            $all,
+            fn($r) => ! in_array($r, $systemRoles, true) && ! str_contains($r, ':')
+        ));
+
+        // Fallback: jika tidak ada role eksplisit, derive dari permissions yang ada
+        // Ini terjadi ketika Keycloak hanya assign permissions tanpa role terpisah
+        if (empty($appRoles)) {
+            $permissions = array_values(array_filter($clientRoles, fn($r) => str_contains($r, ':')));
+            $appRoles = $this->deriveRoleFromPermissions($permissions);
+        }
+
+        return $appRoles;
+    }
+
+    /**
+     * Derive role aplikasi dari daftar permissions.
+     * Gunakan sebagai fallback jika role eksplisit tidak di-set di Keycloak.
+     */
+    private function deriveRoleFromPermissions(array $permissions): array
+    {
+        if (empty($permissions)) {
+            return [];
+        }
+
+        // Jika punya permission user-management → admin
+        if (in_array('user-management:write', $permissions, true) ||
+            in_array('user-management:delete', $permissions, true)) {
+            return ['admin'];
+        }
+
+        // Jika punya banyak modul write → qc_admission
+        $writePerms = array_filter($permissions, fn($p) => str_ends_with($p, ':write'));
+        if (count($writePerms) >= 2) {
+            return ['qc_admission'];
+        }
+
+        // Jika hanya view/minimal → kasir
+        return ['kasir'];
     }
 
     // Permissions

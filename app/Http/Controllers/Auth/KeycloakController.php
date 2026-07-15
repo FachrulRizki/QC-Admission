@@ -55,11 +55,14 @@ class KeycloakController extends Controller
 
         $roles = $this->keycloak->getRoles($introspected);
 
-        // Log untuk debug (hanya saat APP_DEBUG=true)
-        Log::debug('Keycloak SSO login', [
+        // Log full introspection untuk debug
+        Log::debug('Keycloak introspection full', [
             'username'        => $socialUser->getNickname(),
-            'roles'           => $roles,
-            'resource_access' => array_keys($introspected['resource_access'] ?? []),
+            'active'          => $introspected['active'] ?? null,
+            'realm_access'    => $introspected['realm_access'] ?? null,
+            'resource_access' => $introspected['resource_access'] ?? null,
+            'roles_extracted' => $roles,
+            'client_id_used'  => config('services.keycloak.client_id'),
         ]);
 
         if (empty($roles)) {
@@ -100,7 +103,11 @@ class KeycloakController extends Controller
         $request->session()->put('keycloak_refresh_token', $refreshToken);
 
         ActivityLog::record('auth', 'login',
-            "SSO login — {$session['name']} [" . implode(', ', $roles) . "]"
+            "SSO login — {$session['name']}",
+            [
+                'roles'       => $roles,
+                'permissions' => $permissions,
+            ]
         );
 
         $default = in_array('kasir', $roles) ? '/view-data-input' : '/dashboard';
