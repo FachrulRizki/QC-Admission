@@ -38,21 +38,37 @@ return [
     |--------------------------------------------------------------------------
     | Bed Management IGD API
     |--------------------------------------------------------------------------
+    |
+    | auth_mode:
+    |   'passthrough' → forward token Keycloak user yang sedang login (RECOMMENDED)
+    |                   Tidak perlu credential terpisah. Token user dari session
+    |                   dikirim langsung ke API Bed IGD untuk divalidasi mereka.
+    |
+    |   'keycloak'    → client_credentials grant menggunakan service account
+    |                   aplikasi ini (KEYCLOAK_CLIENT_ID / KEYCLOAK_CLIENT_SECRET).
+    |                   Cocok untuk proses background/cron tanpa user session.
+    |
+    |   'login'       → POST /auth/login ke API Bed IGD (username/password lokal).
+    |
+    |   'static'      → token tetap dari BED_IGD_STATIC_TOKEN di .env.
+    |
     */
     'bed_igd' => [
         'base_url'            => env('BED_IGD_API_URL', ''),
+        'enabled'             => env('BED_IGD_ENABLED', false),
+        'update_path'         => env('BED_IGD_UPDATE_PATH', '/bed/release/trigger'),
+        'update_mode'         => env('BED_IGD_UPDATE_MODE', 'direct'),
+
+        // auth_mode: 'passthrough' | 'keycloak' | 'login' | 'static'
+        'auth_mode'           => env('BED_IGD_AUTH_MODE', 'passthrough'),
+
+        // Hanya dipakai saat auth_mode=login
         'username'            => env('BED_IGD_USERNAME', ''),
         'password'            => env('BED_IGD_PASSWORD', ''),
         'token_cache_minutes' => (int) env('BED_IGD_TOKEN_CACHE_MINUTES', 55),
-        'enabled'             => env('BED_IGD_ENABLED', false),
-        'update_mode'         => env('BED_IGD_UPDATE_MODE', 'direct'),
-        'update_path'         => env('BED_IGD_UPDATE_PATH', '/bed/release/trigger'),
-        // auth_mode: 'static' | 'login' | 'keycloak'
-        'auth_mode'           => env('BED_IGD_AUTH_MODE', 'login'),
+
+        // Hanya dipakai saat auth_mode=static
         'static_token'        => env('BED_IGD_STATIC_TOKEN', ''),
-        // Keycloak client credentials (untuk auth_mode=keycloak nanti)
-        'keycloak_client_id'  => env('BED_IGD_KEYCLOAK_CLIENT_ID', ''),
-        'keycloak_secret'     => env('BED_IGD_KEYCLOAK_SECRET', ''),
     ],
 
     /*

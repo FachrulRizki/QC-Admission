@@ -11,7 +11,7 @@ class BedIgdService
 {
     private const TOKEN_CACHE_KEY = 'bed_igd_api_token';
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // Public API
     public function getKodeBedByNoReg(string $noReg): ?string
     {
         if (! $noReg) return null;
@@ -142,21 +142,12 @@ class BedIgdService
                     'no_reg'   => $noReg,
                 ]);
 
-                // Coba dengan token auth dulu
-                $response = null;
-                try {
-                    $token    = $this->getToken();
-                    $response = Http::withToken($token)
-                        ->timeout(10)
-                        ->acceptJson()
-                        ->post($fullUrl, $payload);
-                } catch (\Exception $authErr) {
-                    // Jika auth gagal, coba tanpa token (beberapa internal API tidak butuh auth)
-                    Log::warning("BedIgdService: auth gagal, coba tanpa token", ['error' => $authErr->getMessage()]);
-                    $response = Http::timeout(10)
-                        ->acceptJson()
-                        ->post($fullUrl, $payload);
-                }
+                // Kirim request dengan token — token dipilih sesuai BED_IGD_AUTH_MODE
+                $token    = $this->getToken();
+                $response = Http::withToken($token)
+                    ->timeout(10)
+                    ->acceptJson()
+                    ->post($fullUrl, $payload);
 
                 if (! $response->successful()) {
                     $errBody = $response->body();
@@ -207,36 +198,158 @@ class BedIgdService
         return ['success' => true, 'source' => 'mock', 'kode_bed' => $kodeBed];
     }
 
-    // ── Token management ──────────────────────────────────────────────────────
+    // Token management
     private function getToken(): string
     {
         $authMode = config('services.bed_igd.auth_mode', 'login');
 
-        // ── Mode static: token tetap dari .env ────────────────────────────────
-        if ($authMode === 'static') {
-            $token = config('services.bed_igd.static_token', '');
-            if (! $token) {
-                throw new \RuntimeException('BED_IGD_STATIC_TOKEN belum diset di .env');
+        return match ($authMode) {
+            'passthrough' => $this->getPassthroughToken(),
+            'keycloak'    => $this->getKeycloakClientToken(),
+            'static'      => $this->getStaticToken(),
+            default       => $this->getLoginToken(),
+        };
+    }
+
+    /**
+     * PASSTHROUGH — forward token Keycloak user yang sedang login.
+     */
+    private function getPassthroughToken(): string
+    {
+        // Ambil token dari session user yang sedang aktif
+        $token = session('keycloak_access_token');
+
+        if (! $token) {
+            // Fallback: cek apakah token bisa di-refresh dulu
+            Log::warning('BedIgdService[passthrough]: keycloak_access_token tidak ada di session.');
+            throw new \RuntimeException(
+                'Token Keycloak user tidak ditemukan di session. ' .
+                'Pastikan user login melalui SSO dan sesi masih aktif.'
+            );
+        }
+
+        // Cek token belum expired — decode payload tanpa verify signature (cukup untuk cek exp)
+        $parts = explode('.', $token);
+        if (count($parts) === 3) {
+            $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true) ?? [];
+            $exp     = $payload['exp'] ?? 0;
+
+            if ($exp > 0 && $exp < (time() + 30)) {
+                // Token expired atau hampir expired — coba refresh
+                Log::info('BedIgdService[passthrough]: token mendekati/sudah expired, coba refresh.');
+                $token = $this->tryRefreshKeycloakToken($token);
             }
+        }
+
+        Log::info('BedIgdService[passthrough]: menggunakan token Keycloak user dari session.', [
+            'sub'      => $payload['sub']                ?? '?',
+            'username' => $payload['preferred_username'] ?? '?',
+            'exp'      => isset($payload['exp'])
+                ? date('Y-m-d H:i:s', $payload['exp'])
+                : '?',
+        ]);
+
+        return $token;
+    }
+
+    /**
+     * Coba refresh access token menggunakan refresh_token dari session.
+     * Jika berhasil, update session dan kembalikan token baru.
+     */
+    private function tryRefreshKeycloakToken(string $oldToken): string
+    {
+        $refreshToken = session('keycloak_refresh_token');
+
+        if (! $refreshToken) {
+            throw new \RuntimeException('Refresh token tidak ada di session. User perlu login ulang.');
+        }
+
+        $tokenUrl = config('services.keycloak.base_url')
+            . '/realms/' . config('services.keycloak.realm')
+            . '/protocol/openid-connect/token';
+
+        $response = Http::timeout(5)
+            ->asForm()
+            ->post($tokenUrl, [
+                'grant_type'    => 'refresh_token',
+                'client_id'     => config('services.keycloak.client_id'),
+                'client_secret' => config('services.keycloak.client_secret'),
+                'refresh_token' => $refreshToken,
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException(
+                'Refresh token Keycloak gagal: sesi user sudah tidak valid. User perlu login ulang.'
+            );
+        }
+
+        $newAccessToken  = $response->json()['access_token']  ?? null;
+        $newRefreshToken = $response->json()['refresh_token']  ?? $refreshToken;
+
+        if (! $newAccessToken) {
+            throw new \RuntimeException('Refresh token berhasil tapi access_token tidak ada di respons.');
+        }
+
+        // Update session dengan token baru
+        session([
+            'keycloak_access_token'  => $newAccessToken,
+            'keycloak_refresh_token' => $newRefreshToken,
+        ]);
+
+        Log::info('BedIgdService[passthrough]: token berhasil di-refresh dari Keycloak.');
+
+        return $newAccessToken;
+    }
+
+    /**
+     * KEYCLOAK CLIENT CREDENTIALS — service account aplikasi ini.
+     */
+    private function getKeycloakClientToken(): string
+    {
+        $cacheKey = self::TOKEN_CACHE_KEY . '_kc';
+        if ($token = Cache::get($cacheKey)) {
             return $token;
         }
 
-        // ── Mode keycloak: client credentials grant ───────────────────────────
-        if ($authMode === 'keycloak') {
-            return $this->getKeycloakToken();
+        $tokenUrl = config('services.keycloak.base_url')
+            . '/realms/' . config('services.keycloak.realm')
+            . '/protocol/openid-connect/token';
+
+        $response = Http::timeout(5)
+            ->asForm()
+            ->post($tokenUrl, [
+                'grant_type'    => 'client_credentials',
+                'client_id'     => config('services.keycloak.client_id'),
+                'client_secret' => config('services.keycloak.client_secret'),
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException(
+                "Bed IGD Keycloak client token gagal: HTTP {$response->status()} — {$response->body()}"
+            );
         }
 
-        // ── Mode login (default): POST /auth/login ────────────────────────────
-        return $this->getLoginToken();
+        $body  = $response->json();
+        $token = $body['access_token'] ?? null;
+        if (! $token) {
+            throw new \RuntimeException('Bed IGD Keycloak: access_token tidak ditemukan di respons.');
+        }
+
+        $ttl = (int) ($body['expires_in'] ?? 300);
+        Cache::put($cacheKey, $token, now()->addSeconds($ttl - 30));
+        return $token;
     }
 
+    /**
+     * LOGIN — POST /auth/login ke API Bed IGD dengan username/password.
+     */
     private function getLoginToken(): string
     {
         if ($token = Cache::get(self::TOKEN_CACHE_KEY)) {
             return $token;
         }
 
-        $response = Http::timeout(3)
+        $response = Http::timeout(5)
             ->acceptJson()
             ->post(config('services.bed_igd.base_url') . '/auth/login', [
                 'username' => config('services.bed_igd.username'),
@@ -264,43 +377,20 @@ class BedIgdService
         Cache::put(self::TOKEN_CACHE_KEY, $token, now()->addMinutes($ttl));
         return $token;
     }
-    
-    private function getKeycloakToken(): string
+
+    /**
+     * STATIC — token tetap dari .env.
+     */
+    private function getStaticToken(): string
     {
-        $cacheKey = self::TOKEN_CACHE_KEY . '_kc';
-        if ($token = Cache::get($cacheKey)) {
-            return $token;
-        }
-
-        $tokenUrl = config('services.keycloak.base_url')
-            . '/realms/' . config('services.keycloak.realm')
-            . '/protocol/openid-connect/token';
-
-        $response = Http::timeout(5)
-            ->asForm()
-            ->post($tokenUrl, [
-                'grant_type'    => 'client_credentials',
-                'client_id'     => config('services.bed_igd.keycloak_client_id'),
-                'client_secret' => config('services.bed_igd.keycloak_secret'),
-            ]);
-
-        if (! $response->successful()) {
-            throw new \RuntimeException(
-                "Bed IGD Keycloak token gagal: HTTP {$response->status()} — {$response->body()}"
-            );
-        }
-
-        $token = $response->json()['access_token'] ?? null;
+        $token = config('services.bed_igd.static_token', '');
         if (! $token) {
-            throw new \RuntimeException('Bed IGD Keycloak: access_token tidak ditemukan.');
+            throw new \RuntimeException('BED_IGD_STATIC_TOKEN belum diset di .env');
         }
-
-        $ttl = (int) ($response->json()['expires_in'] ?? 300);
-        Cache::put($cacheKey, $token, now()->addSeconds($ttl - 30));
         return $token;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Helpers───
 
     private function fetchBedIgdId(string $token, string $kodeBed): ?int
     {
@@ -361,23 +451,5 @@ class BedIgdService
             'tanggal'        => $r->Tanggal         ?? null,
             'updated_reg_at' => $r->updated_reg_at  ?? null,
         ];
-    }
-
-    private function mockBeds(string $noReg): array
-    {
-        return [[
-            'kode_bed'       => 'ED001',
-            'bed_id'         => 'ED001',
-            'nama_bed'       => 'EMERGENCY BED 01',
-            'ket_bed'        => 'EMERGENCY BED',
-            'kode_triase'    => 'MERAH',
-            'kode_ruang'     => 'EDR001',
-            'kode_bangsal'   => 'IGD',
-            'bed_igd_id'     => 221,
-            'status'         => 'TERISI',
-            'no_reg'         => $noReg,
-            'tanggal'        => now()->toDateString(),
-            'updated_reg_at' => null,
-        ]];
     }
 }
