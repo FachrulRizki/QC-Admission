@@ -369,7 +369,6 @@ Kode bed akan otomatis dibebaskan saat status "Siap Closing"
 <VIcon icon="ri-hotel-bed-line" size="20" class="opacity-30 me-2" />
 <div>
 <p class="text-caption text-disabled mb-0">Tidak ada bed aktif ditemukan untuk No. Reg ini</p>
-<p class="text-caption text-disabled mb-0">Sistem akan mencari otomatis saat konfirmasi closing</p>
 </div>
 </div>
 </div>
