@@ -12,9 +12,9 @@ const initials = computed(() => {
 
 const roleLabel = computed(() => {
   const roles = authStore.roles ?? []
-  if (roles.includes('admin'))        return 'Administrator'
+  if (roles.includes('admin')) return 'Administrator'
   if (roles.includes('qc_admission')) return 'QC Admission'
-  if (roles.includes('kasir'))        return 'Kasir'
+  if (roles.includes('kasir')) return 'Kasir'
   return 'Pengguna'
 })
 
@@ -24,28 +24,11 @@ function handleLogout() {
 </script>
 
 <template>
-  <VBadge
-    dot
-    location="bottom right"
-    offset-x="3"
-    offset-y="3"
-    color="success"
-    bordered
-  >
-    <VAvatar
-      class="cursor-pointer"
-      color="primary"
-      variant="tonal"
-      size="36"
-    >
+  <VBadge dot location="bottom right" offset-x="3" offset-y="3" color="success" bordered>
+    <VAvatar class="cursor-pointer" color="primary" variant="tonal" size="36">
       <span class="text-subtitle-2 font-weight-bold">{{ initials }}</span>
 
-      <VMenu
-        activator="parent"
-        width="230"
-        location="bottom end"
-        offset="14px"
-      >
+      <VMenu activator="parent" width="230" location="bottom end" offset="14px">
         <VList rounded="lg" elevation="4">
           <!-- User info -->
           <VListItem class="pb-2">
@@ -62,12 +45,8 @@ function handleLogout() {
 
           <!-- Login type badge -->
           <div class="px-4 pb-2">
-            <VChip
-              :color="user?.login_type === 'sso' ? 'info' : 'primary'"
-              size="x-small"
-              variant="tonal"
-              :prepend-icon="user?.login_type === 'sso' ? 'ri-key-2-line' : 'ri-user-3-line'"
-            >
+            <VChip :color="user?.login_type === 'sso' ? 'info' : 'primary'" size="x-small" variant="tonal"
+              :prepend-icon="user?.login_type === 'sso' ? 'ri-key-2-line' : 'ri-user-3-line'">
               {{ user?.login_type === 'sso' ? 'SSO Keycloak' : 'Login Lokal' }}
             </VChip>
           </div>

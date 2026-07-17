@@ -14,12 +14,7 @@ const isActive = computed(() => page.url === props.item.to)
 
 <template>
   <li class="nav-link" :class="{ disabled: item.disable }">
-    <Link
-      v-if="item.to"
-      :href="item.to"
-      :target="item.target"
-      :class="{ 'inertia-active': isActive }"
-    >
+    <Link v-if="item.to" :href="item.to" :target="item.target" :class="{ 'inertia-active': isActive }">
       <Icon v-if="item.icon" :icon="item.icon" class="nav-item-icon" width="22" height="22" />
       <span class="nav-item-title">{{ item.title }}</span>
       <span v-if="item.badgeContent" class="nav-item-badge" :class="item.badgeClass">
@@ -62,8 +57,8 @@ const isActive = computed(() => page.url === props.item.to)
     color: rgba(var(--v-theme-on-surface), 0.7);
   }
 
-  .nav-link > .router-link-exact-active,
-  .nav-link > .inertia-active {
+  .nav-link>.router-link-exact-active,
+  .nav-link>.inertia-active {
     background: rgba(var(--v-theme-primary), 0.12);
     color: rgb(var(--v-theme-primary));
 

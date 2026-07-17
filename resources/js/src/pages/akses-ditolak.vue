@@ -1,12 +1,12 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3'
 
-const page        = usePage()
-const rejected    = computed(() => page.props.ssoRejectedUser ?? null)
-const clientId    = computed(() => rejected.value?.client_id ?? 'qc-admission')
-const userName    = computed(() => rejected.value?.name ?? rejected.value?.username ?? 'Akun Anda')
-const userEmail   = computed(() => rejected.value?.email ?? '')
-const userHandle  = computed(() => rejected.value?.username ?? '')
+const page = usePage()
+const rejected = computed(() => page.props.ssoRejectedUser ?? null)
+const clientId = computed(() => rejected.value?.client_id ?? 'qc-admission')
+const userName = computed(() => rejected.value?.name ?? rejected.value?.username ?? 'Akun Anda')
+const userEmail = computed(() => rejected.value?.email ?? '')
+const userHandle = computed(() => rejected.value?.username ?? '')
 
 function tryAgain() {
   window.location.href = '/auth/keycloak/redirect'
@@ -83,18 +83,11 @@ function backToLogin() {
 
       <!-- Actions -->
       <div class="d-flex flex-column gap-3">
-        <VBtn
-          block size="large" color="primary" rounded="xl"
-          prepend-icon="ri-refresh-line"
-          @click="tryAgain"
-        >
+        <VBtn block size="large" color="primary" rounded="xl" prepend-icon="ri-refresh-line" @click="tryAgain">
           Coba Login dengan Akun Lain
         </VBtn>
-        <VBtn
-          block size="large" variant="tonal" color="default" rounded="xl"
-          prepend-icon="ri-arrow-left-line"
-          @click="backToLogin"
-        >
+        <VBtn block size="large" variant="tonal" color="default" rounded="xl" prepend-icon="ri-arrow-left-line"
+          @click="backToLogin">
           Kembali ke Halaman Login
         </VBtn>
       </div>
@@ -125,8 +118,20 @@ function backToLogin() {
   background: rgba(255, 255, 255, 0.15);
   filter: blur(60px);
 }
-.shape--1 { width: 400px; height: 400px; top: -120px; right: -80px; }
-.shape--2 { width: 300px; height: 300px; bottom: -80px; left: -60px; }
+
+.shape--1 {
+  width: 400px;
+  height: 400px;
+  top: -120px;
+  right: -80px;
+}
+
+.shape--2 {
+  width: 300px;
+  height: 300px;
+  bottom: -80px;
+  left: -60px;
+}
 
 .no-access-card {
   background: rgb(var(--v-theme-surface));

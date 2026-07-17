@@ -28,7 +28,7 @@ export default defineComponent({
         isLayoutOverlayVisible.value = false
       }
     })
-    
+
     return () => {
       // 👉 Vertical nav
       const verticalNav = h(VerticalNav, { isOverlayNavActive: isOverlayNavActive.value, toggleIsOverlayNavActive }, {

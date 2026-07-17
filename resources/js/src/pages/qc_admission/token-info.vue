@@ -2,11 +2,11 @@
 import axios from 'axios'
 import PageHero from '@/components/PageHero.vue'
 
-const tokenData    = ref(null)
-const loading      = ref(false)
-const copied       = ref(false)
-const showRaw      = ref(false)
-const snackbar     = ref({ show: false, message: '', color: 'success' })
+const tokenData = ref(null)
+const loading = ref(false)
+const copied = ref(false)
+const showRaw = ref(false)
+const snackbar = ref({ show: false, message: '', color: 'success' })
 
 const tokenShort = computed(() => {
   const t = tokenData.value?.access_token
@@ -80,7 +80,7 @@ function fallbackCopy(text, successMsg) {
   ta.value = text
   ta.style.position = 'fixed'
   ta.style.left = '-9999px'
-  ta.style.top  = '-9999px'
+  ta.style.top = '-9999px'
   document.body.appendChild(ta)
   ta.focus()
   ta.select()
@@ -107,54 +107,27 @@ onMounted(() => loadToken())
 
 <template>
   <div>
-    <PageHero
-      icon="ri-key-2-line"
-      badge="SSO · Keycloak Token"
-      title="Access Token"
-      subtitle="Bearer token Keycloak untuk integrasi API — gunakan untuk testing tim Bed IGD"
-      color-from="#7C3AED"
-      color-to="#4F46E5"
-      :pills="[
+    <PageHero icon="ri-key-2-line" badge="SSO · Keycloak Token" title="Access Token"
+      subtitle="Bearer token Keycloak untuk integrasi API — gunakan untuk testing tim Bed IGD" color-from="#7C3AED"
+      color-to="#4F46E5" :pills="[
         { icon: 'ri-shield-keyhole-line', text: 'SSO Keycloak' },
-        { icon: 'ri-time-line',           text: expiresIn },
-      ]"
-    >
+        { icon: 'ri-time-line', text: expiresIn },
+      ]">
       <template #actions>
-        <VBtn
-          color="white"
-          variant="elevated"
-          rounded="lg"
-          prepend-icon="ri-refresh-line"
-          style="color:#4F46E5"
-          :loading="loading"
-          @click="loadToken"
-        >
+        <VBtn color="white" variant="elevated" rounded="lg" prepend-icon="ri-refresh-line" style="color:#4F46E5"
+          :loading="loading" @click="loadToken">
           Refresh Token
         </VBtn>
       </template>
     </PageHero>
 
     <!-- Alert expired -->
-    <VAlert
-      v-if="isExpired"
-      type="warning"
-      variant="tonal"
-      border="start"
-      class="mb-4"
-      icon="ri-error-warning-line"
-    >
+    <VAlert v-if="isExpired" type="warning" variant="tonal" border="start" class="mb-4" icon="ri-error-warning-line">
       Token sudah expired. Klik <strong>Refresh Token</strong> untuk mendapatkan token baru.
     </VAlert>
 
     <!-- Info penggunaan -->
-    <VAlert
-      type="info"
-      variant="tonal"
-      border="start"
-      density="compact"
-      class="mb-4"
-      closable
-    >
+    <VAlert type="info" variant="tonal" border="start" density="compact" class="mb-4" closable>
       <div class="text-caption">
         Kirimkan token ini ke tim Bed IGD sebagai <strong>Authorization: Bearer &lt;token&gt;</strong> di HTTP header.
         Token valid selama sesi Keycloak aktif dan akan otomatis di-refresh saat mendekati expiry.
@@ -185,13 +158,8 @@ onMounted(() => loadToken())
             <VCol cols="12" sm="4">
               <p class="text-caption text-medium-emphasis mb-1">Role</p>
               <div class="d-flex flex-wrap gap-1">
-                <VChip
-                  v-for="r in (tokenData.user?.roles ?? [])"
-                  :key="r"
-                  size="x-small"
-                  color="primary"
-                  variant="tonal"
-                >{{ r }}</VChip>
+                <VChip v-for="r in (tokenData.user?.roles ?? [])" :key="r" size="x-small" color="primary"
+                  variant="tonal">{{ r }}</VChip>
               </div>
             </VCol>
           </VRow>
@@ -235,34 +203,16 @@ onMounted(() => loadToken())
               <span class="text-body-1 font-weight-semibold">Access Token</span>
             </div>
             <div class="d-flex gap-2">
-              <VBtn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                rounded="lg"
-                :prepend-icon="showRaw ? 'ri-eye-off-line' : 'ri-eye-line'"
-                @click="showRaw = !showRaw"
-              >
+              <VBtn size="small" variant="tonal" color="secondary" rounded="lg"
+                :prepend-icon="showRaw ? 'ri-eye-off-line' : 'ri-eye-line'" @click="showRaw = !showRaw">
                 {{ showRaw ? 'Sembunyikan' : 'Tampilkan' }}
               </VBtn>
-              <VBtn
-                size="small"
-                variant="tonal"
-                color="primary"
-                rounded="lg"
-                prepend-icon="ri-file-copy-line"
-                @click="copyToken"
-              >
+              <VBtn size="small" variant="tonal" color="primary" rounded="lg" prepend-icon="ri-file-copy-line"
+                @click="copyToken">
                 Copy Token
               </VBtn>
-              <VBtn
-                size="small"
-                variant="elevated"
-                color="primary"
-                rounded="lg"
-                prepend-icon="ri-shield-keyhole-line"
-                @click="copyBearer"
-              >
+              <VBtn size="small" variant="elevated" color="primary" rounded="lg" prepend-icon="ri-shield-keyhole-line"
+                @click="copyBearer">
                 Copy Bearer
               </VBtn>
             </div>
@@ -270,10 +220,8 @@ onMounted(() => loadToken())
         </VCardTitle>
         <VCardText class="pa-4 pt-0">
           <!-- Preview singkat selalu tampil -->
-          <div
-            class="pa-3 rounded-lg mb-3"
-            style="background:rgba(var(--v-theme-surface-variant),0.5); font-family:monospace; font-size:0.75rem; word-break:break-all; color:rgb(var(--v-theme-on-surface))"
-          >
+          <div class="pa-3 rounded-lg mb-3"
+            style="background:rgba(var(--v-theme-surface-variant),0.5); font-family:monospace; font-size:0.75rem; word-break:break-all; color:rgb(var(--v-theme-on-surface))">
             <span class="text-medium-emphasis">Authorization: Bearer </span>
             <span v-if="!showRaw" class="text-warning">{{ tokenShort }}</span>
             <span v-else class="text-warning" style="white-space:pre-wrap">{{ tokenData.access_token }}</span>
@@ -284,10 +232,8 @@ onMounted(() => loadToken())
             <VExpansionPanel title="Cara Penggunaan (HTTP Header)" rounded="lg">
               <VExpansionPanelText>
                 <p class="text-caption text-medium-emphasis mb-2">Tambahkan header berikut ke setiap request API:</p>
-                <div
-                  class="pa-3 rounded-lg"
-                  style="background:rgba(var(--v-theme-surface-variant),0.5); font-family:monospace; font-size:0.75rem"
-                >
+                <div class="pa-3 rounded-lg"
+                  style="background:rgba(var(--v-theme-surface-variant),0.5); font-family:monospace; font-size:0.75rem">
                   <div>GET https://[bed-igd-api]/endpoint</div>
                   <div class="text-primary">Authorization: Bearer {{ tokenShort }}</div>
                   <div>Content-Type: application/json</div>

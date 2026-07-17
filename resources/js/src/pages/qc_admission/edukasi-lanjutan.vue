@@ -1,10 +1,10 @@
 <script setup>
 import { useEdukasiLanjutanStore } from '@/stores/useEdukasiLanjutanStore'
-import EdukasiDetailDialog         from '@/views/qc-admission/edukasi-lanjutan/EdukasiDetailDialog.vue'
-import SummaryCards                from '@/components/SummaryCards.vue'
-import PageHero                    from '@/components/PageHero.vue'
+import EdukasiDetailDialog from '@/views/qc-admission/edukasi-lanjutan/EdukasiDetailDialog.vue'
+import SummaryCards from '@/components/SummaryCards.vue'
+import PageHero from '@/components/PageHero.vue'
 
-const store   = useEdukasiLanjutanStore()
+const store = useEdukasiLanjutanStore()
 const loading = ref(false)
 const syncing = ref(false)
 const snackbar = ref({ show: false, msg: '', color: 'success' })
@@ -23,11 +23,11 @@ function getWaktuMenunggu(patient) {
   if (!patient.created_at) return null
   const elapsedSec = Math.floor((now.value - new Date(patient.created_at).getTime()) / 1000)
   if (elapsedSec < 0) return null
-  const h   = Math.floor(elapsedSec / 3600)
-  const m   = Math.floor((elapsedSec % 3600) / 60)
+  const h = Math.floor(elapsedSec / 3600)
+  const m = Math.floor((elapsedSec % 3600) / 60)
   const day = Math.floor(h / 24)
   if (day >= 1) return `${day}h ${h % 24}j`
-  if (h >= 1)   return `${h}j ${String(m).padStart(2,'0')}m`
+  if (h >= 1) return `${h}j ${String(m).padStart(2, '0')}m`
   return `${m} mnt`
 }
 
@@ -41,18 +41,18 @@ function getWaktuColor(patient) {
 }
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
-const showDetail   = ref(false)
+const showDetail = ref(false)
 const detailPatient = ref(null)
-const dialogMode   = ref('view')
+const dialogMode = ref('view')
 
 function todayStr() {
-  const d = new Date(), p = n => String(n).padStart(2,'0')
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+  const d = new Date(), p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-const search   = ref('')
+const search = ref('')
 const dateFrom = ref(todayStr())   // default hari ini — tampil data up to date
-const dateTo   = ref(todayStr())   // default hari ini
+const dateTo = ref(todayStr())   // default hari ini
 const statusFilter = ref('All')
 
 const records = computed(() => store.records ?? [])
@@ -91,25 +91,25 @@ const filtered = computed(() => {
 })
 
 const stats = computed(() => ({
-  total:    uniquePatients.value.length,
+  total: uniquePatients.value.length,
   menunggu: uniquePatients.value.filter(r => r.status === 'Menunggu').length,
-  selesai:  uniquePatients.value.filter(r => r.status === 'Selesai').length,
-  pct:      uniquePatients.value.length
+  selesai: uniquePatients.value.filter(r => r.status === 'Selesai').length,
+  pct: uniquePatients.value.length
     ? Math.round(uniquePatients.value.filter(r => r.status === 'Selesai').length / uniquePatients.value.length * 100) : 0,
 }))
 
 function openDetail(patient) { detailPatient.value = { ...patient }; dialogMode.value = 'view'; showDetail.value = true }
-function openEdit(patient)   { detailPatient.value = { ...patient }; dialogMode.value = 'edit'; showDetail.value = true }
+function openEdit(patient) { detailPatient.value = { ...patient }; dialogMode.value = 'edit'; showDetail.value = true }
 
 async function onSaved() { showDetail.value = false; await load() }
 
-function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
+function toast(msg, color = 'success') { snackbar.value = { show: true, msg, color } }
 
 function resetFilter() {
   search.value = ''
   statusFilter.value = 'All'
   dateFrom.value = todayStr()   // kembali ke hari ini, bukan kosong
-  dateTo.value   = todayStr()
+  dateTo.value = todayStr()
   load()
 }
 
@@ -128,12 +128,12 @@ async function load() {
   try {
     await store.fetchRecords({
       per_page: 200,
-      search:    search.value || undefined,
-      status:    statusFilter.value !== 'All' ? statusFilter.value : undefined,
+      search: search.value || undefined,
+      status: statusFilter.value !== 'All' ? statusFilter.value : undefined,
       date_from: dateFrom.value || undefined,
-      date_to:   dateTo.value   || undefined,
+      date_to: dateTo.value || undefined,
     })
-  } catch(e) { console.error(e) }
+  } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
 
@@ -146,18 +146,11 @@ onMounted(load)
 <template>
   <div>
     <!-- Header -->
-    <PageHero
-      icon="ri-book-open-line"
-      badge="Edukasi Lanjutan"
-      title="Edukasi Lanjutan"
-      subtitle="Auto dari QC ≥ 2 jam · Klik pasien untuk tambah sesi"
-      color-from="#0EA5E9"
-      color-to="#0369A1"
-      :pills="[
+    <PageHero icon="ri-book-open-line" badge="Edukasi Lanjutan" title="Edukasi Lanjutan"
+      subtitle="Auto dari QC ≥ 2 jam · Klik pasien untuk tambah sesi" color-from="#0EA5E9" color-to="#0369A1" :pills="[
         { icon: 'ri-user-line', text: `${stats.total} pasien` },
         { icon: 'ri-time-line', text: `${stats.menunggu} menunggu` },
-      ]"
-    >
+      ]">
       <template #actions>
         <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
           :loading="syncing" @click="syncRsus">
@@ -167,40 +160,35 @@ onMounted(load)
     </PageHero>
 
     <!-- Stats -->
-    <SummaryCards
-      v-model="statusFilter"
-      :cards="[
-        { value: stats.total,    label: 'Total Pasien',    color: 'primary', icon: 'ri-book-open-line',    filterValue: 'All' },
-        { value: stats.menunggu, label: 'Menunggu Bed',    color: 'warning', icon: 'ri-time-line',         filterValue: 'Menunggu' },
-        { value: stats.selesai,  label: 'Sudah Dapat Bed', color: 'success', icon: 'ri-check-double-line', filterValue: 'Selesai', },
-      ]"
-    />
+    <SummaryCards v-model="statusFilter" :cards="[
+      { value: stats.total, label: 'Total Pasien', color: 'primary', icon: 'ri-book-open-line', filterValue: 'All' },
+      { value: stats.menunggu, label: 'Menunggu Bed', color: 'warning', icon: 'ri-time-line', filterValue: 'Menunggu' },
+      { value: stats.selesai, label: 'Sudah Dapat Bed', color: 'success', icon: 'ri-check-double-line', filterValue: 'Selesai', },
+    ]" />
 
     <!-- Filter -->
     <VCard elevation="0" border rounded="xl" class="mb-4">
       <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="4">
-            <VTextField v-model="search" label="Cari pasien..." prepend-inner-icon="ri-search-line"
-              variant="outlined" density="compact" hide-details clearable rounded="lg" />
+            <VTextField v-model="search" label="Cari pasien..." prepend-inner-icon="ri-search-line" variant="outlined"
+              density="compact" hide-details clearable rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="12" sm="3">
-            <VSelect
-              v-model="statusFilter"
-              :items="[
-                { title: 'Semua Status', value: 'All' },
-                { title: '⏳ Menunggu Bed', value: 'Menunggu' },
-                { title: '✅ Selesai', value: 'Selesai' },
-              ]"
-              item-title="title" item-value="value"
-              label="Status" variant="outlined" density="compact" hide-details rounded="lg"
-            />
+            <VSelect v-model="statusFilter" :items="[
+              { title: 'Semua Status', value: 'All' },
+              { title: '⏳ Menunggu Bed', value: 'Menunggu' },
+              { title: '✅ Selesai', value: 'Selesai' },
+            ]" item-title="title" item-value="value" label="Status" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary" @click="resetFilter">Reset</VBtn>
@@ -208,19 +196,13 @@ onMounted(load)
         </VRow>
         <!-- Quick range chips -->
         <div class="d-flex gap-2 mt-2 flex-wrap align-center">
-          <VChip
-            :color="(!dateFrom && !dateTo) ? 'secondary' : 'default'"
-            :variant="(!dateFrom && !dateTo) ? 'elevated' : 'outlined'"
-            size="small" class="cursor-pointer"
-            @click="dateFrom = ''; dateTo = ''; load()"
-          >
+          <VChip :color="(!dateFrom && !dateTo) ? 'secondary' : 'default'"
+            :variant="(!dateFrom && !dateTo) ? 'elevated' : 'outlined'" size="small" class="cursor-pointer"
+            @click="dateFrom = ''; dateTo = ''; load()">
             <VIcon icon="ri-history-line" size="11" class="me-1" />Semua Riwayat
           </VChip>
-          <VChip
-            v-if="!dateFrom && !dateTo"
-            color="primary" variant="tonal" size="small" class="cursor-pointer"
-            @click="dateFrom = todayStr(); dateTo = todayStr()"
-          >
+          <VChip v-if="!dateFrom && !dateTo" color="primary" variant="tonal" size="small" class="cursor-pointer"
+            @click="dateFrom = todayStr(); dateTo = todayStr()">
             <VIcon icon="ri-calendar-check-line" size="11" class="me-1" />Hari Ini
           </VChip>
         </div>
@@ -232,7 +214,9 @@ onMounted(load)
       <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ filtered.length }} pasien</VChip>
       <span class="text-caption" style="color:var(--qc-text-2)">
         <template v-if="dateFrom && dateTo && dateFrom === dateTo">
-          Data hari ini ({{ new Date(dateFrom + 'T00:00:00').toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }) }})
+          Data hari ini ({{ new Date(dateFrom + 'T00:00:00').toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'long',
+            year:'numeric' }) }})
         </template>
         <template v-else-if="dateFrom || dateTo">
           Periode {{ dateFrom || '—' }} s/d {{ dateTo || '—' }}
@@ -274,16 +258,8 @@ onMounted(load)
 
     <!-- Cards grid -->
     <VRow v-else dense>
-      <VCol
-        v-for="patient in filtered"
-        :key="patient.no_mr"
-        cols="12" sm="6" md="4" lg="3"
-      >
-        <VCard
-          elevation="0" border rounded="xl"
-          class="edu-card cursor-pointer h-100"
-          @click="openDetail(patient)"
-        >
+      <VCol v-for="patient in filtered" :key="patient.no_mr" cols="12" sm="6" md="4" lg="3">
+        <VCard elevation="0" border rounded="xl" class="edu-card cursor-pointer h-100" @click="openDetail(patient)">
           <VCardText class="pa-4">
             <!-- Top row -->
             <div class="d-flex align-start gap-3 mb-3">
@@ -308,18 +284,14 @@ onMounted(load)
               <VChip v-if="patient.status_ranap" color="purple" variant="tonal" size="x-small">
                 <VIcon icon="ri-hospital-fill" size="10" class="me-1" />{{ patient.status_ranap }}
               </VChip>
-              <VChip v-else
-                :color="patient.status === 'Selesai' ? 'success' : 'warning'"
-                variant="tonal" size="x-small"
-              >{{ patient.status }}</VChip>
-              <span v-if="patient.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ patient.jaminan }}</span>
+              <VChip v-else :color="patient.status === 'Selesai' ? 'success' : 'warning'" variant="tonal"
+                size="x-small">{{
+                patient.status }}</VChip>
+              <span v-if="patient.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ patient.jaminan
+                }}</span>
               <!-- Lama menunggu bed — hanya jika masih Menunggu -->
-              <VChip
-                v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient)"
-                :color="getWaktuColor(patient)"
-                variant="tonal" size="x-small"
-                prepend-icon="ri-time-line"
-              >{{ getWaktuMenunggu(patient) }}</VChip>
+              <VChip v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient)" :color="getWaktuColor(patient)"
+                variant="tonal" size="x-small" prepend-icon="ri-time-line">{{ getWaktuMenunggu(patient) }}</VChip>
             </div>
 
             <!-- Footer -->
@@ -335,16 +307,13 @@ onMounted(load)
     </VRow>
 
     <!-- Detail Dialog -->
-    <EdukasiDetailDialog
-      v-model="showDetail"
-      :patient="detailPatient"
-      :mode="dialogMode"
-      @saved="onSaved"
-    />
+    <EdukasiDetailDialog v-model="showDetail" :patient="detailPatient" :mode="dialogMode" @saved="onSaved" />
 
     <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="xl">
       {{ snackbar.msg }}
-      <template #actions><VBtn variant="text" size="small" @click="snackbar.show=false">✕</VBtn></template>
+      <template #actions>
+        <VBtn variant="text" size="small" @click="snackbar.show = false">✕</VBtn>
+      </template>
     </VSnackbar>
   </div>
 </template>
@@ -353,9 +322,10 @@ onMounted(load)
 .edu-card {
   transition: box-shadow 0.18s, transform 0.18s, border-color 0.15s;
 }
+
 .edu-card:hover {
-  box-shadow: 0 6px 20px rgba(16,185,129,0.15) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.15) !important;
   transform: translateY(-2px);
-  border-color: rgba(16,185,129,0.35) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
 }
 </style>

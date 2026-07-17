@@ -2,39 +2,39 @@
 import axios from 'axios'
 import PageHero from '@/components/PageHero.vue'
 
-const loading      = ref(false)
-const saving       = ref(false)
-const masterData   = ref({})
+const loading = ref(false)
+const saving = ref(false)
+const masterData = ref({})
 const activeCategory = ref('')
-const snackbar     = ref({ show: false, message: '', color: 'success' })
+const snackbar = ref({ show: false, message: '', color: 'success' })
 
 // Dialog untuk tambah item
-const showAddDialog  = ref(false)
-const newItem        = ref('')
-const addLoading     = ref(false)
+const showAddDialog = ref(false)
+const newItem = ref('')
+const addLoading = ref(false)
 
 // Dialog untuk hapus item
 const showDeleteDialog = ref(false)
-const deleteTarget     = ref({ category: '', index: -1, item: '' })
+const deleteTarget = ref({ category: '', index: -1, item: '' })
 
 // Inline edit per kategori (replace seluruh list)
-const editMode    = ref({})
-const editBuffer  = ref({})
+const editMode = ref({})
+const editBuffer = ref({})
 
 // Konfigurasi tampilan tiap kategori
 const CATEGORY_CONFIG = {
-  ket_bayar:        { label: 'Keterangan Bayar / Jaminan', icon: 'ri-money-cny-circle-line', color: 'success',   group: 'Pasien' },
-  jaminan:          { label: 'Jenis Jaminan',               icon: 'ri-shield-line',            color: 'teal',      group: 'Pasien' },
-  cara_masuk:       { label: 'Cara Masuk',                  icon: 'ri-door-open-line',          color: 'info',      group: 'Pasien' },
-  diagnosa:         { label: 'Diagnosa',                    icon: 'ri-heart-pulse-line',        color: 'error',     group: 'Pasien' },
-  ruangan:          { label: 'Ruangan',                     icon: 'ri-building-2-line',         color: 'primary',   group: 'Fasilitas' },
-  kelas:            { label: 'Kelas Kamar',                 icon: 'ri-hotel-line',              color: 'purple',    group: 'Fasilitas' },
-  bangsal:          { label: 'Bangsal',                     icon: 'ri-map-pin-line',            color: 'indigo',    group: 'Fasilitas' },
-  note_kamar:       { label: 'Opsi Kamar (Note)',           icon: 'ri-home-4-line',             color: 'blue',      group: 'Fasilitas' },
-  keterangan_batal: { label: 'Keterangan Batal Ranap',      icon: 'ri-close-circle-line',       color: 'error',     group: 'Operasional' },
-  status_ok:        { label: 'Status Batal Ranap',          icon: 'ri-checkbox-circle-line',    color: 'warning',   group: 'Operasional' },
-  ket_up_selling:   { label: 'Keterangan Up Selling',       icon: 'ri-arrow-up-circle-line',    color: 'success',   group: 'Operasional' },
-  status_ket_qc:    { label: 'Status Keterangan QC',        icon: 'ri-shield-check-line',       color: 'primary',   group: 'Operasional' },
+  ket_bayar: { label: 'Keterangan Bayar / Jaminan', icon: 'ri-money-cny-circle-line', color: 'success', group: 'Pasien' },
+  jaminan: { label: 'Jenis Jaminan', icon: 'ri-shield-line', color: 'teal', group: 'Pasien' },
+  cara_masuk: { label: 'Cara Masuk', icon: 'ri-door-open-line', color: 'info', group: 'Pasien' },
+  diagnosa: { label: 'Diagnosa', icon: 'ri-heart-pulse-line', color: 'error', group: 'Pasien' },
+  ruangan: { label: 'Ruangan', icon: 'ri-building-2-line', color: 'primary', group: 'Fasilitas' },
+  kelas: { label: 'Kelas Kamar', icon: 'ri-hotel-line', color: 'purple', group: 'Fasilitas' },
+  bangsal: { label: 'Bangsal', icon: 'ri-map-pin-line', color: 'indigo', group: 'Fasilitas' },
+  note_kamar: { label: 'Opsi Kamar (Note)', icon: 'ri-home-4-line', color: 'blue', group: 'Fasilitas' },
+  keterangan_batal: { label: 'Keterangan Batal Ranap', icon: 'ri-close-circle-line', color: 'error', group: 'Operasional' },
+  status_ok: { label: 'Status Batal Ranap', icon: 'ri-checkbox-circle-line', color: 'warning', group: 'Operasional' },
+  ket_up_selling: { label: 'Keterangan Up Selling', icon: 'ri-arrow-up-circle-line', color: 'success', group: 'Operasional' },
+  status_ket_qc: { label: 'Status Keterangan QC', icon: 'ri-shield-check-line', color: 'primary', group: 'Operasional' },
 }
 
 const groups = computed(() => {
@@ -50,7 +50,7 @@ const todayFormatted = computed(() =>
   new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 )
 
-const searchCat   = ref('')
+const searchCat = ref('')
 const activeGroup = ref('All')
 
 const groupNames = computed(() => ['All', ...new Set(Object.values(CATEGORY_CONFIG).map(c => c.group))])
@@ -84,8 +84,8 @@ async function loadMasterData() {
 
 function openAddDialog(category) {
   activeCategory.value = category
-  newItem.value        = ''
-  showAddDialog.value  = true
+  newItem.value = ''
+  showAddDialog.value = true
 }
 
 async function addItem() {
@@ -94,7 +94,7 @@ async function addItem() {
   try {
     const { data } = await axios.post('/api/master-data', {
       category: activeCategory.value,
-      item:     newItem.value.trim(),
+      item: newItem.value.trim(),
     })
     masterData.value = data.data
     notify(`"${newItem.value}" ditambahkan.`)
@@ -129,11 +129,11 @@ async function deleteItem() {
 
 function startEdit(category) {
   editBuffer.value[category] = [...(masterData.value[category] ?? [])]
-  editMode.value[category]   = true
+  editMode.value[category] = true
 }
 
 function cancelEdit(category) {
-  editMode.value[category]  = false
+  editMode.value[category] = false
   editBuffer.value[category] = []
 }
 
@@ -144,7 +144,7 @@ async function saveEdit(category) {
       items: editBuffer.value[category],
     })
     masterData.value = data.data
-    editMode.value[category]  = false
+    editMode.value[category] = false
     notify('Perubahan disimpan.')
   } catch (e) {
     notify('Gagal menyimpan perubahan.', 'error')
@@ -163,18 +163,12 @@ onMounted(() => loadMasterData())
 <template>
   <div>
     <!-- Hero -->
-    <PageHero
-      icon="ri-database-2-line"
-      badge="Admin · Master Data"
-      title="Master Data"
-      subtitle="Kelola data referensi untuk semua dropdown aplikasi QC Admission"
-      color-from="#0EA5E9"
-      color-to="#0369A1"
-      :pills="[
+    <PageHero icon="ri-database-2-line" badge="Admin · Master Data" title="Master Data"
+      subtitle="Kelola data referensi untuk semua dropdown aplikasi QC Admission" color-from="#0EA5E9"
+      color-to="#0369A1" :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },
         { icon: 'ri-list-check', text: `${Object.keys(CATEGORY_CONFIG).length} kategori` },
-      ]"
-    >
+      ]">
     </PageHero>
 
     <!-- Info -->
@@ -187,15 +181,11 @@ onMounted(() => loadMasterData())
 
     <!-- Category filter bar -->
     <div class="d-flex gap-2 mb-4 flex-wrap align-center">
-      <VTextField v-model="searchCat" label="Cari kategori..." prepend-inner-icon="ri-search-line"
-        variant="outlined" density="compact" hide-details clearable rounded="lg" style="max-width:220px" />
-      <VChip
-        v-for="g in groupNames" :key="g"
-        :color="activeGroup === g ? 'primary' : 'default'"
-        :variant="activeGroup === g ? 'elevated' : 'outlined'"
-        size="small" class="cursor-pointer"
-        @click="activeGroup = g"
-      >{{ g }}</VChip>
+      <VTextField v-model="searchCat" label="Cari kategori..." prepend-inner-icon="ri-search-line" variant="outlined"
+        density="compact" hide-details clearable rounded="lg" style="max-width:220px" />
+      <VChip v-for="g in groupNames" :key="g" :color="activeGroup === g ? 'primary' : 'default'"
+        :variant="activeGroup === g ? 'elevated' : 'outlined'" size="small" class="cursor-pointer"
+        @click="activeGroup = g">{{ g }}</VChip>
     </div>
 
     <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-4" rounded />
@@ -204,18 +194,15 @@ onMounted(() => loadMasterData())
     <div v-for="(groupItems, groupName) in visibleGroups" :key="groupName" class="mb-6">
       <div class="d-flex align-center gap-2 mb-3">
         <VDivider />
-        <VChip color="primary" variant="tonal" size="small" class="text-caption font-weight-bold text-uppercase flex-shrink-0">
+        <VChip color="primary" variant="tonal" size="small"
+          class="text-caption font-weight-bold text-uppercase flex-shrink-0">
           {{ groupName }}
         </VChip>
         <VDivider />
       </div>
 
       <VRow>
-        <VCol
-          v-for="cat in groupItems"
-          :key="cat.key"
-          cols="12" sm="6" lg="4"
-        >
+        <VCol v-for="cat in groupItems" :key="cat.key" cols="12" sm="6" lg="4">
           <VCard elevation="0" border rounded="xl" class="h-100">
             <!-- Card header -->
             <VCardTitle class="pa-4 pb-2">
@@ -233,21 +220,24 @@ onMounted(() => loadMasterData())
                   <template v-if="!editMode[cat.key]">
                     <VTooltip text="Tambah Item">
                       <template #activator="{ props }">
-                        <VBtn v-bind="props" icon size="x-small" variant="text" :color="cat.color" @click="openAddDialog(cat.key)">
+                        <VBtn v-bind="props" icon size="x-small" variant="text" :color="cat.color"
+                          @click="openAddDialog(cat.key)">
                           <VIcon icon="ri-add-line" size="16" />
                         </VBtn>
                       </template>
                     </VTooltip>
                     <VTooltip text="Edit Semua">
                       <template #activator="{ props }">
-                        <VBtn v-bind="props" icon size="x-small" variant="text" color="warning" @click="startEdit(cat.key)">
+                        <VBtn v-bind="props" icon size="x-small" variant="text" color="warning"
+                          @click="startEdit(cat.key)">
                           <VIcon icon="ri-pencil-line" size="16" />
                         </VBtn>
                       </template>
                     </VTooltip>
                   </template>
                   <template v-else>
-                    <VBtn size="x-small" color="success" variant="tonal" rounded="lg" :loading="saving" @click="saveEdit(cat.key)">
+                    <VBtn size="x-small" color="success" variant="tonal" rounded="lg" :loading="saving"
+                      @click="saveEdit(cat.key)">
                       Simpan
                     </VBtn>
                     <VBtn size="x-small" variant="text" color="secondary" @click="cancelEdit(cat.key)">
@@ -267,15 +257,8 @@ onMounted(() => loadMasterData())
                 <p class="text-caption mb-0">Belum ada item</p>
               </div>
               <div v-else class="d-flex flex-wrap gap-1">
-                <VChip
-                  v-for="(item, idx) in (masterData[cat.key] ?? [])"
-                  :key="idx"
-                  :color="cat.color"
-                  size="small"
-                  variant="tonal"
-                  closable
-                  @click:close="openDeleteDialog(cat.key, idx, item)"
-                >
+                <VChip v-for="(item, idx) in (masterData[cat.key] ?? [])" :key="idx" :color="cat.color" size="small"
+                  variant="tonal" closable @click:close="openDeleteDialog(cat.key, idx, item)">
                   {{ item }}
                 </VChip>
               </div>
@@ -284,15 +267,8 @@ onMounted(() => loadMasterData())
             <!-- Items list — edit mode -->
             <VCardText v-else class="pa-3">
               <div class="d-flex flex-wrap gap-1 mb-2">
-                <VChip
-                  v-for="(item, idx) in (editBuffer[cat.key] ?? [])"
-                  :key="idx"
-                  :color="cat.color"
-                  size="small"
-                  variant="tonal"
-                  closable
-                  @click:close="removeFromBuffer(cat.key, idx)"
-                >
+                <VChip v-for="(item, idx) in (editBuffer[cat.key] ?? [])" :key="idx" :color="cat.color" size="small"
+                  variant="tonal" closable @click:close="removeFromBuffer(cat.key, idx)">
                   {{ item }}
                 </VChip>
               </div>
@@ -310,7 +286,8 @@ onMounted(() => loadMasterData())
       <VCard rounded="xl">
         <VCardTitle class="pa-5 pb-2">
           <div class="d-flex align-center gap-3">
-            <VAvatar :color="CATEGORY_CONFIG[activeCategory]?.color ?? 'primary'" variant="tonal" size="40" rounded="lg">
+            <VAvatar :color="CATEGORY_CONFIG[activeCategory]?.color ?? 'primary'" variant="tonal" size="40"
+              rounded="lg">
               <VIcon :icon="CATEGORY_CONFIG[activeCategory]?.icon ?? 'ri-add-line'" size="18" />
             </VAvatar>
             <div>
@@ -320,25 +297,13 @@ onMounted(() => loadMasterData())
           </div>
         </VCardTitle>
         <VCardText class="pa-5 pt-3">
-          <VTextField
-            v-model="newItem"
-            label="Nama Item"
-            placeholder="Masukkan nama item baru..."
-            variant="outlined"
-            density="compact"
-            autofocus
-            @keyup.enter="addItem"
-          />
+          <VTextField v-model="newItem" label="Nama Item" placeholder="Masukkan nama item baru..." variant="outlined"
+            density="compact" autofocus @keyup.enter="addItem" />
         </VCardText>
         <VCardActions class="pa-4 pt-0 d-flex gap-2">
           <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showAddDialog = false">Batal</VBtn>
-          <VBtn
-            :color="CATEGORY_CONFIG[activeCategory]?.color ?? 'primary'"
-            rounded="lg" class="flex-grow-1"
-            :loading="addLoading"
-            :disabled="!newItem.trim()"
-            @click="addItem"
-          >
+          <VBtn :color="CATEGORY_CONFIG[activeCategory]?.color ?? 'primary'" rounded="lg" class="flex-grow-1"
+            :loading="addLoading" :disabled="!newItem.trim()" @click="addItem">
             Tambah
           </VBtn>
         </VCardActions>

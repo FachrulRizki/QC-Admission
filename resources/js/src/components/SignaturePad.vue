@@ -3,9 +3,9 @@ import SignaturePad from 'signature_pad'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },   // base64 PNG
-  label:      { type: String, default: 'Tanda Tangan' },
-  readonly:   { type: Boolean, default: false },
-  height:     { type: Number, default: 160 },
+  label: { type: String, default: 'Tanda Tangan' },
+  readonly: { type: Boolean, default: false },
+  height: { type: Number, default: 160 },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -57,7 +57,7 @@ function resizeCanvas() {
   const ratio = Math.max(window.devicePixelRatio || 1, 1)
   const canvas = canvasRef.value
   const data = signaturePad?.toData?.() ?? []
-  canvas.width  = canvas.offsetWidth * ratio
+  canvas.width = canvas.offsetWidth * ratio
   canvas.height = props.height * ratio
   canvas.getContext('2d').scale(ratio, ratio)
   if (data.length && signaturePad) signaturePad.fromData(data)
@@ -79,18 +79,11 @@ defineExpose({ clear, isEmpty })
   <div class="sig-pad-wrapper">
     <p v-if="label" class="text-caption font-weight-medium mb-1">{{ label }}</p>
 
-    <div
-      class="sig-pad-box"
-      :style="{ height: height + 'px' }"
-      :class="{ 'sig-readonly': readonly }"
-    >
+    <div class="sig-pad-box" :style="{ height: height + 'px' }" :class="{ 'sig-readonly': readonly }">
       <canvas ref="canvasRef" class="sig-canvas" />
 
       <!-- Placeholder when empty -->
-      <div
-        v-if="isEmpty() && !readonly"
-        class="sig-placeholder text-caption text-medium-emphasis"
-      >
+      <div v-if="isEmpty() && !readonly" class="sig-placeholder text-caption text-medium-emphasis">
         <VIcon icon="ri-pen-nib-line" size="20" class="me-1" />
         Tanda tangan di sini
       </div>
@@ -98,13 +91,7 @@ defineExpose({ clear, isEmpty })
 
     <!-- Clear button -->
     <div v-if="!readonly" class="d-flex justify-end mt-1">
-      <VBtn
-        size="x-small"
-        variant="text"
-        color="error"
-        prepend-icon="ri-eraser-line"
-        @click="clear"
-      >
+      <VBtn size="x-small" variant="text" color="error" prepend-icon="ri-eraser-line" @click="clear">
         Hapus TTD
       </VBtn>
     </div>
@@ -112,7 +99,9 @@ defineExpose({ clear, isEmpty })
 </template>
 
 <style scoped>
-.sig-pad-wrapper { width: 100%; }
+.sig-pad-wrapper {
+  width: 100%;
+}
 
 .sig-pad-box {
   position: relative;

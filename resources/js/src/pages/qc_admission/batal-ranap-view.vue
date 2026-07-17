@@ -1,14 +1,14 @@
 <script setup>
-import { useBatalRanapStore }  from '@/stores/useBatalRanapStore'
-import BatalRanapDetailDialog  from '@/views/qc-admission/batal-ranap/BatalRanapDetailDialog.vue'
-import PageHero                from '@/components/PageHero.vue'
+import { useBatalRanapStore } from '@/stores/useBatalRanapStore'
+import BatalRanapDetailDialog from '@/views/qc-admission/batal-ranap/BatalRanapDetailDialog.vue'
+import PageHero from '@/components/PageHero.vue'
 
-const store      = useBatalRanapStore()
-const search     = ref('')
-const dateFrom   = ref('')
-const dateTo     = ref('')
-const loading    = ref(false)
-const showDetail   = ref(false)
+const store = useBatalRanapStore()
+const search = ref('')
+const dateFrom = ref('')
+const dateTo = ref('')
+const loading = ref(false)
+const showDetail = ref(false)
 const selectedItem = ref(null)
 
 const todayFormatted = computed(() =>
@@ -16,13 +16,13 @@ const todayFormatted = computed(() =>
 )
 
 const headers = [
-  { title: 'Tanggal',          key: 'tanggal',          sortable: true },
-  { title: 'No. Reg',          key: 'no_reg',           sortable: true },
-  { title: 'Nama Pasien',      key: 'nama_pasien',      sortable: true },
+  { title: 'Tanggal', key: 'tanggal', sortable: true },
+  { title: 'No. Reg', key: 'no_reg', sortable: true },
+  { title: 'Nama Pasien', key: 'nama_pasien', sortable: true },
   { title: 'Keterangan Batal', key: 'keterangan_batal', sortable: true },
-  { title: 'Ruangan',          key: 'ruangan',          sortable: true },
-  { title: 'Status',           key: 'status_ok',        sortable: true, align: 'center' },
-  { title: 'Petugas',          key: 'petugas',          sortable: true },
+  { title: 'Ruangan', key: 'ruangan', sortable: true },
+  { title: 'Status', key: 'status_ok', sortable: true, align: 'center' },
+  { title: 'Petugas', key: 'petugas', sortable: true },
 ]
 
 function statusColor(s) {
@@ -49,12 +49,12 @@ const filtered = computed(() => {
   if (q) d = d.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q)))
   if (dateFrom.value || dateTo.value) {
     const from = dateFrom.value ? new Date(dateFrom.value + 'T00:00:00') : null
-    const to   = dateTo.value   ? new Date(dateTo.value   + 'T23:59:59') : null
+    const to = dateTo.value ? new Date(dateTo.value + 'T23:59:59') : null
     d = d.filter(r => {
       const tgl = parseTanggal(r.tanggal || '')
       if (!tgl) return true
       if (from && tgl < from) return false
-      if (to   && tgl > to)   return false
+      if (to && tgl > to) return false
       return true
     })
   }
@@ -62,15 +62,15 @@ const filtered = computed(() => {
 })
 
 const stats = computed(() => ({
-  total:    records.value.length,
-  belum:    records.value.filter(r => !r.status_ok).length,
-  bedah:    records.value.filter(r => r.status_ok === 'Bedah').length,
+  total: records.value.length,
+  belum: records.value.filter(r => !r.status_ok).length,
+  bedah: records.value.filter(r => r.status_ok === 'Bedah').length,
   nonBedah: records.value.filter(r => r.status_ok === 'Non Bedah').length,
 }))
 
 function openDetail(item) {
   selectedItem.value = item
-  showDetail.value   = true
+  showDetail.value = true
 }
 
 async function doRefresh() {
@@ -86,18 +86,12 @@ onMounted(() => doRefresh())
 <template>
   <div>
     <!-- Hero -->
-    <PageHero
-      icon="ri-close-circle-line"
-      badge="Kasir · View Only"
-      title="Data Batal Ranap"
-      subtitle="Monitoring pembatalan rawat inap · Klik baris untuk detail"
-      color-from="#0EA5E9"
-      color-to="#0369A1"
+    <PageHero icon="ri-close-circle-line" badge="Kasir · View Only" title="Data Batal Ranap"
+      subtitle="Monitoring pembatalan rawat inap · Klik baris untuk detail" color-from="#0EA5E9" color-to="#0369A1"
       :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },
         { icon: 'ri-database-line', text: `${stats.total} data` },
-      ]"
-    >
+      ]">
       <template #actions>
         <VChip color="white" variant="elevated" size="small" prepend-icon="ri-eye-line" style="color:#9F1239">
           View Only
@@ -138,12 +132,8 @@ onMounted(() => doRefresh())
       <VCardText class="py-3">
         <VRow dense align="center">
           <VCol cols="12" sm="7">
-            <VTextField
-              v-model="search"
-              placeholder="Cari nama pasien, no reg, petugas..."
-              prepend-inner-icon="ri-search-line"
-              variant="outlined" density="compact" hide-details clearable
-            />
+            <VTextField v-model="search" placeholder="Cari nama pasien, no reg, petugas..."
+              prepend-inner-icon="ri-search-line" variant="outlined" density="compact" hide-details clearable />
           </VCol>
           <VCol cols="6" sm="2">
             <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
@@ -168,16 +158,8 @@ onMounted(() => doRefresh())
 
     <!-- Table — klik baris buka modal detail -->
     <VCard elevation="0" border rounded="lg">
-      <VDataTable
-        :headers="headers"
-        :items="filtered"
-        density="compact"
-        hover
-        :loading="loading"
-        :items-per-page="15"
-        class="batal-table"
-        @click:row="(_, { item }) => openDetail(item)"
-      >
+      <VDataTable :headers="headers" :items="filtered" density="compact" hover :loading="loading" :items-per-page="15"
+        class="batal-table" @click:row="(_, { item }) => openDetail(item)">
         <template #item.status_ok="{ item }">
           <VChip :color="statusColor(item.status_ok)" size="small" variant="tonal" label>
             {{ item.status_ok || 'Belum Diverifikasi' }}

@@ -20,10 +20,7 @@ const today = new Date().toLocaleDateString('id-ID', {
     <template #navbar="{ toggleVerticalOverlayNavActive }">
       <div class="d-flex h-100 align-center w-100">
         <!-- Mobile menu toggle -->
-        <IconBtn
-          class="ms-n3 d-lg-none"
-          @click="toggleVerticalOverlayNavActive(true)"
-        >
+        <IconBtn class="ms-n3 d-lg-none" @click="toggleVerticalOverlayNavActive(true)">
           <VIcon icon="ri-menu-line" />
         </IconBtn>
 
@@ -65,10 +62,7 @@ const today = new Date().toLocaleDateString('id-ID', {
         </div>
       </Link>
 
-      <IconBtn
-        class="d-block d-lg-none"
-        @click="toggleIsOverlayNavActive(false)"
-      >
+      <IconBtn class="d-block d-lg-none" @click="toggleIsOverlayNavActive(false)">
         <VIcon icon="ri-close-line" />
       </IconBtn>
     </template>

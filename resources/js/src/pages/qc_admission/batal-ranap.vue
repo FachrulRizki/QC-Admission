@@ -1,42 +1,42 @@
 <script setup>
 import { useBatalRanapStore } from '@/stores/useBatalRanapStore'
-import BatalRanapFormDialog   from '@/views/qc-admission/batal-ranap/BatalRanapFormDialog.vue'
+import BatalRanapFormDialog from '@/views/qc-admission/batal-ranap/BatalRanapFormDialog.vue'
 import BatalRanapDetailDialog from '@/views/qc-admission/batal-ranap/BatalRanapDetailDialog.vue'
-import SummaryCards           from '@/components/SummaryCards.vue'
-import PageHero               from '@/components/PageHero.vue'
+import SummaryCards from '@/components/SummaryCards.vue'
+import PageHero from '@/components/PageHero.vue'
 
 const store = useBatalRanapStore()
 
-const showForm   = ref(false)
-const editItem   = ref(null)
+const showForm = ref(false)
+const editItem = ref(null)
 const showDetail = ref(false)
 const detailItem = ref(null)
-const loading    = ref(false)
-const snackbar   = ref({ show: false, msg: '', color: 'success' })
+const loading = ref(false)
+const snackbar = ref({ show: false, msg: '', color: 'success' })
 
 function todayStr() {
-  const d = new Date(), p = n => String(n).padStart(2,'0')
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+  const d = new Date(), p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-const search        = ref('')
-const dateFrom      = ref(todayStr())
-const dateTo        = ref(todayStr())
+const search = ref('')
+const dateFrom = ref(todayStr())
+const dateTo = ref(todayStr())
 const filterClosing = ref(null)  // null = semua | '' = belum closing | 'Siap Closing' | 'Belum Siap Closing'
 
 const records = computed(() => store.records ?? [])
 
 const stats = computed(() => ({
-  total:        records.value.length,
+  total: records.value.length,
   belumClosing: records.value.filter(r => !r.status_closing).length,
-  siap:         records.value.filter(r => r.status_closing === 'Siap Closing').length,
-  belumSiap:    records.value.filter(r => r.status_closing === 'Belum Siap Closing').length,
+  siap: records.value.filter(r => r.status_closing === 'Siap Closing').length,
+  belumSiap: records.value.filter(r => r.status_closing === 'Belum Siap Closing').length,
 }))
 
 const filtered = computed(() => {
   let d = records.value
   if (filterClosing.value === '') d = d.filter(r => !r.status_closing)
-  else if (filterClosing.value)   d = d.filter(r => r.status_closing === filterClosing.value)
+  else if (filterClosing.value) d = d.filter(r => r.status_closing === filterClosing.value)
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r =>
@@ -48,12 +48,12 @@ const filtered = computed(() => {
   return d
 })
 
-function statusOkColor(s)  { return { Bedah:'success', 'Non Bedah':'info' }[s] ?? 'secondary' }
-function statusOkLabel(s)  { return s || 'Belum Verifikasi' }
-function closingColor(s)   { return s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary' }
+function statusOkColor(s) { return { Bedah: 'success', 'Non Bedah': 'info' }[s] ?? 'secondary' }
+function statusOkLabel(s) { return s || 'Belum Verifikasi' }
+function closingColor(s) { return s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary' }
 
-function openRow(item)  { detailItem.value = item; showDetail.value = true }
-function openAdd()      { editItem.value = null; showForm.value = true }
+function openRow(item) { detailItem.value = item; showDetail.value = true }
+function openAdd() { editItem.value = null; showForm.value = true }
 function openEdit(item) {
   if (item.status_closing === 'Siap Closing') {
     // Sudah locked, tidak bisa edit
@@ -63,9 +63,9 @@ function openEdit(item) {
   editItem.value = { ...item }; showDetail.value = false; showForm.value = true
 }
 
-function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
+function toast(msg, color = 'success') { snackbar.value = { show: true, msg, color } }
 
-async function onSaved()    { showForm.value = false; toast('Data disimpan.'); await load() }
+async function onSaved() { showForm.value = false; toast('Data disimpan.'); await load() }
 async function onVerified(result) {
   if (result?.bedTriggered === true) {
     toast(`✅ Siap Closing tersimpan. Bed ${result.kodeBed} berhasil dibebaskan via ${result.source}.`, 'success')
@@ -86,11 +86,11 @@ async function load() {
   try {
     await store.fetchRecords({
       per_page: 200,
-      search:    search.value   || undefined,
+      search: search.value || undefined,
       date_from: dateFrom.value || undefined,
-      date_to:   dateTo.value   || undefined,
+      date_to: dateTo.value || undefined,
     })
-  } catch(e) { console.error(e) }
+  } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
 
@@ -103,60 +103,49 @@ onMounted(load)
 <template>
   <div>
     <!-- Header -->
-    <PageHero
-      icon="ri-close-circle-line"
-      badge="Batal Ranap"
-      title="Batal Ranap"
-      subtitle="Kelola pembatalan rawat inap & verifikasi closing"
-      color-from="#0EA5E9"
-      color-to="#0369A1"
-      :pills="[
+    <PageHero icon="ri-close-circle-line" badge="Batal Ranap" title="Batal Ranap"
+      subtitle="Kelola pembatalan rawat inap & verifikasi closing" color-from="#0EA5E9" color-to="#0369A1" :pills="[
         { icon: 'ri-database-line', text: `${stats.total} data` },
         { icon: 'ri-time-line', text: `${stats.belumClosing} blm verifikasi` },
-      ]"
-    >
+      ]">
       <template #actions>
-        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700" @click="openAdd">
+        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
+          @click="openAdd">
           <VIcon icon="ri-add-line" size="16" class="me-1" />Input Batal Ranap
         </VBtn>
       </template>
     </PageHero>
 
     <!-- Stats (clickable filter) -->
-    <SummaryCards
-      v-model="filterClosing"
-      :cards="[
-        { value: stats.total,        label: 'Total',              color: 'primary', icon: 'ri-close-circle-line',    filterValue: null },
-        { value: stats.siap,         label: 'Siap Closing',       color: 'success', icon: 'ri-checkbox-circle-line', filterValue: 'Siap Closing' },
-        { value: stats.belumSiap,    label: 'Belum Siap Closing', color: 'error',   icon: 'ri-close-circle-line',    filterValue: 'Belum Siap Closing' },
-      ]"
-    />
+    <SummaryCards v-model="filterClosing" :cards="[
+      { value: stats.total, label: 'Total', color: 'primary', icon: 'ri-close-circle-line', filterValue: null },
+      { value: stats.siap, label: 'Siap Closing', color: 'success', icon: 'ri-checkbox-circle-line', filterValue: 'Siap Closing' },
+      { value: stats.belumSiap, label: 'Belum Siap Closing', color: 'error', icon: 'ri-close-circle-line', filterValue: 'Belum Siap Closing' },
+    ]" />
 
     <!-- Filter -->
     <VCard elevation="0" border rounded="xl" class="mb-4">
       <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="4">
-            <VTextField v-model="search" label="Cari pasien..." prepend-inner-icon="ri-search-line"
-              variant="outlined" density="compact" hide-details clearable rounded="lg" />
+            <VTextField v-model="search" label="Cari pasien..." prepend-inner-icon="ri-search-line" variant="outlined"
+              density="compact" hide-details clearable rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="12" sm="3">
-            <VSelect
-              v-model="filterClosing"
-              :items="[
-                { title: 'Semua Status',          value: null },
-                { title: '👍 Siap Closing',        value: 'Siap Closing' },
-                { title: '🔴 Belum Siap Closing',  value: 'Belum Siap Closing' },
-              ]"
-              item-title="title" item-value="value"
-              label="Status Closing" variant="outlined" density="compact" hide-details rounded="lg"
-            />
+            <VSelect v-model="filterClosing" :items="[
+              { title: 'Semua Status', value: null },
+              { title: '👍 Siap Closing', value: 'Siap Closing' },
+              { title: '🔴 Belum Siap Closing', value: 'Belum Siap Closing' },
+            ]" item-title="title" item-value="value" label="Status Closing" variant="outlined" density="compact"
+              hide-details rounded="lg" />
           </VCol>
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary" @click="resetFilter; load()">Reset</VBtn>
@@ -179,15 +168,11 @@ onMounted(load)
       <div v-else-if="!filtered.length" class="text-center py-16" style="color:var(--qc-text-2)">
         <VIcon icon="ri-inbox-line" size="52" class="mb-3 opacity-30" />
         <p class="text-body-1 font-weight-semibold mb-1">Belum ada data</p>
-        <VBtn color="error" variant="tonal" rounded="lg" size="small" class="mt-2" @click="openAdd">+ Input Batal Ranap</VBtn>
+        <VBtn color="error" variant="tonal" rounded="lg" size="small" class="mt-2" @click="openAdd">+ Input Batal Ranap
+        </VBtn>
       </div>
       <div v-else>
-        <div
-          v-for="(item, idx) in filtered"
-          :key="item.id"
-          class="br-row"
-          @click="openRow(item)"
-        >
+        <div v-for="(item, idx) in filtered" :key="item.id" class="br-row" @click="openRow(item)">
           <!-- Avatar -->
           <VAvatar color="error" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
             <span style="font-size:14px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
@@ -196,11 +181,13 @@ onMounted(load)
           <!-- Info -->
           <div class="flex-grow-1 min-width-0">
             <div class="d-flex align-center gap-2 flex-wrap">
-              <span class="font-weight-semibold text-truncate" style="font-size:0.9rem;color:var(--qc-text)">{{ item.nama_pasien }}</span>
+              <span class="font-weight-semibold text-truncate" style="font-size:0.9rem;color:var(--qc-text)">{{
+                item.nama_pasien }}</span>
               <VChip :color="statusOkColor(item.status_ok)" size="x-small" variant="tonal">
                 {{ statusOkLabel(item.status_ok) }}
               </VChip>
-              <VChip v-if="item.status_closing" :color="closingColor(item.status_closing)" size="x-small" variant="tonal">
+              <VChip v-if="item.status_closing" :color="closingColor(item.status_closing)" size="x-small"
+                variant="tonal">
                 <VIcon v-if="item.status_closing === 'Siap Closing'" icon="ri-lock-line" size="10" class="me-1" />
                 {{ item.status_closing }}
               </VChip>
@@ -228,31 +215,35 @@ onMounted(load)
     <!-- Dialogs -->
     <BatalRanapFormDialog v-model="showForm" :edit-item="editItem" @saved="onSaved" />
 
-    <BatalRanapDetailDialog
-      v-model="showDetail"
-      :item="detailItem"
-      @verified="onVerified"
-      @edit="openEdit"
-    />
+    <BatalRanapDetailDialog v-model="showDetail" :item="detailItem" @verified="onVerified" @edit="openEdit" />
 
     <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="xl">
       {{ snackbar.msg }}
-      <template #actions><VBtn variant="text" size="small" @click="snackbar.show=false">✕</VBtn></template>
+      <template #actions>
+        <VBtn variant="text" size="small" @click="snackbar.show = false">✕</VBtn>
+      </template>
     </VSnackbar>
   </div>
 </template>
 
 <style scoped>
 .br-row {
-  display: flex; align-items: center; gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 15px 16px;
-  cursor: pointer; transition: background 0.12s;
-  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0, 0, 0, 0.07));
 }
-.br-row:last-child { border-bottom: none; }
+
+.br-row:last-child {
+  border-bottom: none;
+}
+
 .br-row:hover {
-  background: rgba(239,68,68,0.04);
-  border-left: 3px solid rgba(239,68,68,0.35);
+  background: rgba(239, 68, 68, 0.04);
+  border-left: 3px solid rgba(239, 68, 68, 0.35);
   padding-left: 13px;
 }
 </style>

@@ -1,38 +1,38 @@
 <script setup>
-import { useUpSellingStore }  from '@/stores/useUpSellingStore'
-import UpSellingFormDialog    from '@/views/qc-admission/up-selling/UpSellingFormDialog.vue'
-import SummaryCards           from '@/components/SummaryCards.vue'
-import PageHero               from '@/components/PageHero.vue'
+import { useUpSellingStore } from '@/stores/useUpSellingStore'
+import UpSellingFormDialog from '@/views/qc-admission/up-selling/UpSellingFormDialog.vue'
+import SummaryCards from '@/components/SummaryCards.vue'
+import PageHero from '@/components/PageHero.vue'
 
 const store = useUpSellingStore()
 
-const showForm   = ref(false)
-const editItem   = ref(null)
+const showForm = ref(false)
+const editItem = ref(null)
 const showDetail = ref(false)
 const detailItem = ref(null)
-const showDel    = ref(false)
-const delTarget  = ref(null)
-const loading    = ref(false)
-const snackbar   = ref({ show: false, msg: '', color: 'success' })
+const showDel = ref(false)
+const delTarget = ref(null)
+const loading = ref(false)
+const snackbar = ref({ show: false, msg: '', color: 'success' })
 
 function todayStr() {
-  const d = new Date(), p = n => String(n).padStart(2,'0')
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+  const d = new Date(), p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 const todayFormatted = computed(() =>
   new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 )
 
-const search      = ref('')
-const dateFrom    = ref(todayStr())
-const dateTo      = ref(todayStr())
+const search = ref('')
+const dateFrom = ref(todayStr())
+const dateTo = ref(todayStr())
 const filterAlasan = ref('')   // '' | 'Naik Kelas' | 'Perubahan Jaminan'
 
 const records = computed(() => store.records ?? [])
 
 const stats = computed(() => ({
-  total:     records.value.length,
+  total: records.value.length,
   naikKelas: records.value.filter(r => r.alasan === 'Naik Kelas').length,
   perubahan: records.value.filter(r => r.alasan === 'Perubahan Jaminan').length,
 }))
@@ -56,11 +56,11 @@ const filtered = computed(() => {
 
 function ketColor(k) { return k === 'Naik Kelas' ? 'success' : 'info' }
 
-function openRow(item)  { detailItem.value = item; showDetail.value = true }
-function openAdd()      { editItem.value = null; showForm.value = true }
+function openRow(item) { detailItem.value = item; showDetail.value = true }
+function openAdd() { editItem.value = null; showForm.value = true }
 function openEdit(item) { editItem.value = { ...item }; showDetail.value = false; showForm.value = true }
 
-function toast(msg, color='success') { snackbar.value = { show: true, msg, color } }
+function toast(msg, color = 'success') { snackbar.value = { show: true, msg, color } }
 
 async function onSaved() { showForm.value = false; toast('Data disimpan.'); await load() }
 
@@ -87,7 +87,7 @@ async function load() {
       date_from: dateFrom.value || undefined,
       date_to: dateTo.value || undefined,
     })
-  } catch(e) { console.error(e) }
+  } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
 
@@ -100,20 +100,14 @@ onMounted(load)
 <template>
   <div>
     <!-- Header -->
-    <PageHero
-      icon="ri-arrow-up-circle-line"
-      badge="Up Selling"
-      title="Up Selling"
-      subtitle="Penawaran upgrade kelas kamar rawat inap"
-      color-from="#0EA5E9"
-      color-to="#0369A1"
-      :pills="[
+    <PageHero icon="ri-arrow-up-circle-line" badge="Up Selling" title="Up Selling"
+      subtitle="Penawaran upgrade kelas kamar rawat inap" color-from="#0EA5E9" color-to="#0369A1" :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },
         { icon: 'ri-database-line', text: `${stats.total} data` },
-      ]"
-    >
+      ]">
       <template #actions>
-        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700" @click="openAdd">
+        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
+          @click="openAdd">
           <VIcon icon="ri-add-line" size="16" class="me-1" />Input Up Selling
         </VBtn>
       </template>
@@ -121,9 +115,9 @@ onMounted(load)
 
     <!-- Stats -->
     <SummaryCards :cards="[
-      { value: stats.total,     label: 'Total Up Selling',  color: 'primary', icon: 'ri-arrow-up-circle-line' },
-      { value: stats.naikKelas, label: 'Naik Kelas',        color: 'success', icon: 'ri-building-line' },
-      { value: stats.perubahan, label: 'Perubahan Jaminan', color: 'info',    icon: 'ri-exchange-line' },
+      { value: stats.total, label: 'Total Up Selling', color: 'primary', icon: 'ri-arrow-up-circle-line' },
+      { value: stats.naikKelas, label: 'Naik Kelas', color: 'success', icon: 'ri-building-line' },
+      { value: stats.perubahan, label: 'Perubahan Jaminan', color: 'info', icon: 'ri-exchange-line' },
     ]" />
 
     <!-- Filter -->
@@ -135,22 +129,20 @@ onMounted(load)
               variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="12" sm="3">
-            <VSelect
-              v-model="filterAlasan"
-              :items="[
-                { title: 'Semua Keterangan', value: '' },
-                { title: '🏢 Naik Kelas', value: 'Naik Kelas' },
-                { title: '🔄 Perubahan Jaminan', value: 'Perubahan Jaminan' },
-              ]"
-              item-title="title" item-value="value"
-              label="Keterangan" variant="outlined" density="compact" hide-details rounded="lg"
-            />
+            <VSelect v-model="filterAlasan" :items="[
+              { title: 'Semua Keterangan', value: '' },
+              { title: '🏢 Naik Kelas', value: 'Naik Kelas' },
+              { title: '🔄 Perubahan Jaminan', value: 'Perubahan Jaminan' },
+            ]" item-title="title" item-value="value" label="Keterangan" variant="outlined" density="compact"
+              hide-details rounded="lg" />
           </VCol>
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary" @click="resetFilter; load()">Reset</VBtn>
@@ -173,15 +165,11 @@ onMounted(load)
       <div v-else-if="!filtered.length" class="text-center py-16" style="color:var(--qc-text-2)">
         <VIcon icon="ri-arrow-up-circle-line" size="52" class="mb-3 opacity-30" />
         <p class="text-body-1 font-weight-semibold mb-1">Belum ada data</p>
-        <VBtn color="info" variant="tonal" rounded="lg" size="small" class="mt-2" @click="openAdd">+ Input Up Selling</VBtn>
+        <VBtn color="info" variant="tonal" rounded="lg" size="small" class="mt-2" @click="openAdd">+ Input Up Selling
+        </VBtn>
       </div>
       <div v-else>
-        <div
-          v-for="(item, idx) in filtered"
-          :key="item.id"
-          class="us-row"
-          @click="openRow(item)"
-        >
+        <div v-for="(item, idx) in filtered" :key="item.id" class="us-row" @click="openRow(item)">
           <!-- Avatar -->
           <VAvatar color="info" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
             <span style="font-size:14px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
@@ -190,7 +178,8 @@ onMounted(load)
           <!-- Info -->
           <div class="flex-grow-1 min-width-0">
             <div class="d-flex align-center gap-2 flex-wrap">
-              <span class="font-weight-semibold text-truncate" style="font-size:0.9rem;color:var(--qc-text)">{{ item.nama_pasien }}</span>
+              <span class="font-weight-semibold text-truncate" style="font-size:0.9rem;color:var(--qc-text)">{{
+                item.nama_pasien }}</span>
               <VChip :color="ketColor(item.alasan)" size="x-small" variant="tonal">{{ item.alasan || '—' }}</VChip>
             </div>
             <div class="d-flex align-center gap-3 mt-1 flex-wrap">
@@ -226,7 +215,7 @@ onMounted(load)
               <span class="detail-id">{{ detailItem.no_reg }}</span>
             </div>
             <VChip class="detail-ket-chip" size="x-small">{{ detailItem.alasan || '—' }}</VChip>
-            <VBtn icon variant="text" color="white" size="small" @click="showDetail=false">
+            <VBtn icon variant="text" color="white" size="small" @click="showDetail = false">
               <VIcon icon="ri-close-line" size="18" />
             </VBtn>
           </div>
@@ -273,11 +262,11 @@ onMounted(load)
         </div>
 
         <div class="detail-actions">
-          <VBtn variant="outlined" rounded="lg" size="small" @click="showDetail=false">Tutup</VBtn>
+          <VBtn variant="outlined" rounded="lg" size="small" @click="showDetail = false">Tutup</VBtn>
           <VBtn color="info" variant="tonal" rounded="lg" size="small" @click="openEdit(detailItem)">
             <VIcon icon="ri-pencil-line" size="14" class="me-1" />Edit
           </VBtn>
-          <VBtn color="error" variant="tonal" rounded="lg" size="small" @click="delTarget=detailItem; showDel=true">
+          <VBtn color="error" variant="tonal" rounded="lg" size="small" @click="delTarget = detailItem; showDel = true">
             <VIcon icon="ri-delete-bin-line" size="14" />
           </VBtn>
         </div>
@@ -295,7 +284,7 @@ onMounted(load)
           <p class="text-body-2" style="color:var(--qc-text-2)">{{ delTarget?.nama_pasien }}</p>
         </VCardText>
         <div class="d-flex gap-2 px-5 pb-5">
-          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showDel=false">Batal</VBtn>
+          <VBtn variant="outlined" rounded="lg" class="flex-grow-1" @click="showDel = false">Batal</VBtn>
           <VBtn color="error" rounded="lg" class="flex-grow-1" :loading="loading" @click="doDel">Hapus</VBtn>
         </div>
       </VCard>
@@ -303,21 +292,31 @@ onMounted(load)
 
     <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="xl">
       {{ snackbar.msg }}
-      <template #actions><VBtn variant="text" size="small" @click="snackbar.show=false">✕</VBtn></template>
+      <template #actions>
+        <VBtn variant="text" size="small" @click="snackbar.show = false">✕</VBtn>
+      </template>
     </VSnackbar>
   </div>
 </template>
 
 <style scoped>
 .us-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 15px 16px; cursor: pointer; transition: background 0.12s;
-  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0, 0, 0, 0.07));
 }
-.us-row:last-child { border-bottom: none; }
+
+.us-row:last-child {
+  border-bottom: none;
+}
+
 .us-row:hover {
-  background: rgba(59,130,246,0.04);
-  border-left: 3px solid rgba(59,130,246,0.35);
+  background: rgba(59, 130, 246, 0.04);
+  border-left: 3px solid rgba(59, 130, 246, 0.35);
   padding-left: 13px;
 }
 
@@ -326,38 +325,84 @@ onMounted(load)
   padding: 18px 18px 14px;
   border-radius: 20px 20px 0 0;
 }
-.detail-hd--blue { background: linear-gradient(135deg, #1E3A5F, #3B82F6); }
+
+.detail-hd--blue {
+  background: linear-gradient(135deg, #1E3A5F, #3B82F6);
+}
 
 .detail-av {
-  width: 48px; height: 48px; border-radius: 13px;
-  background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 800; color: #fff; flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
 }
-.detail-nm { font-size: 1rem; font-weight: 700; color: #fff; margin: 0; }
-.detail-id { font-size: 0.72rem; color: rgba(255,255,255,0.7); }
+
+.detail-nm {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.detail-id {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .detail-ket-chip {
-  background: rgba(255,255,255,0.2) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
   color: #fff !important;
   font-size: 0.68rem !important;
   flex-shrink: 0;
 }
 
 .detail-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
+
 .detail-cell {
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   padding: 11px 18px;
   border-bottom: 1px solid var(--qc-border);
 }
-.detail-cell--full { grid-column: span 2; }
-.detail-lbl { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--qc-text-2); margin-bottom: 2px; font-weight: 600; }
-.detail-val { font-size: 0.85rem; font-weight: 500; color: var(--qc-text); }
-.detail-val.fw { font-weight: 700; }
+
+.detail-cell--full {
+  grid-column: span 2;
+}
+
+.detail-lbl {
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--qc-text-2);
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+
+.detail-val {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--qc-text);
+}
+
+.detail-val.fw {
+  font-weight: 700;
+}
 
 .detail-actions {
-  display: flex; gap: 8px; padding: 12px 18px;
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px;
   border-top: 1px solid var(--qc-border);
 }
 </style>

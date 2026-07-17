@@ -2,7 +2,7 @@
 import { usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 
-const page       = usePage()
+const page = usePage()
 const ssoEnabled = computed(() => page.props.ssoEnabled ?? true)
 const ssoLoading = ref(false)
 
@@ -10,16 +10,16 @@ const ssoLoading = ref(false)
 const errorMsg = ref(page.props.flash?.error ?? '')
 
 // Form login lokal
-const localForm    = reactive({ username: '', password: '' })
+const localForm = reactive({ username: '', password: '' })
 const localLoading = ref(false)
 const showPassword = ref(false)
 
 const features = [
-  { icon: 'ri-shield-check-line',    text: 'Monitoring Quality Control Admisi' },
-  { icon: 'ri-book-open-line',       text: 'Edukasi Lanjutan & TTD Keluarga' },
-  { icon: 'ri-close-circle-line',    text: 'Manajemen Batal Rawat Inap' },
+  { icon: 'ri-shield-check-line', text: 'Monitoring Quality Control Admisi' },
+  { icon: 'ri-book-open-line', text: 'Edukasi Lanjutan & TTD Keluarga' },
+  { icon: 'ri-close-circle-line', text: 'Manajemen Batal Rawat Inap' },
   { icon: 'ri-arrow-up-circle-line', text: 'Up Selling Kelas Kamar' },
-  { icon: 'ri-history-line',         text: 'Log Aktivitas Real-time' },
+  { icon: 'ri-history-line', text: 'Log Aktivitas Real-time' },
 ]
 
 function loginWithSSO() {
@@ -34,7 +34,7 @@ async function loginLocal() {
   }
 
   localLoading.value = true
-  errorMsg.value     = ''
+  errorMsg.value = ''
 
   try {
     // Ambil CSRF cookie dulu
@@ -119,12 +119,8 @@ async function loginLocal() {
           </div>
 
           <!-- Error -->
-          <VAlert
-            v-if="errorMsg"
-            type="error" variant="tonal" density="compact"
-            class="mb-5" rounded="lg" closable
-            @click:close="errorMsg = ''"
-          >
+          <VAlert v-if="errorMsg" type="error" variant="tonal" density="compact" class="mb-5" rounded="lg" closable
+            @click:close="errorMsg = ''">
             <VIcon icon="ri-error-warning-line" class="me-1" size="16" />{{ errorMsg }}
           </VAlert>
 
@@ -138,13 +134,8 @@ async function loginLocal() {
               <p class="text-caption text-medium-emphasis mb-5">
                 Anda akan diarahkan ke halaman login SSO rumah sakit
               </p>
-              <VBtn
-                block size="large" color="info" rounded="xl"
-                :loading="ssoLoading"
-                prepend-icon="ri-shield-keyhole-line"
-                class="login-btn"
-                @click="loginWithSSO"
-              >
+              <VBtn block size="large" color="info" rounded="xl" :loading="ssoLoading"
+                prepend-icon="ri-shield-keyhole-line" class="login-btn" @click="loginWithSSO">
                 Masuk dengan SSO Rumah Sakit
               </VBtn>
             </div>
@@ -154,54 +145,29 @@ async function loginLocal() {
           <template v-else>
             <div class="login-local-card mb-5">
               <!-- Info banner testing -->
-              <VAlert
-                type="warning" variant="tonal" density="compact"
-                rounded="lg" class="mb-5" icon="ri-flask-line"
-              >
+              <VAlert type="warning" variant="tonal" density="compact" rounded="lg" class="mb-5" icon="ri-flask-line">
                 <span class="text-caption">Mode testing aktif — SSO dinonaktifkan</span>
               </VAlert>
 
               <form @submit.prevent="loginLocal">
                 <div class="mb-4">
                   <label class="login-field__label">Username / Email</label>
-                  <VTextField
-                    v-model="localForm.username"
-                    placeholder="Masukkan username atau email"
-                    variant="outlined"
-                    density="comfortable"
-                    rounded="lg"
-                    hide-details
-                    autocomplete="username"
-                    prepend-inner-icon="ri-user-line"
-                    class="login-input"
-                  />
+                  <VTextField v-model="localForm.username" placeholder="Masukkan username atau email" variant="outlined"
+                    density="comfortable" rounded="lg" hide-details autocomplete="username"
+                    prepend-inner-icon="ri-user-line" class="login-input" />
                 </div>
 
                 <div class="mb-6">
                   <label class="login-field__label">Password</label>
-                  <VTextField
-                    v-model="localForm.password"
-                    :type="showPassword ? 'text' : 'password'"
-                    placeholder="Masukkan password"
-                    variant="outlined"
-                    density="comfortable"
-                    rounded="lg"
-                    hide-details
-                    autocomplete="current-password"
-                    prepend-inner-icon="ri-lock-line"
-                    :append-inner-icon="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'"
-                    class="login-input"
-                    @click:append-inner="showPassword = !showPassword"
-                  />
+                  <VTextField v-model="localForm.password" :type="showPassword ? 'text' : 'password'"
+                    placeholder="Masukkan password" variant="outlined" density="comfortable" rounded="lg" hide-details
+                    autocomplete="current-password" prepend-inner-icon="ri-lock-line"
+                    :append-inner-icon="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'" class="login-input"
+                    @click:append-inner="showPassword = !showPassword" />
                 </div>
 
-                <VBtn
-                  block size="large" color="primary" rounded="xl"
-                  :loading="localLoading"
-                  type="submit"
-                  prepend-icon="ri-login-circle-line"
-                  class="login-btn"
-                >
+                <VBtn block size="large" color="primary" rounded="xl" :loading="localLoading" type="submit"
+                  prepend-icon="ri-login-circle-line" class="login-btn">
                   Masuk
                 </VBtn>
               </form>
@@ -226,17 +192,38 @@ async function loginLocal() {
   position: relative;
   overflow: hidden;
 }
+
 .login-bg-shape {
   position: absolute;
   border-radius: 50%;
   opacity: 0.12;
   pointer-events: none;
-  background: rgba(255,255,255,0.8);
+  background: rgba(255, 255, 255, 0.8);
   filter: blur(70px);
 }
-.login-bg-shape--1 { width: 500px; height: 500px; top: -200px; right: -100px; }
-.login-bg-shape--2 { width: 300px; height: 300px; bottom: -100px; left: -50px; opacity: 0.07; }
-.login-bg-shape--3 { width: 200px; height: 200px; top: 40%; left: 30%; opacity: 0.06; }
+
+.login-bg-shape--1 {
+  width: 500px;
+  height: 500px;
+  top: -200px;
+  right: -100px;
+}
+
+.login-bg-shape--2 {
+  width: 300px;
+  height: 300px;
+  bottom: -100px;
+  left: -50px;
+  opacity: 0.07;
+}
+
+.login-bg-shape--3 {
+  width: 200px;
+  height: 200px;
+  top: 40%;
+  left: 30%;
+  opacity: 0.06;
+}
 
 .login-container {
   display: flex;
@@ -245,41 +232,78 @@ async function loginLocal() {
   margin: auto;
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 32px 80px rgba(0,0,0,0.5);
-  @media (max-width: 959px) { border-radius: 0; max-width: 100%; box-shadow: none; }
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+
+  @media (max-width: 959px) {
+    border-radius: 0;
+    max-width: 100%;
+    box-shadow: none;
+  }
 }
 
 .login-brand {
   flex: 1;
-  background: linear-gradient(160deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
   backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255,255,255,0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 48px 40px;
 
-  &__inner { max-width: 320px; }
+  &__inner {
+    max-width: 320px;
+  }
+
   &__logo {
-    width: 80px; height: 80px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
     border-radius: 22px;
-    border: 1px solid rgba(255,255,255,0.2);
-    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     backdrop-filter: blur(8px);
   }
-  &__title { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 8px; letter-spacing: -0.02em; }
-  &__sub   { font-size: 1rem; color: rgba(255,255,255,0.65); margin-bottom: 0; }
-  &__feat  { display: flex; align-items: center; gap: 14px; }
-  &__feat-icon {
-    width: 36px; height: 36px; flex-shrink: 0;
-    background: rgba(255,255,255,0.12);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,0.85);
-    border: 1px solid rgba(255,255,255,0.1);
+
+  &__title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
   }
-  &__feat span { font-size: 0.875rem; color: rgba(255,255,255,0.75); }
+
+  &__sub {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 0;
+  }
+
+  &__feat {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  &__feat-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  &__feat span {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.75);
+  }
 }
 
 .login-form-panel {
@@ -289,16 +313,31 @@ async function loginLocal() {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  @media (max-width: 959px) { flex: 1; padding: 32px 20px; }
+
+  @media (max-width: 959px) {
+    flex: 1;
+    padding: 32px 20px;
+  }
 }
-.login-form-inner { width: 100%; max-width: 380px; }
+
+.login-form-inner {
+  width: 100%;
+  max-width: 380px;
+}
 
 .login-form__title {
-  font-size: 1.625rem; font-weight: 800;
+  font-size: 1.625rem;
+  font-weight: 800;
   color: rgb(var(--v-theme-on-surface));
-  margin-bottom: 6px; letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
 }
-.login-form__sub { font-size: 0.9rem; color: rgba(var(--v-theme-on-surface), 0.55); margin-bottom: 0; }
+
+.login-form__sub {
+  font-size: 0.9rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  margin-bottom: 0;
+}
 
 .login-net-badge {
   display: inline-flex;
@@ -309,13 +348,35 @@ async function loginLocal() {
   background: rgba(var(--v-theme-on-surface), 0.05);
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 
-  &__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .dot--online { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.25); animation: pulse 2s infinite; }
-  .dot--local  { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot--online {
+    background: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+    animation: pulse 2s infinite;
+  }
+
+  .dot--local {
+    background: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+  }
 }
+
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(34,197,94,0.25); }
-  50%       { box-shadow: 0 0 0 6px rgba(34,197,94,0.1); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.1);
+  }
 }
 
 .login-sso-card {
@@ -335,11 +396,15 @@ async function loginLocal() {
 
 .login-field__label {
   display: block;
-  font-size: 0.8125rem; font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.8);
   margin-bottom: 6px;
 }
-.login-input :deep(.v-field) { border-radius: 12px !important; }
+
+.login-input :deep(.v-field) {
+  border-radius: 12px !important;
+}
 
 .login-btn {
   height: 52px !important;
@@ -349,10 +414,13 @@ async function loginLocal() {
 }
 
 .login-logo-sm {
-  width: 42px; height: 42px;
+  width: 42px;
+  height: 42px;
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)), rgba(var(--v-theme-primary), 0.7));
   border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 </style>

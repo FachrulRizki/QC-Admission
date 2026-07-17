@@ -1,22 +1,19 @@
 <script setup>
 defineProps({
-  icon:      { type: String, default: 'ri-apps-line' },
-  badge:     { type: String, default: '' },
-  title:     { type: String, required: true },
-  subtitle:  { type: String, default: '' },
-  pills:     { type: Array,  default: () => [] }, // [{ icon, text }]
+  icon: { type: String, default: 'ri-apps-line' },
+  badge: { type: String, default: '' },
+  title: { type: String, required: true },
+  subtitle: { type: String, default: '' },
+  pills: { type: Array, default: () => [] }, // [{ icon, text }]
   colorFrom: { type: String, default: '#7C3AED' },
-  colorTo:   { type: String, default: '#4C1D95' },
+  colorTo: { type: String, default: '#4C1D95' },
   textColor: { type: String, default: 'light' }, // 'light' | 'dark'
 })
 </script>
 
 <template>
-  <div
-    class="page-hero"
-    :class="`page-hero--text-${textColor}`"
-    :style="{ '--hero-from': colorFrom, '--hero-to': colorTo }"
-  >
+  <div class="page-hero" :class="`page-hero--text-${textColor}`"
+    :style="{ '--hero-from': colorFrom, '--hero-to': colorTo }">
     <!-- Decorative background -->
     <div class="page-hero__bg" aria-hidden="true">
       <span class="page-hero__blob page-hero__blob--1" />
@@ -80,8 +77,13 @@ defineProps({
   box-sizing: border-box;
 }
 
-.page-hero--text-light { color: #fff; }
-.page-hero--text-dark  { color: rgba(0, 40, 30, 0.92); }
+.page-hero--text-light {
+  color: #fff;
+}
+
+.page-hero--text-dark {
+  color: rgba(0, 40, 30, 0.92);
+}
 
 /* ---------- decorative background ---------- */
 .page-hero__bg {
@@ -90,6 +92,7 @@ defineProps({
   z-index: 0;
   pointer-events: none;
 }
+
 .page-hero__grid {
   position: absolute;
   inset: 0;
@@ -98,15 +101,37 @@ defineProps({
   mask-image: linear-gradient(120deg, rgba(0, 0, 0, 0.5), transparent 65%);
   opacity: 0.6;
 }
+
 .page-hero__blob {
   position: absolute;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.16);
   filter: blur(2px);
 }
-.page-hero__blob--1 { width: 220px; height: 220px; top: -90px; right: 60px; background: rgba(255,255,255,0.14); }
-.page-hero__blob--2 { width: 140px; height: 140px; bottom: -60px; right: 220px; background: rgba(255,255,255,0.10); }
-.page-hero__blob--3 { width: 90px;  height: 90px;  top: 30%; left: -30px; background: rgba(255,255,255,0.10); }
+
+.page-hero__blob--1 {
+  width: 220px;
+  height: 220px;
+  top: -90px;
+  right: 60px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.page-hero__blob--2 {
+  width: 140px;
+  height: 140px;
+  bottom: -60px;
+  right: 220px;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.page-hero__blob--3 {
+  width: 90px;
+  height: 90px;
+  top: 30%;
+  left: -30px;
+  background: rgba(255, 255, 255, 0.10);
+}
 
 /* ---------- layout ---------- */
 .page-hero__row {
@@ -137,12 +162,15 @@ defineProps({
   margin-bottom: 12px;
   white-space: nowrap;
 }
-.page-hero--text-dark .page-hero__badge { background: rgba(0, 40, 20, 0.12); }
+
+.page-hero--text-dark .page-hero__badge {
+  background: rgba(0, 40, 20, 0.12);
+}
 
 .page-hero__title {
   font-size: clamp(1.35rem, 1.1rem + 1vw, 1.85rem);
   font-weight: 800;
-  color:white;
+  color: white;
   line-height: 1.2;
   margin: 0 0 6px;
 }
@@ -157,11 +185,14 @@ defineProps({
 
 .page-hero__pills {
   display: flex;
-  flex-wrap: nowrap;       /* tidak wrap ke baris baru */
+  flex-wrap: nowrap;
+  /* tidak wrap ke baris baru */
   gap: 8px;
   margin-top: 14px;
-  overflow: hidden;        /* hide jika terlalu panjang */
+  overflow: hidden;
+  /* hide jika terlalu panjang */
 }
+
 .page-hero__pill {
   display: inline-flex;
   align-items: center;
@@ -171,17 +202,22 @@ defineProps({
   font-size: 0.72rem;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.16);
-  white-space: nowrap;     /* teks tidak wrap */
+  white-space: nowrap;
+  /* teks tidak wrap */
   flex-shrink: 0;
 }
-.page-hero--text-dark .page-hero__pill { background: rgba(0, 40, 20, 0.1); }
+
+.page-hero--text-dark .page-hero__pill {
+  background: rgba(0, 40, 20, 0.1);
+}
 
 .page-hero__actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 14px;       /* sama dengan pills agar konsisten */
+  margin-top: 14px;
+  /* sama dengan pills agar konsisten */
 }
 
 /* ---------- illustration ---------- */
@@ -194,6 +230,7 @@ defineProps({
   align-items: center;
   justify-content: center;
 }
+
 .page-hero__art-core {
   width: 84px;
   height: 84px;
@@ -208,20 +245,36 @@ defineProps({
   transform: rotate(-6deg);
   animation: hero-float 5s ease-in-out infinite;
 }
+
 .page-hero--text-dark .page-hero__art-core {
   background: rgba(0, 40, 20, 0.1);
   border-color: rgba(0, 40, 20, 0.18);
 }
 
-.page-hero__float { position: absolute; }
+.page-hero__float {
+  position: absolute;
+}
+
 .page-hero__float--dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
 }
-.page-hero__float--red  { top: -6px; left: 4px; background: #FF6B6B; animation: hero-float 4s ease-in-out infinite 0.3s; }
-.page-hero__float--teal { bottom: 2px; left: -10px; background: #2DD4BF; animation: hero-float 4.5s ease-in-out infinite 0.6s; }
+
+.page-hero__float--red {
+  top: -6px;
+  left: 4px;
+  background: #FF6B6B;
+  animation: hero-float 4s ease-in-out infinite 0.3s;
+}
+
+.page-hero__float--teal {
+  bottom: 2px;
+  left: -10px;
+  background: #2DD4BF;
+  animation: hero-float 4.5s ease-in-out infinite 0.6s;
+}
 
 .page-hero__float--chip {
   width: 26px;
@@ -233,39 +286,104 @@ defineProps({
   background: rgba(255, 255, 255, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
+
 .page-hero--text-dark .page-hero__float--chip {
   background: rgba(0, 40, 20, 0.12);
   border-color: rgba(0, 40, 20, 0.2);
 }
-.page-hero__float--a { top: -8px; right: -4px; animation: hero-float 3.6s ease-in-out infinite 0.2s; }
-.page-hero__float--b { bottom: -6px; right: 14px; animation: hero-float 4.2s ease-in-out infinite 0.9s; }
+
+.page-hero__float--a {
+  top: -8px;
+  right: -4px;
+  animation: hero-float 3.6s ease-in-out infinite 0.2s;
+}
+
+.page-hero__float--b {
+  bottom: -6px;
+  right: 14px;
+  animation: hero-float 4.2s ease-in-out infinite 0.9s;
+}
 
 @keyframes hero-float {
-  0%, 100% { transform: translateY(0) rotate(-6deg); }
-  50%      { transform: translateY(-7px) rotate(-2deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+
+  50% {
+    transform: translateY(-7px) rotate(-2deg);
+  }
 }
 
 /* ---------- responsive ---------- */
 @media (max-width: 960px) {
-  .page-hero { padding: 20px 22px; border-radius: 20px; min-height: 120px; }
-  .page-hero__art { width: 88px; height: 88px; }
-  .page-hero__art-core { width: 66px; height: 66px; border-radius: 20px; }
+  .page-hero {
+    padding: 20px 22px;
+    border-radius: 20px;
+    min-height: 120px;
+  }
+
+  .page-hero__art {
+    width: 88px;
+    height: 88px;
+  }
+
+  .page-hero__art-core {
+    width: 66px;
+    height: 66px;
+    border-radius: 20px;
+  }
 }
 
 @media (max-width: 600px) {
-  .page-hero { padding: 16px 18px; min-height: 110px; }
-  .page-hero__row { flex-wrap: nowrap; align-items: flex-start; }
-  .page-hero__art { display: none; }
-  .page-hero__subtitle { max-width: 100%; font-size: 0.82rem; }
-  .page-hero__actions { width: 100%; }
-  .page-hero__actions :deep(.v-btn) { flex: 1 1 auto; }
-  .page-hero__title { font-size: 1.2rem; }
-  .page-hero__pills { margin-top: 10px; gap: 6px; }
-  .page-hero__pill  { padding: 3px 8px; font-size: 0.68rem; }
+  .page-hero {
+    padding: 16px 18px;
+    min-height: 110px;
+  }
+
+  .page-hero__row {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .page-hero__art {
+    display: none;
+  }
+
+  .page-hero__subtitle {
+    max-width: 100%;
+    font-size: 0.82rem;
+  }
+
+  .page-hero__actions {
+    width: 100%;
+  }
+
+  .page-hero__actions :deep(.v-btn) {
+    flex: 1 1 auto;
+  }
+
+  .page-hero__title {
+    font-size: 1.2rem;
+  }
+
+  .page-hero__pills {
+    margin-top: 10px;
+    gap: 6px;
+  }
+
+  .page-hero__pill {
+    padding: 3px 8px;
+    font-size: 0.68rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .page-hero__art-core,
-  .page-hero__float { animation: none; }
+  .page-hero__float {
+    animation: none;
+  }
 }
 </style>

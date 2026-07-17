@@ -2,39 +2,39 @@
 import { useQualityControlStore } from '@/stores/useQualityControlStore'
 import QCFormDialog from '@/views/qc-admission/quality-control/QCFormDialog.vue'
 import SummaryCards from '@/components/SummaryCards.vue'
-import PageHero     from '@/components/PageHero.vue'
+import PageHero from '@/components/PageHero.vue'
 import axios from 'axios'
 
 const store = useQualityControlStore()
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const showForm          = ref(false)
-const editItem          = ref(null)
-const detailItem        = ref(null)
-const showDetail        = ref(false)
+const showForm = ref(false)
+const editItem = ref(null)
+const detailItem = ref(null)
+const showDetail = ref(false)
 const showDeleteConfirm = ref(false)
-const deleteTarget      = ref(null)
-const loading           = ref(false)
-const processing        = ref(false)
-const snackbar          = ref({ show: false, msg: '', color: 'success' })
+const deleteTarget = ref(null)
+const loading = ref(false)
+const processing = ref(false)
+const snackbar = ref({ show: false, msg: '', color: 'success' })
 
 // ── Date filter ───────────────────────────────────────────────────────────────
 function todayStr() {
   const d = new Date(), p = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 const todayFormatted = computed(() =>
   new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 )
-const dateFrom     = ref(todayStr())
-const dateTo       = ref(todayStr())
-const search       = ref('')
+const dateFrom = ref(todayStr())
+const dateTo = ref(todayStr())
+const search = ref('')
 const filterStatus = ref('all')
 
 // ── Live clock (untuk countdown) ─────────────────────────────────────────────
 const now = ref(Date.now())
-let ticker         = null
-let autoProTimer   = null
+let ticker = null
+let autoProTimer = null
 
 // ── Auto-process: jalankan tiap 2 menit (silent) + sekali saat halaman buka ──
 // Menggantikan cron job yang mungkin tidak aktif di environment dev.
@@ -56,7 +56,7 @@ async function processAutomatic(silent = true) {
 }
 
 onMounted(async () => {
-  ticker       = setInterval(() => { now.value = Date.now() }, 10_000)
+  ticker = setInterval(() => { now.value = Date.now() }, 10_000)
   autoProTimer = setInterval(() => processAutomatic(true), 120_000)
   await load()
   // Cek setelah data dimuat — apakah ada yang perlu dipindahkan
@@ -87,7 +87,7 @@ const filtered = computed(() => {
       r.nama_pasien?.toLowerCase().includes(q)
     )
   }
-  if (filterStatus.value === 'edukasi')  d = d.filter(r => !isLanjutan(r))
+  if (filterStatus.value === 'edukasi') d = d.filter(r => !isLanjutan(r))
   if (filterStatus.value === 'lanjutan') d = d.filter(r => isLanjutan(r))
   return d
 })
@@ -116,7 +116,7 @@ function getDurasi(item) {
     const parts = item.durasi_tunggu.split(':').map(Number)
     if (parts.length >= 2) {
       const totalMnt = parts[0] * 60 + parts[1]
-      if (totalMnt >= 60) return `${parts[0]}j ${String(parts[1]).padStart(2,'0')}m`
+      if (totalMnt >= 60) return `${parts[0]}j ${String(parts[1]).padStart(2, '0')}m`
       return `${totalMnt} mnt`
     }
     return item.durasi_tunggu
@@ -126,7 +126,7 @@ function getDurasi(item) {
   const elapsedSec = Math.floor((now.value - new Date(item.created_at).getTime()) / 1000)
   const h = Math.floor(elapsedSec / 3600)
   const m = Math.floor((elapsedSec % 3600) / 60)
-  if (h >= 1) return `${h}j ${String(m).padStart(2,'0')}m`
+  if (h >= 1) return `${h}j ${String(m).padStart(2, '0')}m`
   return `${m} mnt`
 }
 
@@ -140,12 +140,12 @@ function getDurasiColor(item) {
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
-function openAdd()         { editItem.value = null; showForm.value = true }
-function openRow(item)     { detailItem.value = item; showDetail.value = true }
+function openAdd() { editItem.value = null; showForm.value = true }
+function openRow(item) { detailItem.value = item; showDetail.value = true }
 function toast(msg, color = 'success') { snackbar.value = { show: true, msg, color } }
-function resetFilter()     { search.value = ''; filterStatus.value = 'all'; dateFrom.value = todayStr(); dateTo.value = todayStr() }
+function resetFilter() { search.value = ''; filterStatus.value = 'all'; dateFrom.value = todayStr(); dateTo.value = todayStr() }
 
-async function onSaved()   { showForm.value = false; toast('Data QC disimpan.'); await load() }
+async function onSaved() { showForm.value = false; toast('Data QC disimpan.'); await load() }
 
 async function doDelete() {
   if (!deleteTarget.value) return
@@ -153,8 +153,8 @@ async function doDelete() {
   await store.destroy(deleteTarget.value.id)
   loading.value = false
   showDeleteConfirm.value = false
-  showDetail.value        = false
-  deleteTarget.value      = null
+  showDetail.value = false
+  deleteTarget.value = null
   toast('Data dihapus.')
   await load()
 }
@@ -163,12 +163,12 @@ async function load() {
   loading.value = true
   try {
     await store.fetchRecords({
-      search:    search.value || undefined,
+      search: search.value || undefined,
       date_from: dateFrom.value || undefined,
-      date_to:   dateTo.value   || undefined,
-      per_page:  500,
+      date_to: dateTo.value || undefined,
+      per_page: 500,
     })
-  } catch(e) { console.error(e) }
+  } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
 
@@ -179,21 +179,15 @@ watch([dateFrom, dateTo], () => load())
   <div class="qc-page">
 
     <!-- ── Header ─────────────────────────────────────────────────────────── -->
-    <PageHero
-      icon="ri-shield-check-line"
-      badge="Quality Control"
-      title="Quality Control Admisi"
-      subtitle="Pasien otomatis pindah ke Edukasi Lanjutan setelah 2 jam"
-      color-from="#0EA5E9"
-      color-to="#0369A1"
+    <PageHero icon="ri-shield-check-line" badge="Quality Control" title="Quality Control Admisi"
+      subtitle="Pasien otomatis pindah ke Edukasi Lanjutan setelah 2 jam" color-from="#0EA5E9" color-to="#0369A1"
       :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },
         { icon: 'ri-database-line', text: `${stats.total} data` },
-      ]"
-    >
+      ]">
       <template #actions>
-        <VBtn color="white" variant="elevated" rounded="pill" size="small"
-          style="color:#0369A1;font-weight:700" @click="openAdd">
+        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
+          @click="openAdd">
           <VIcon icon="ri-add-line" size="16" class="me-1" />Input Quality Control
         </VBtn>
       </template>
@@ -201,8 +195,8 @@ watch([dateFrom, dateTo], () => load())
 
     <!-- ── Stats ──────────────────────────────────────────────────────────── -->
     <SummaryCards :cards="[
-      { value: stats.total,    label: 'Total QC Hari Ini',     color: 'primary', icon: 'ri-shield-check-line' },
-      { value: stats.edukasi,  label: 'Sedang Edukasi',        color: 'success', icon: 'ri-book-line' },
+      { value: stats.total, label: 'Total QC Hari Ini', color: 'primary', icon: 'ri-shield-check-line' },
+      { value: stats.edukasi, label: 'Sedang Edukasi', color: 'success', icon: 'ri-book-line' },
       { value: stats.lanjutan, label: 'Siap Edukasi Lanjutan', color: 'warning', icon: 'ri-timer-flash-line' },
     ]" />
 
@@ -211,29 +205,24 @@ watch([dateFrom, dateTo], () => load())
       <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="4">
-            <VTextField v-model="search" label="Cari pasien / No. Reg / No. MR"
-              prepend-inner-icon="ri-search-line"
+            <VTextField v-model="search" label="Cari pasien / No. Reg / No. MR" prepend-inner-icon="ri-search-line"
               variant="outlined" density="compact" hide-details clearable rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date"
-              variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date"
-              variant="outlined" density="compact" hide-details rounded="lg" />
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="12" sm="3">
-            <VSelect
-              v-model="filterStatus"
-              :items="[
-                { title: 'Semua Status',          value: 'all' },
-                { title: '📚 Edukasi',            value: 'edukasi' },
-                { title: '⏰ Siap Edukasi Lanjutan', value: 'lanjutan' },
-              ]"
-              item-title="title" item-value="value"
-              label="Status" variant="outlined" density="compact" hide-details rounded="lg"
-            />
+            <VSelect v-model="filterStatus" :items="[
+              { title: 'Semua Status', value: 'all' },
+              { title: '📚 Edukasi', value: 'edukasi' },
+              { title: '⏰ Siap Edukasi Lanjutan', value: 'lanjutan' },
+            ]" item-title="title" item-value="value" label="Status" variant="outlined" density="compact" hide-details
+              rounded="lg" />
           </VCol>
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary" @click="resetFilter">Reset</VBtn>
@@ -272,17 +261,15 @@ watch([dateFrom, dateTo], () => load())
       </div>
 
       <div v-else>
-        <div v-for="item in filtered" :key="item.id"
-          class="qc-row"
-          @click="openRow(item)"
-        >
+        <div v-for="item in filtered" :key="item.id" class="qc-row" @click="openRow(item)">
           <VAvatar color="primary" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
             <span class="font-weight-bold" style="font-size:14px">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
           </VAvatar>
 
           <div class="flex-grow-1 min-width-0">
             <div class="d-flex align-center gap-2 flex-wrap">
-              <span class="font-weight-semibold" style="font-size:0.9rem;color:var(--qc-text)">{{ item.nama_pasien }}</span>
+              <span class="font-weight-semibold" style="font-size:0.9rem;color:var(--qc-text)">{{ item.nama_pasien
+                }}</span>
               <!-- Badge ranap — prioritas tampil jika sudah pindah ranap -->
               <VChip v-if="item.status_ranap" color="purple" size="x-small" variant="tonal">
                 <VIcon icon="ri-hospital-fill" size="10" class="me-1" />{{ item.status_ranap }}
@@ -317,7 +304,8 @@ watch([dateFrom, dateTo], () => load())
             <!-- Countdown pindah ke Edukasi Lanjutan -->
             <div v-if="!isLanjutan(item) && getCountdown(item)" class="d-flex align-center gap-1 justify-end mt-1">
               <VIcon icon="ri-timer-line" size="11" color="warning" />
-              <span class="text-caption font-mono" style="color:rgb(var(--v-theme-warning))">-{{ getCountdown(item) }}</span>
+              <span class="text-caption font-mono" style="color:rgb(var(--v-theme-warning))">-{{ getCountdown(item)
+                }}</span>
             </div>
           </div>
         </div>
@@ -333,7 +321,9 @@ watch([dateFrom, dateTo], () => load())
 
         <!-- Banner header sesuai primary color -->
         <div class="qc-detail-header">
-          <div class="blob b1" /><div class="blob b2" /><div class="blob b3" />
+          <div class="blob b1" />
+          <div class="blob b2" />
+          <div class="blob b3" />
           <div class="d-flex align-center gap-3" style="position:relative;z-index:2">
             <div class="qc-detail-av">{{ detailItem.nama_pasien?.charAt(0) ?? '?' }}</div>
             <div class="flex-grow-1 min-width-0">
@@ -349,7 +339,8 @@ watch([dateFrom, dateTo], () => load())
           <!-- Status pills -->
           <div class="d-flex gap-2 mt-3 flex-wrap" style="position:relative;z-index:2">
             <span class="qc-pill" :class="isLanjutan(detailItem) ? 'qc-pill--warn' : 'qc-pill--ok'">
-              <VIcon :icon="isLanjutan(detailItem) ? 'ri-arrow-right-circle-line' : 'ri-book-line'" size="12" class="me-1" />
+              <VIcon :icon="isLanjutan(detailItem) ? 'ri-arrow-right-circle-line' : 'ri-book-line'" size="12"
+                class="me-1" />
               {{ isLanjutan(detailItem) ? 'Siap Edukasi Lanjutan' : 'Sedang Edukasi' }}
             </span>
             <span v-if="!isLanjutan(detailItem) && getCountdown(detailItem)" class="qc-pill qc-pill--timer">
@@ -366,26 +357,39 @@ watch([dateFrom, dateTo], () => load())
 
         <!-- Info grid -->
         <div class="qc-info-grid">
-          <div class="qc-info-cell"><span class="qc-lbl">Tanggal</span><span class="qc-val">{{ detailItem.tanggal }}</span></div>
-          <div class="qc-info-cell"><span class="qc-lbl">Jam Input</span><span class="qc-val">{{ detailItem.jam_input }}</span></div>
-          <div class="qc-info-cell"><span class="qc-lbl">Jaminan</span><span class="qc-val">{{ detailItem.jaminan || '—' }}</span></div>
-          <div class="qc-info-cell"><span class="qc-lbl">Petugas</span><span class="qc-val">{{ detailItem.petugas || '—' }}</span></div>
+          <div class="qc-info-cell"><span class="qc-lbl">Tanggal</span><span class="qc-val">{{ detailItem.tanggal
+              }}</span>
+          </div>
+          <div class="qc-info-cell"><span class="qc-lbl">Jam Input</span><span class="qc-val">{{ detailItem.jam_input
+              }}</span></div>
+          <div class="qc-info-cell"><span class="qc-lbl">Jaminan</span><span class="qc-val">{{ detailItem.jaminan || '—'
+              }}</span></div>
+          <div class="qc-info-cell"><span class="qc-lbl">Petugas</span><span class="qc-val">{{ detailItem.petugas || '—'
+              }}</span></div>
           <!-- Durasi sejak masuk QC -->
           <div class="qc-info-cell">
             <span class="qc-lbl">⏱ Lama di QC</span>
-            <span class="qc-val font-weight-bold" :style="`color:${isLanjutan(detailItem)?'rgb(var(--v-theme-error))':'rgb(var(--v-theme-primary))'}`">
+            <span class="qc-val font-weight-bold"
+              :style="`color:${isLanjutan(detailItem) ? 'rgb(var(--v-theme-error))' : 'rgb(var(--v-theme-primary))'}`">
               {{ getDurasi(detailItem) ?? '—' }}
             </span>
           </div>
           <div class="qc-info-cell">
             <span class="qc-lbl">Pindah ke Edukasi</span>
-            <span class="qc-val" :style="!isLanjutan(detailItem) && getCountdown(detailItem) ? 'color:rgb(var(--v-theme-warning))' : ''">
-              {{ isLanjutan(detailItem) ? 'Sudah siap' : (getCountdown(detailItem) ? `${getCountdown(detailItem)} lagi` : '—') }}
+            <span class="qc-val"
+              :style="!isLanjutan(detailItem) && getCountdown(detailItem) ? 'color:rgb(var(--v-theme-warning))' : ''">
+              {{ isLanjutan(detailItem) ? 'Sudah siap' : (getCountdown(detailItem) ? `${getCountdown(detailItem)} lagi`
+              :
+              '—') }}
             </span>
           </div>
-          <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Edukasi Kamar</span><span class="qc-val">{{ detailItem.edukasi_kamar || '—' }}</span></div>
-          <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Note / Kamar</span><span class="qc-val">{{ detailItem.note || '—' }}</span></div>
-          <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Keluarga Pasien</span><span class="qc-val">{{ detailItem.keluarga_pasien || '—' }}</span></div>
+          <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Edukasi Kamar</span><span class="qc-val">{{
+            detailItem.edukasi_kamar || '—' }}</span></div>
+          <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Note / Kamar</span><span class="qc-val">{{
+            detailItem.note || '—' }}</span></div>
+          <div class="qc-info-cell qc-info-cell--full"><span class="qc-lbl">Keluarga Pasien</span><span
+              class="qc-val">{{
+                detailItem.keluarga_pasien || '—' }}</span></div>
         </div>
 
         <!-- TTD -->
@@ -399,20 +403,13 @@ watch([dateFrom, dateTo], () => load())
 
         <!-- ── Action buttons ─────────────────────────────────────────────── -->
         <div class="qc-action-bar">
-          <VBtn
-            variant="outlined" rounded="lg" class="qc-action-btn"
-            @click="showDetail = false"
-          >Tutup</VBtn>
-          <VBtn
-            color="primary" variant="tonal" rounded="lg" class="qc-action-btn qc-action-btn--grow"
-            @click="editItem = {...detailItem}; showDetail = false; showForm = true"
-          >
+          <VBtn variant="outlined" rounded="lg" class="qc-action-btn" @click="showDetail = false">Tutup</VBtn>
+          <VBtn color="primary" variant="tonal" rounded="lg" class="qc-action-btn qc-action-btn--grow"
+            @click="editItem = { ...detailItem }; showDetail = false; showForm = true">
             <VIcon icon="ri-pencil-line" size="15" class="me-1" />Edit Data
           </VBtn>
-          <VBtn
-            color="error" variant="tonal" rounded="lg" class="qc-action-btn"
-            @click="deleteTarget = detailItem; showDeleteConfirm = true"
-          >
+          <VBtn color="error" variant="tonal" rounded="lg" class="qc-action-btn"
+            @click="deleteTarget = detailItem; showDeleteConfirm = true">
             <VIcon icon="ri-delete-bin-line" size="15" />
           </VBtn>
         </div>
@@ -442,7 +439,9 @@ watch([dateFrom, dateTo], () => load())
 
     <VSnackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="bottom right" rounded="xl">
       {{ snackbar.msg }}
-      <template #actions><VBtn variant="text" size="small" @click="snackbar.show=false">✕</VBtn></template>
+      <template #actions>
+        <VBtn variant="text" size="small" @click="snackbar.show = false">✕</VBtn>
+      </template>
     </VSnackbar>
 
   </div>
@@ -451,89 +450,203 @@ watch([dateFrom, dateTo], () => load())
 <style scoped>
 /* ── Row list ──────────────────────────────────────────────────────────────── */
 .qc-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 15px 16px; cursor: pointer; transition: background 0.12s;
-  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0, 0, 0, 0.07));
 }
-.qc-row:last-child { border-bottom: none; }
+
+.qc-row:last-child {
+  border-bottom: none;
+}
+
 .qc-row:hover {
-  background: var(--qc-green-light, rgba(0,179,126,0.04));
-  border-left: 3px solid rgba(0,179,126,0.35);
+  background: var(--qc-green-light, rgba(0, 179, 126, 0.04));
+  border-left: 3px solid rgba(0, 179, 126, 0.35);
   padding-left: 13px;
 }
 
 /* ── Detail banner ─────────────────────────────────────────────────────────── */
 .qc-detail-header {
-  position: relative; overflow: hidden;
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, #0369A1 0%, #0EA5E9 60%, #38BDF8 100%);
   padding: 20px 20px 16px;
   border-radius: 20px 20px 0 0;
 }
+
 .blob {
-  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.08);
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
 }
-.b1 { width: 180px; height: 180px; top: -60px; right: -30px; }
-.b2 { width: 90px;  height: 90px;  bottom: -35px; right: 100px; }
-.b3 { width: 55px;  height: 55px;  top: 5px; right: 180px; background: rgba(255,255,255,0.05); }
+
+.b1 {
+  width: 180px;
+  height: 180px;
+  top: -60px;
+  right: -30px;
+}
+
+.b2 {
+  width: 90px;
+  height: 90px;
+  bottom: -35px;
+  right: 100px;
+}
+
+.b3 {
+  width: 55px;
+  height: 55px;
+  top: 5px;
+  right: 180px;
+  background: rgba(255, 255, 255, 0.05);
+}
 
 .qc-detail-av {
-  width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
-  background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.35);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; font-weight: 800; color: #fff;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
 }
-.qc-detail-name { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0 0 2px; }
-.qc-detail-sub  { font-size: 0.75rem; color: rgba(255,255,255,0.75); }
+
+.qc-detail-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 2px;
+}
+
+.qc-detail-sub {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}
 
 .qc-close-btn {
-  background: rgba(255,255,255,0.18); border: none; cursor: pointer;
-  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; transition: background 0.15s;
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background 0.15s;
 }
-.qc-close-btn:hover { background: rgba(255,255,255,0.32); }
+
+.qc-close-btn:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
 
 .qc-pill {
-  display: inline-flex; align-items: center;
-  padding: 3px 10px; border-radius: 20px;
-  font-size: 0.72rem; font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
-.qc-pill--ok    { background: rgba(255,255,255,0.2); color: #fff; }
-.qc-pill--warn  { background: rgba(255,180,0,0.28); color: #ffe066; }
-.qc-pill--timer { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
-.qc-pill--durasi { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.95); font-weight: 700; }
+
+.qc-pill--ok {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.qc-pill--warn {
+  background: rgba(255, 180, 0, 0.28);
+  color: #ffe066;
+}
+
+.qc-pill--timer {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.qc-pill--durasi {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+}
 
 /* ── Info grid ─────────────────────────────────────────────────────────────── */
 .qc-info-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   padding: 4px 0;
 }
+
 .qc-info-cell {
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   padding: 11px 20px;
   border-bottom: 1px solid var(--qc-border);
   border-right: 1px solid var(--qc-border);
 }
-.qc-info-cell:nth-child(even) { border-right: none; }
-.qc-info-cell--full { grid-column: span 2; border-right: none; }
-.qc-lbl {
-  font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.07em;
-  color: var(--qc-text-2); margin-bottom: 2px; font-weight: 600;
+
+.qc-info-cell:nth-child(even) {
+  border-right: none;
 }
-.qc-val { font-size: 0.875rem; font-weight: 500; color: var(--qc-text); }
+
+.qc-info-cell--full {
+  grid-column: span 2;
+  border-right: none;
+}
+
+.qc-lbl {
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--qc-text-2);
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+
+.qc-val {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--qc-text);
+}
 
 /* ── Action bar — full-width, responsif ─────────────────────────────────────── */
 .qc-action-bar {
-  display: flex; gap: 8px;
+  display: flex;
+  gap: 8px;
   padding: 14px 16px;
   border-top: 1px solid var(--qc-border);
   flex-wrap: wrap;
 }
-.qc-action-btn        { min-height: 40px; font-size: 0.85rem; font-weight: 600; }
-.qc-action-btn--grow  { flex: 1; }
+
+.qc-action-btn {
+  min-height: 40px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.qc-action-btn--grow {
+  flex: 1;
+}
 
 @media (max-width: 400px) {
-  .qc-action-bar { flex-direction: column; }
-  .qc-action-btn { width: 100%; }
+  .qc-action-bar {
+    flex-direction: column;
+  }
+
+  .qc-action-btn {
+    width: 100%;
+  }
 }
 </style>
