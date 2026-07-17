@@ -252,31 +252,4 @@ Route::middleware(['keycloak.auth'])->group(function () {
     Route::middleware(['keycloak.role:activity-log:view'])->group(function () {
         Route::get('/activity-log', [ActivityLogController::class, 'index']);
     });
-
-    // Butuh permission user-management:view
-    Route::middleware(['keycloak.role:user-management:view'])->group(function () {
-        Route::get('/users', function () {
-            try {
-                $keycloak = app(\App\Services\KeycloakService::class);
-                $users    = $keycloak->getUsers();
-                return response()->json(['data' => $users, 'source' => 'keycloak', 'total' => count($users)]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Keycloak Admin API gagal saat fetch users.', [
-                    'error' => $e->getMessage(),
-                ]);
-                return response()->json([
-                    'data'    => [],
-                    'source'  => 'error',
-                    'total'   => 0,
-                    'message' => 'Tidak dapat memuat data user dari Keycloak. Pastikan service account memiliki role view-users.',
-                ], 503);
-            }
-        });
-
-        Route::post('/users/refresh-cache', function () {
-            $keycloak = app(\App\Services\KeycloakService::class);
-            $keycloak->flushUsersCache();
-            return response()->json(['message' => 'Cache user berhasil direset. Data akan diambil ulang dari Keycloak.']);
-        });
-    });
 });

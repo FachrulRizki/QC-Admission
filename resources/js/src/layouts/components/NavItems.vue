@@ -30,6 +30,6 @@ const auth = useAuthStore()
     </div>
     <VerticalNavLink :item="{ title: 'Log Aktivitas',  icon: 'ri-history-line',      to: '/activity-log' }" />
     <VerticalNavLink :item="{ title: 'Master Data',    icon: 'ri-database-2-line',   to: '/master-data' }" />
-    <VerticalNavLink :item="{ title: 'Manajemen User', icon: 'ri-team-line',         to: '/user-management' }" />
+    <VerticalNavLink :item="{ title: 'Token Info',     icon: 'ri-key-2-line',        to: '/token-info' }" />
   </template>
 </template>

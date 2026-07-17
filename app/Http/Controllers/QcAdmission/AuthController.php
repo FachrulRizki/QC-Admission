@@ -96,7 +96,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'Logout berhasil.']);
+        return response()->json(['message' => 'Logout berhasil.', 'redirect' => '/login']);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -112,7 +112,6 @@ class AuthController extends Controller
                 'up-selling:view',        'up-selling:write',        'up-selling:delete',
                 'master-data:view',       'master-data:write',       'master-data:delete',
                 'activity-log:view',
-                'user-management:view',   // CRUD dikelola di Keycloak
             ],
             'qc_admission' => [
                 'dashboard:view',

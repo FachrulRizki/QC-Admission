@@ -133,6 +133,9 @@ class KeycloakController extends Controller
         }
 
         $request->session()->flush();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
         return redirect('/login');
     }
 }

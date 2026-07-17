@@ -72,8 +72,8 @@ export const routes = [
     meta: { roles: ['admin'] },
   },
   {
-    path: '/user-management',
-    component: () => import('@/pages/qc_admission/user-management.vue'),
+    path: '/token-info',
+    component: () => import('@/pages/qc_admission/token-info.vue'),
     meta: { roles: ['admin'] },
   },
 

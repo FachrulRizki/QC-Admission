@@ -28,6 +28,7 @@ class ActivityLog extends Model
 
     /**
      * Helper — catat aktivitas dari mana saja.
+     * Dibungkus try/catch agar kegagalan DB tidak crash request utama.
      */
     public static function record(
         string  $module,
@@ -37,24 +38,31 @@ class ActivityLog extends Model
         ?string $ipAddress = null,
         ?string $petugas = null
     ): void {
-        // Auth disimpan di session (SSO Keycloak), bukan Sanctum token
         $authUser = session('auth_user');
 
-        // Simpan petugas ke dalam payload agar bisa ditampilkan di activity log
         if ($petugas !== null) {
             $payload = array_merge($payload ?? [], ['petugas' => $petugas]);
         }
 
-        static::create([
-            'user_id'    => $authUser['id']       ?? null,
-            'user_name'  => $authUser['name']     ?? null,
-            'user_role'  => $authUser['roles'][0] ?? null,
-            'module'     => $module,
-            'action'     => $action,
-            'subject'    => $subject,
-            'payload'    => $payload,
-            'ip_address' => $ipAddress ?? request()->ip(),
-        ]);
+        try {
+            static::create([
+                'user_id'    => $authUser['id']       ?? null,
+                'user_name'  => $authUser['name']     ?? null,
+                'user_role'  => $authUser['roles'][0] ?? null,
+                'module'     => $module,
+                'action'     => $action,
+                'subject'    => $subject,
+                'payload'    => $payload,
+                'ip_address' => $ipAddress ?? request()->ip(),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('ActivityLog::record gagal menulis ke DB.', [
+                'module'  => $module,
+                'action'  => $action,
+                'subject' => $subject,
+                'error'   => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

@@ -15,11 +15,14 @@ Route::post('/auth/keycloak/logout',   [KeycloakController::class, 'logout'])->n
 Route::post('/auth/local/login',  [AuthController::class, 'localLogin'])->name('auth.local.login');
 Route::post('/auth/local/logout', [AuthController::class, 'localLogout'])->name('auth.local.logout');
 
-// Alias logout untuk frontend — cek login_type untuk pilih handler
-Route::post('/auth/logout', function (\Illuminate\Http\Request $request) {
+// Logout universal — GET agar bisa dipanggil langsung tanpa CSRF (tidak membawa state sensitif)
+Route::get('/auth/logout', function (\Illuminate\Http\Request $request) {
     $loginType = session('auth_user.login_type', 'sso');
     if ($loginType === 'local') {
-        return app(AuthController::class)->localLogout($request);
+        $request->session()->flush();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect('/login');
     }
     return app(KeycloakController::class)->logout($request);
 })->name('auth.logout');
@@ -87,10 +90,8 @@ Route::middleware(['keycloak.auth'])->group(function () {
         Route::get('/master-data', fn () => Inertia::render('qc_admission/master-data'))->name('master-data');
     });
 
-    // Butuh permission user-management:view
-    Route::middleware(['keycloak.role:user-management:view'])->group(function () {
-        Route::get('/user-management', fn () => Inertia::render('qc_admission/user-management'))->name('user-management');
-    });
+    // Semua user terautentikasi — lihat token sendiri untuk keperluan integrasi
+    Route::get('/token-info', fn () => Inertia::render('qc_admission/token-info'))->name('token-info');
 });
 
 // Catch-all 404

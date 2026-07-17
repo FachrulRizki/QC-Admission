@@ -153,14 +153,24 @@ class BedIgdService
                     $errBody = $response->body();
                     // Clear semua cache token agar retry dapat token segar
                     Cache::forget(self::TOKEN_CACHE_KEY);
-                    Cache::forget(self::TOKEN_CACHE_KEY . '_kc');
-                    Log::warning("BedIgdService: release bed gagal", [
-                        'status' => $response->status(),
-                        'body'   => $errBody,
-                    ]);
-                    throw new \RuntimeException(
-                        "Bed IGD update gagal: HTTP {$response->status()} — {$errBody}"
-                    );
+                    $this->forgetClientToken();
+
+                    // Jika 401 → token expired, coba sekali lagi dengan token baru
+                    if ($response->status() === 401) {
+                        Log::info('BedIgdService: token 401, retry dengan token baru.');
+                        $token    = $this->getToken();
+                        $response = Http::withToken($token)->timeout(10)->acceptJson()->post($fullUrl, $payload);
+                    }
+
+                    if (! $response->successful()) {
+                        Log::warning("BedIgdService: release bed gagal", [
+                            'status' => $response->status(),
+                            'body'   => $response->body(),
+                        ]);
+                        throw new \RuntimeException(
+                            "Bed IGD update gagal: HTTP {$response->status()} — {$response->body()}"
+                        );
+                    }
                 }
 
                 Log::info("BedIgdService: Kode_Bed={$kodeBed} No_Reg={$noReg} → KOSONG [API]", [
@@ -303,10 +313,15 @@ class BedIgdService
 
     /**
      * KEYCLOAK CLIENT CREDENTIALS — service account aplikasi ini.
+     * Token di-cache otomatis, di-refresh saat mendekati expiry.
+     * Tidak bergantung pada user session — aman untuk background job dan
+     * proses apapun termasuk saat tidak ada user yang login.
      */
     private function getKeycloakClientToken(): string
     {
         $cacheKey = self::TOKEN_CACHE_KEY . '_kc';
+
+        // Hapus cache jika ada, coba ambil fresh
         if ($token = Cache::get($cacheKey)) {
             return $token;
         }
@@ -315,7 +330,7 @@ class BedIgdService
             . '/realms/' . config('services.keycloak.realm')
             . '/protocol/openid-connect/token';
 
-        $response = Http::timeout(5)
+        $response = Http::timeout(10)
             ->asForm()
             ->post($tokenUrl, [
                 'grant_type'    => 'client_credentials',
@@ -325,19 +340,35 @@ class BedIgdService
 
         if (! $response->successful()) {
             throw new \RuntimeException(
-                "Bed IGD Keycloak client token gagal: HTTP {$response->status()} — {$response->body()}"
+                "Bed IGD Keycloak client_credentials gagal: HTTP {$response->status()} — {$response->body()}"
             );
         }
 
         $body  = $response->json();
         $token = $body['access_token'] ?? null;
+
         if (! $token) {
             throw new \RuntimeException('Bed IGD Keycloak: access_token tidak ditemukan di respons.');
         }
 
-        $ttl = (int) ($body['expires_in'] ?? 300);
-        Cache::put($cacheKey, $token, now()->addSeconds($ttl - 30));
+        // Cache selama (expires_in - 60 detik) agar tidak terpakai saat hampir expired
+        $ttl = max(30, (int) ($body['expires_in'] ?? 300) - 60);
+        Cache::put($cacheKey, $token, now()->addSeconds($ttl));
+
+        Log::info('BedIgdService[keycloak]: client_credentials token berhasil di-generate.', [
+            'expires_in' => $body['expires_in'] ?? null,
+            'cached_ttl' => $ttl,
+        ]);
+
         return $token;
+    }
+
+    /**
+     * Invalidate cached client credentials token (dipanggil saat API return 401).
+     */
+    private function forgetClientToken(): void
+    {
+        Cache::forget(self::TOKEN_CACHE_KEY . '_kc');
     }
 
     /**

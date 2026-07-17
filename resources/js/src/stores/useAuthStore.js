@@ -59,16 +59,12 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Logout — back-channel Keycloak + clear session lokal.
-     * Setelah logout, Keycloak session juga di-invalidate.
+     * Logout — redirect langsung ke /auth/logout (GET).
+     * Backend flush session + back-channel Keycloak, lalu redirect ke /login.
      */
-    async logout() {
-      try {
-        await axios.post('/auth/logout')
-      } catch {
-        // Tetap redirect meski request gagal
-      }
-      window.location.href = '/login'
+    logout() {
+      // GET request — tidak perlu axios/CSRF, browser langsung follow redirect server
+      window.location.replace('/auth/logout')
     },
   },
 })
