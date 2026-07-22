@@ -61,9 +61,23 @@ export default defineConfig({
   },
   // Proxy untuk Vite dev server → forward /api ke Laravel di Laragon
   server: {
-    host: 'localhost',
+    host: '0.0.0.0',
     port: 5174,
     strictPort: true,
+    origin: 'http://192.168.200.142:5174', // paksa asset URL pakai IP ini
+    cors: {
+      origin: [
+        'http://192.168.200.142:8003',
+        'http://192.168.200.142:8002',
+        'http://localhost:8003',
+        'http://localhost:8002',
+      ],
+      credentials: true,
+    },
+    hmr: {
+      host: '192.168.200.142',
+      port: 5174,
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

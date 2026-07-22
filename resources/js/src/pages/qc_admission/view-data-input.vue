@@ -30,17 +30,17 @@ const CLOSING_OPTIONS = [
   { title: '⏳ Belum Siap', value: 'Belum Siap Closing' },
 ]
 
-const isKasir = computed(() => auth.isKasir)
+const isKasir = computed(() => !auth.hasPermission('quality-control:view'))
 
 const allTabs = [
-  { key: 'summary', label: 'Summary', shortLabel: 'Summary', icon: 'ri-user-heart-line', roles: ['admin', 'qc_admission'] },
-  { key: 'quality-control', label: 'Quality Control', shortLabel: 'QC', icon: 'ri-shield-check-line', roles: ['admin', 'qc_admission'] },
-  { key: 'batal-ranap', label: 'Batal Ranap', shortLabel: 'Batal', icon: 'ri-close-circle-line', roles: ['admin', 'qc_admission', 'kasir'] },
-  { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', shortLabel: 'Edukasi', icon: 'ri-book-open-line', roles: ['admin', 'qc_admission'] },
-  { key: 'up-selling', label: 'Up Selling', shortLabel: 'Up Sell', icon: 'ri-arrow-up-circle-line', roles: ['admin', 'qc_admission'] },
+  { key: 'summary',          label: 'Summary',          shortLabel: 'Summary', icon: 'ri-user-heart-line',       permission: 'quality-control:view' },
+  { key: 'quality-control',  label: 'Quality Control',  shortLabel: 'QC',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
+  { key: 'batal-ranap',      label: 'Batal Ranap',      shortLabel: 'Batal',   icon: 'ri-close-circle-line',     permission: 'batal-ranap:view' },
+  { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', shortLabel: 'Edukasi', icon: 'ri-book-open-line',        permission: 'edukasi-lanjutan:view' },
+  { key: 'up-selling',       label: 'Up Selling',       shortLabel: 'Up Sell', icon: 'ri-arrow-up-circle-line',  permission: 'up-selling:view' },
 ]
 
-const tabs = computed(() => allTabs.filter(t => t.roles.includes(auth.userRole ?? 'kasir')))
+const tabs = computed(() => allTabs.filter(t => auth.hasPermission(t.permission)))
 
 const qcData = ref([])
 const batalData = ref([])
@@ -180,16 +180,16 @@ const activeHeaders = computed(() => ({ summary: summaryHeaders, 'quality-contro
 let tabInitialized = false
 onMounted(() => {
   if (!tabInitialized) {
-    activeTab.value = isKasir.value ? 'batal-ranap' : 'summary'
+    activeTab.value = auth.hasPermission('quality-control:view') ? 'summary' : 'batal-ranap'
     tabInitialized = true
   }
   loadAll()
 })
 
-watch(() => auth.userRole, (role, prev) => {
-  if (role && role !== prev) {
+watch(() => auth.permissions, (perms, prev) => {
+  if (perms?.length && perms !== prev) {
     if (!tabInitialized) {
-      activeTab.value = role === 'kasir' ? 'batal-ranap' : 'summary'
+      activeTab.value = auth.hasPermission('quality-control:view') ? 'summary' : 'batal-ranap'
       tabInitialized = true
     }
     loadAll()

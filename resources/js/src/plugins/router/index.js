@@ -23,7 +23,8 @@ router.beforeEach((to) => {
 
   // 2. Sudah login → jangan masuk /login
   if (user && to.path === '/login') {
-    const target = roles.includes('kasir') ? '/view-data-input' : '/dashboard'
+    // Redirect ke dashboard kalau punya akses, fallback ke view-data-input
+    const target = perms.includes('dashboard:view') ? '/dashboard' : '/view-data-input'
     return { path: target }
   }
 

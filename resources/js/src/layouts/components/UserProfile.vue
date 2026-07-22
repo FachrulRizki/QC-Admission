@@ -12,10 +12,18 @@ const initials = computed(() => {
 
 const roleLabel = computed(() => {
   const roles = authStore.roles ?? []
-  if (roles.includes('admin')) return 'Administrator'
-  if (roles.includes('qc_admission')) return 'QC Admission'
-  if (roles.includes('kasir')) return 'Kasir'
-  return 'Pengguna'
+  // Tampilkan role pertama dari Keycloak, format dengan kapitalisasi
+  if (!roles.length) return 'Pengguna'
+  const r = roles[0]
+  // Format label yang umum dikenal
+  const labels = {
+    admin:        'Administrator',
+    qc_admission: 'QC Admission',
+    kasir:        'Kasir',
+    nurse:        'Perawat',
+    'nurse-er':   'Perawat IGD',
+  }
+  return labels[r] ?? r.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 })
 
 function handleLogout() {

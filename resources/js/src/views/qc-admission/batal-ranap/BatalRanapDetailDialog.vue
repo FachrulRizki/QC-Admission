@@ -31,8 +31,8 @@ const verifErrMsg    = ref('')
 const bedList        = ref([])
 const bedLoading     = ref(false)
 
-// isAdmin di sini berarti "bisa aksi" — mencakup role admin & qc_admission
-const isAdmin = computed(() => authStore.isAdmin || authStore.isQcAdmission)
+// isAdmin di sini berarti "bisa aksi" — punya permission write
+const isAdmin = computed(() => authStore.hasPermission('batal-ranap:write'))
 
 // Sudah closing terkunci — hanya 'Siap Closing' jika, 'Belum Siap Closing' masih bisa diupdate
 const isLocked = computed(() => props.item?.status_closing === 'Siap Closing')

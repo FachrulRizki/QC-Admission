@@ -87,14 +87,13 @@ class KeycloakService
 
         $all = array_values(array_unique(array_merge($realmRoles, $clientRoles)));
 
-        // Pisahkan role aplikasi (tidak mengandung ':') dari permission-format ('module:action')
+        // Ambil semua role yang bukan system role dan bukan permission format (module:action)
         $appRoles = array_values(array_filter(
             $all,
             fn($r) => ! in_array($r, $systemRoles, true) && ! str_contains($r, ':')
         ));
 
         // Fallback: jika tidak ada role eksplisit, derive dari permissions yang ada
-        // Ini terjadi ketika Keycloak hanya assign permissions tanpa role terpisah
         if (empty($appRoles)) {
             $permissions = array_values(array_filter($clientRoles, fn($r) => str_contains($r, ':')));
             $appRoles = $this->deriveRoleFromPermissions($permissions);

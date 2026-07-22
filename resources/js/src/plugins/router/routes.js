@@ -1,12 +1,8 @@
 /**
  * Route definitions — meta.roles dipakai oleh router guard (index.js).
  *
- * Nilai roles harus sesuai dengan nama role di Keycloak realm/client.
- * Tidak ada role string yang di-hardcode lebih dari ini — guard membaca
- * nilai aktual dari Keycloak via Inertia shared props.
- *
- * Untuk permission granular, gunakan format 'resource:scope':
- *   meta: { roles: ['quality-control:view'] }
+ * Gunakan format permission 'resource:scope' agar tidak tergantung nama role.
+ * Siapapun yang punya permission tersebut di Keycloak bisa akses halaman ini.
  */
 export const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -15,66 +11,66 @@ export const routes = [
   { path: '/login',         component: () => import('@/pages/login.vue') },
   { path: '/akses-ditolak', component: () => import('@/pages/akses-ditolak.vue') },
 
-  // Dashboard — admin + qc_admission
+  // Dashboard
   {
     path: '/dashboard',
     component: () => import('@/pages/dashboard.vue'),
-    meta: { roles: ['admin', 'qc_admission'] },
+    meta: { roles: ['dashboard:view'] },
   },
 
-  // QC & Edukasi — admin + qc_admission
+  // QC & Edukasi
   {
     path: '/quality-control',
     component: () => import('@/pages/qc_admission/quality-control.vue'),
-    meta: { roles: ['admin', 'qc_admission'] },
+    meta: { roles: ['quality-control:view'] },
   },
   {
     path: '/edukasi-lanjutan',
     component: () => import('@/pages/qc_admission/edukasi-lanjutan.vue'),
-    meta: { roles: ['admin', 'qc_admission'] },
+    meta: { roles: ['edukasi-lanjutan:view'] },
   },
 
-  // Batal Ranap — admin + qc_admission (write), kasir lihat di batal-ranap-view
+  // Batal Ranap
   {
     path: '/batal-ranap',
     component: () => import('@/pages/qc_admission/batal-ranap.vue'),
-    meta: { roles: ['admin', 'qc_admission'] },
+    meta: { roles: ['batal-ranap:view'] },
   },
   {
     path: '/batal-ranap-view',
     component: () => import('@/pages/qc_admission/batal-ranap-view.vue'),
-    meta: { roles: ['admin', 'qc_admission', 'kasir'] },
+    meta: { roles: ['batal-ranap:view'] },
   },
 
-  // Up Selling — admin + qc_admission
+  // Up Selling
   {
     path: '/up-selling',
     component: () => import('@/pages/qc_admission/up-selling.vue'),
-    meta: { roles: ['admin', 'qc_admission'] },
+    meta: { roles: ['up-selling:view'] },
   },
 
-  // View Data Input — semua role
+  // View Data Input — semua user terautentikasi
   {
     path: '/view-data-input',
     component: () => import('@/pages/qc_admission/view-data-input.vue'),
-    meta: { roles: ['admin', 'qc_admission', 'kasir'] },
+    meta: { roles: [] }, // kosong = hanya butuh login
   },
 
-  // Admin only
+  // Admin/privileged
   {
     path: '/activity-log',
     component: () => import('@/pages/qc_admission/activity-log.vue'),
-    meta: { roles: ['admin'] },
+    meta: { roles: ['activity-log:view'] },
   },
   {
     path: '/master-data',
     component: () => import('@/pages/qc_admission/master-data.vue'),
-    meta: { roles: ['admin'] },
+    meta: { roles: ['master-data:view'] },
   },
   {
     path: '/token-info',
     component: () => import('@/pages/qc_admission/token-info.vue'),
-    meta: { roles: ['admin'] },
+    meta: { roles: ['admin'] }, // tetap role — hanya admin yang lihat token
   },
 
   // 404

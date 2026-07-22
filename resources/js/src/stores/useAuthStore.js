@@ -22,10 +22,10 @@ export const useAuthStore = defineStore('auth', {
     isQcAdmission: () => usePage().props.auth?.roles?.includes('qc_admission') ?? false,
     isKasir:       () => usePage().props.auth?.roles?.includes('kasir')        ?? false,
 
-    // ── Akses menu utama — admin atau qc_admission ─────────────────────────
+    // ── Akses menu utama — cek permission dashboard:view ──────────────────
     canAccessMain: () => {
-      const roles = usePage().props.auth?.roles ?? []
-      return roles.includes('admin') || roles.includes('qc_admission')
+      const perms = usePage().props.auth?.permissions ?? []
+      return perms.includes('dashboard:view') || perms.includes('quality-control:view')
     },
   },
 

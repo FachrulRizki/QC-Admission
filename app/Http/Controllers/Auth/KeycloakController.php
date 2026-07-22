@@ -111,6 +111,9 @@ class KeycloakController extends Controller
         );
 
         $default = in_array('kasir', $roles) ? '/view-data-input' : '/dashboard';
+        if (! in_array('dashboard:view', $permissions)) {
+            $default = '/view-data-input';
+        }
         return redirect()->intended($default);
     }
 

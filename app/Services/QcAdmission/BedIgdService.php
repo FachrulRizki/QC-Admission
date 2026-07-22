@@ -131,9 +131,9 @@ class BedIgdService
                 $baseUrl  = config('services.bed_igd.base_url');
                 $fullUrl  = rtrim($baseUrl, '/') . $updatePath;
                 $payload  = [
-                    'Kode_Bed' => $kodeBed,
-                    'No_Reg'   => null,
-                    'Status'   => 'KOSONG',
+                    'kode_bed' => $kodeBed,
+                    'no_reg'   => $noReg,
+                    'status'   => 'KOSONG',
                 ];
 
                 Log::info("BedIgdService: trigger release bed", [
