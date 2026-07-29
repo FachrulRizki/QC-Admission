@@ -57,9 +57,5 @@ const auth = useAuthStore()
       v-if="auth.hasPermission('master-data:view')"
       :item="{ title: 'Master Data', icon: 'ri-database-2-line', to: '/master-data' }"
     />
-    <VerticalNavLink
-      v-if="auth.hasPermission('master-data:view')"
-      :item="{ title: 'Token Info', icon: 'ri-key-2-line', to: '/token-info' }"
-    />
   </template>
 </template>

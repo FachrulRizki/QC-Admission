@@ -67,12 +67,6 @@ export const routes = [
     component: () => import('@/pages/qc_admission/master-data.vue'),
     meta: { roles: ['master-data:view'] },
   },
-  {
-    path: '/token-info',
-    component: () => import('@/pages/qc_admission/token-info.vue'),
-    meta: { roles: ['admin'] }, // tetap role — hanya admin yang lihat token
-  },
-
   // 404
   { path: '/:pathMatch(.*)*', component: () => import('@/pages/error/404.vue') },
 ]

@@ -423,19 +423,6 @@ class BedIgdService
 
     // Helpers───
 
-    private function fetchBedIgdId(string $token, string $kodeBed): ?int
-    {
-        $response = Http::withToken($token)->timeout(10)->acceptJson()
-            ->get(config('services.bed_igd.base_url') . '/master-bed');
-
-        if (! $response->successful()) return null;
-
-        $found = collect($response->json()['data'] ?? [])
-            ->first(fn($b) => ($b['Kode_Bed'] ?? '') === $kodeBed);
-
-        return $found['BedIgd']['id'] ?? null;
-    }
-
     private function isApiEnabled(): bool
     {
         return (bool) config('services.bed_igd.enabled', false)

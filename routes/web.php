@@ -90,8 +90,6 @@ Route::middleware(['keycloak.auth'])->group(function () {
         Route::get('/master-data', fn () => Inertia::render('qc_admission/master-data'))->name('master-data');
     });
 
-    // Semua user terautentikasi — lihat token sendiri untuk keperluan integrasi
-    Route::get('/token-info', fn () => Inertia::render('qc_admission/token-info'))->name('token-info');
 });
 
 // Catch-all 404
