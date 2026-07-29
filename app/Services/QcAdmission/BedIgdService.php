@@ -21,7 +21,7 @@ class BedIgdService
             try {
                 $token    = $this->getToken();
                 $response = Http::withToken($token)
-                    ->timeout(10)
+                    ->timeout(5)
                     ->acceptJson()
                     ->get(config('services.bed_igd.base_url') . '/master-bed');
 

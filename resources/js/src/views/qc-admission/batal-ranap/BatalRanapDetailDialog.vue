@@ -116,7 +116,7 @@ async function saveClosing() {
         emit('verified', { bedTriggered: null })
       } else {
         emit('verified', { bedTriggered: false, bedError: bedUpdate.message })
-        closingErrMsg.value = `⚠️ Status "Siap Closing" tersimpan, tapi trigger Bed IGD gagal: ${bedUpdate.message ?? 'cek log server'}`
+        closingErrMsg.value = 'Sistem Bed IGD sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi atau hubungi petugas IT.'
         savingClosing.value = false
         return
       }
@@ -124,7 +124,7 @@ async function saveClosing() {
       emit('verified')
     }
     close()
-  } catch { closingErrMsg.value = 'Terjadi kesalahan.' }
+  } catch { closingErrMsg.value = 'Terjadi kesalahan. Silakan coba lagi atau hubungi petugas IT.' }
   finally { savingClosing.value = false }
 }
 
