@@ -12,6 +12,7 @@ use App\Http\Controllers\QcAdmission\PegawaiController;
 use App\Http\Controllers\QcAdmission\PasienController;
 use App\Http\Controllers\QcAdmission\MasterDataController;
 use App\Http\Controllers\QcAdmission\ActivityLogController;
+use App\Http\Controllers\QcAdmission\AlasanController;
 
 Route::middleware(['keycloak.auth'])->group(function () {
 
@@ -143,5 +144,25 @@ Route::middleware(['keycloak.auth'])->group(function () {
     // Butuh permission activity-log:view─
     Route::middleware(['keycloak.role:activity-log:view'])->group(function () {
         Route::get('/activity-log', [ActivityLogController::class, 'index']);
+    });
+
+    // Alasan — data pendaftaran aktif (read-only, semua authenticated)
+    Route::get('alasan/pendaftaran-aktif', [AlasanController::class, 'pendaftaranAktif']);
+
+    // Butuh permission alasan:view
+    Route::middleware(['keycloak.role:alasan:view'])->group(function () {
+        Route::get('alasan',      [AlasanController::class, 'index']);
+        Route::get('alasan/{id}', [AlasanController::class, 'show']);
+    });
+
+    // Butuh permission alasan:write
+    Route::middleware(['keycloak.role:alasan:write'])->group(function () {
+        Route::post('alasan',       [AlasanController::class, 'store']);
+        Route::put ('alasan/{id}',  [AlasanController::class, 'update']);
+    });
+
+    // Butuh permission alasan:delete
+    Route::middleware(['keycloak.role:alasan:delete'])->group(function () {
+        Route::delete('alasan/{id}', [AlasanController::class, 'destroy']);
     });
 });

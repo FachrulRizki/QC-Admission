@@ -65,6 +65,14 @@ class MasterDataSeeder extends Seeder
                 'BPJS', 'Umum', 'Asuransi', 'Jasa Raharja',
                 'BPJS Ketenagakerjaan', 'Gratis', 'Lainnya',
             ],
+            'alasan_pilih' => [
+                'Pelayanan',
+                'Kelengkapan Alat & Dokter',
+                'Teman/Kerabat',
+                'Rujukan',
+                'Marketing',
+                'Sosial Media',
+            ],
         ];
 
         foreach ($defaults as $category => $items) {

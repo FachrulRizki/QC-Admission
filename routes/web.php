@@ -90,6 +90,11 @@ Route::middleware(['keycloak.auth'])->group(function () {
         Route::get('/master-data', fn () => Inertia::render('qc_admission/master-data'))->name('master-data');
     });
 
+    // Butuh permission alasan:view
+    Route::middleware(['keycloak.role:alasan:view'])->group(function () {
+        Route::get('/alasan', fn () => Inertia::render('qc_admission/alasan'))->name('alasan');
+    });
+
 });
 
 // Catch-all 404

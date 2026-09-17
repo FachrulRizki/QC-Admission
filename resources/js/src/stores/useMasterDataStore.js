@@ -1,16 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-/**
- * useMasterDataStore
- * Fetch semua master data dari /api/master-data dan cache di state.
- * Semua form pakai store ini untuk dropdown.
- *
- * Keys dari API:
- *   ket_bayar, ruangan, kelas, bangsal, keterangan_batal,
- *   status_ok, ket_up_selling, status_ket_qc, note_kamar,
- *   cara_masuk, diagnosa, jaminan
- */
 export const useMasterDataStore = defineStore('masterData', {
   state: () => ({
     // Semua kategori dari API
@@ -26,10 +16,10 @@ export const useMasterDataStore = defineStore('masterData', {
     cara_masuk:       [],
     diagnosa:         [],
     jaminan:          [],
+    alasan_pilih:     [],
 
     loading: false,
-    fetched: false,
-    error:   null,
+    fetched: false,    error:   null,
   }),
 
   getters: {
@@ -42,6 +32,7 @@ export const useMasterDataStore = defineStore('masterData', {
     ketUpSellingList:    (s) => s.ket_up_selling,
     noteKamarList:       (s) => s.note_kamar,
     jaminanList:         (s) => s.jaminan,
+    alasanPilihList:     (s) => s.alasan_pilih,
     diagnosaList:        (s) => s.diagnosa,
     caraMasukList:       (s) => s.cara_masuk,
     ketBayarList:        (s) => s.ket_bayar,
@@ -61,7 +52,7 @@ export const useMasterDataStore = defineStore('masterData', {
         const keys = [
           'ket_bayar', 'ruangan', 'kelas', 'bangsal', 'keterangan_batal',
           'status_ok', 'ket_up_selling', 'status_ket_qc', 'note_kamar',
-          'cara_masuk', 'diagnosa', 'jaminan',
+          'cara_masuk', 'diagnosa', 'jaminan', 'alasan_pilih',
         ]
         keys.forEach(k => {
           if (data && Array.isArray(data[k])) this[k] = data[k]
@@ -108,8 +99,10 @@ export const useMasterDataStore = defineStore('masterData', {
         'Pneumonia', 'Appendisitis', 'Fraktur', 'Demam Berdarah', 'Typhoid',
         'Gastroenteritis', 'Anemia', 'Asma', 'Epilepsi', 'Lainnya',
       ]
-      if (!this.cara_masuk.length) this.cara_masuk = ['IGD', 'Poli', 'Rujukan', 'Langsung']
-      if (!this.status_ket_qc.length) this.status_ket_qc = ['Belum Dapat Kamar', 'Antri Kamar', 'Sudah Dapat Kamar']
+      if (!this.alasan_pilih.length) this.alasan_pilih = [
+        'Pelayanan', 'Kelengkapan Alat & Dokter', 'Teman/Kerabat',
+        'Rujukan', 'Marketing', 'Sosial Media',
+      ]
     },
 
     /** Force refresh — panggil setelah admin update master data */

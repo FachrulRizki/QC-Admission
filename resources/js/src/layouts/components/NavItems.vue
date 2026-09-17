@@ -36,6 +36,12 @@ const auth = useAuthStore()
     :item="{ title: 'Up Selling', icon: 'ri-arrow-up-circle-line', to: '/up-selling' }"
   />
 
+  <!-- Alasan Pilih urip -->
+  <VerticalNavLink
+    v-if="auth.hasPermission('alasan:view')"
+    :item="{ title: 'Alasan', icon: 'ri-question-answer-line', to: '/alasan' }"
+  />
+
   <!-- View Data Input — semua yang sudah login -->
   <VerticalNavLink
     v-if="auth.isLoggedIn"
