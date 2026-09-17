@@ -3,7 +3,7 @@ import { usePage } from '@inertiajs/vue3'
 import { routes } from './routes'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory('/'),
   routes,
 })
 
@@ -45,5 +45,6 @@ router.beforeEach((to) => {
   // Lanjut
 })
 
-export default function (app) { app.use(router) }
+// Tidak di-register ke Vue app — routing ditangani sepenuhnya oleh Inertia + Laravel
+// File ini dipertahankan hanya sebagai referensi route definitions
 export { router }

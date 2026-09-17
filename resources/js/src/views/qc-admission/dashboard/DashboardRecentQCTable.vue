@@ -1,12 +1,10 @@
 ﻿<script setup>
-import { useRouter } from 'vue-router'
+import { router as inertiaRouter } from '@inertiajs/vue3'
 
 const props = defineProps({
   items:   { type: Array,   default: () => [] },
   loading: { type: Boolean, default: false },
 })
-
-const router = useRouter()
 
 // ── Search & checkbox filter kolom ────────────────────────────────────────────
 const search = ref('')
@@ -136,7 +134,7 @@ function toggleCol(key) {
           </Transition>
         </div>
 
-        <button class="rqc-goto" @click="router.push('/quality-control')">
+        <button class="rqc-goto" @click="inertiaRouter.visit('/quality-control')">
           Lihat Semua →
         </button>
       </div>

@@ -1,6 +1,6 @@
 <script>
 import { defineComponent, ref, h } from 'vue'
-import { useRoute } from 'vue-router'
+import { usePage } from '@inertiajs/vue3'
 import { useDisplay } from 'vuetify'
 import VerticalNav from '@layouts/components/VerticalNav.vue'
 
@@ -15,7 +15,7 @@ export default defineComponent({
     const isOverlayNavActive = ref(false)
     const isLayoutOverlayVisible = ref(false)
     const toggleIsOverlayNavActive = useToggle(isOverlayNavActive)
-    const route = useRoute()
+    const page = usePage()
     const { mdAndDown } = useDisplay()
 
 
@@ -68,7 +68,7 @@ export default defineComponent({
         class: [
           'layout-wrapper layout-nav-type-vertical layout-navbar-static layout-footer-static layout-content-width-fluid',
           mdAndDown.value && 'layout-overlay-nav',
-          route.meta.layoutWrapperClasses,
+          page.props?.layoutWrapperClasses,
         ],
       }, [
         verticalNav,
