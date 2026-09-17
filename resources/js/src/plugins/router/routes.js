@@ -56,6 +56,13 @@ export const routes = [
     meta: { roles: [] }, // kosong = hanya butuh login
   },
 
+  // Alasan
+  {
+    path: '/alasan',
+    component: () => import('@/pages/qc_admission/alasan.vue'),
+    meta: { roles: ['alasan:view'] },
+  },
+
   // Admin/privileged
   {
     path: '/activity-log',

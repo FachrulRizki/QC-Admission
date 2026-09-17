@@ -110,6 +110,7 @@ class AuthController extends Controller
                 'edukasi-lanjutan:view',  'edukasi-lanjutan:write',  'edukasi-lanjutan:delete',
                 'batal-ranap:view',       'batal-ranap:write',       'batal-ranap:delete',       'batal-ranap:closing',
                 'up-selling:view',        'up-selling:write',        'up-selling:delete',
+                'alasan:view',            'alasan:write',            'alasan:delete',
                 'master-data:view',       'master-data:write',       'master-data:delete',
                 'activity-log:view',
             ],
