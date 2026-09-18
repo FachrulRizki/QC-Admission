@@ -179,7 +179,7 @@ watch([dateFrom, dateTo], () => load())
   <div class="qc-page">
 
     <!-- ── Header ─────────────────────────────────────────────────────────── -->
-    <PageHero icon="ri-shield-check-line" badge="Quality Control" title="Quality Control Admisi"
+    <PageHero icon="ri-shield-check-line" badge="Edukasi Awal Admisi" title="Edukasi Awal Admisi"
       subtitle="Pasien otomatis pindah ke Edukasi Lanjutan setelah 2 jam" color-from="#0EA5E9" color-to="#0369A1"
       :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },

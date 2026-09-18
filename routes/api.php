@@ -130,15 +130,17 @@ Route::middleware(['keycloak.auth'])->group(function () {
         });
     });
 
-    // Butuh permission master-data:write─
+    // Butuh permission master-data:write
     Route::middleware(['keycloak.role:master-data:write'])->group(function () {
+        Route::post('/master-data/category',     [MasterDataController::class, 'storeCategory']);
         Route::post('/master-data',              [MasterDataController::class, 'store']);
         Route::put ('/master-data/{category}',   [MasterDataController::class, 'update']);
     });
 
     // Butuh permission master-data:delete
     Route::middleware(['keycloak.role:master-data:delete'])->group(function () {
-        Route::delete('/master-data/{category}/{index}', [MasterDataController::class, 'destroy']);
+        Route::delete('/master-data/category/{category}', [MasterDataController::class, 'destroyCategory']);
+        Route::delete('/master-data/{category}/{index}',  [MasterDataController::class, 'destroy']);
     });
 
     // Butuh permission activity-log:view─

@@ -21,7 +21,7 @@ const auth = useAuthStore()
   <!-- Quality Control -->
   <VerticalNavLink
     v-if="auth.hasPermission('quality-control:view')"
-    :item="{ title: 'Quality Control', icon: 'ri-shield-check-line', to: '/quality-control' }"
+    :item="{ title: 'Edukasi Awal', icon: 'ri-shield-check-line', to: '/quality-control' }"
   />
 
   <!-- Edukasi Lanjutan -->
