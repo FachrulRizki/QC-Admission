@@ -120,9 +120,11 @@ class AuthController extends Controller
                 'edukasi-lanjutan:view',  'edukasi-lanjutan:write',  'edukasi-lanjutan:delete',
                 'batal-ranap:view',       'batal-ranap:write',       'batal-ranap:delete',       'batal-ranap:closing',
                 'up-selling:view',        'up-selling:write',        'up-selling:delete',
+                'alasan:view',            'alasan:write',
             ],
             'kasir' => [
                 'batal-ranap:view',
+                'alasan:view',            'alasan:write',
             ],
             default => [],
         };

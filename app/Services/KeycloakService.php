@@ -70,6 +70,11 @@ class KeycloakService
         Cache::forget('kc_token:' . hash('sha256', $accessToken));
     }
 
+    public function forgetPermissionsCache(string $accessToken): void
+    {
+        Cache::forget('kc_perms:' . hash('sha256', $accessToken));
+    }
+
     // Roles
     public function getRoles(array $introspection): array
     {

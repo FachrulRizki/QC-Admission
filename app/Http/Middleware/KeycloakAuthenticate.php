@@ -96,6 +96,10 @@ class KeycloakAuthenticate
         }
 
         try {
+            // Hapus cache lama agar permission terbaru dari Keycloak selalu diambil
+            $this->keycloak->forgetTokenCache($accessToken);
+            $this->keycloak->forgetPermissionsCache($accessToken);
+
             $roles       = $this->keycloak->getRoles($tokenInfo);
             $permissions = $this->keycloak->getPermissions($accessToken);
 

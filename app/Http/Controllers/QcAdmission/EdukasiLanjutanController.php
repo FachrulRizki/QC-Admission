@@ -105,8 +105,8 @@ class EdukasiLanjutanController extends Controller
     }
 
     /** Sync status rawat inap dari SIMRS — implementasi setelah konfirmasi struktur tabel. */
-    public function syncRsus(): JsonResponse
-    {
-        return response()->json(['message' => 'Sync SIMRS belum diimplementasikan.'], 501);
-    }
+    // public function syncRsus(): JsonResponse
+    // {
+    //     return response()->json(['message' => 'Sync SIMRS belum diimplementasikan.'], 501);
+    // }
 }

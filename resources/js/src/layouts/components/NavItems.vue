@@ -12,6 +12,12 @@ const auth = useAuthStore()
     :item="{ title: 'Dashboard', icon: 'ri-dashboard-line', to: '/dashboard' }"
   />
 
+  <!-- Alasan Pilih urip -->
+  <VerticalNavLink
+    v-if="auth.hasPermission('alasan:view')"
+    :item="{ title: 'Alasan', icon: 'ri-question-answer-line', to: '/alasan' }"
+  />
+
   <!-- Quality Control -->
   <VerticalNavLink
     v-if="auth.hasPermission('quality-control:view')"
@@ -34,12 +40,6 @@ const auth = useAuthStore()
   <VerticalNavLink
     v-if="auth.hasPermission('up-selling:view')"
     :item="{ title: 'Up Selling', icon: 'ri-arrow-up-circle-line', to: '/up-selling' }"
-  />
-
-  <!-- Alasan Pilih urip -->
-  <VerticalNavLink
-    v-if="auth.hasPermission('alasan:view')"
-    :item="{ title: 'Alasan', icon: 'ri-question-answer-line', to: '/alasan' }"
   />
 
   <!-- View Data Input — semua yang sudah login -->

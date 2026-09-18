@@ -152,10 +152,10 @@ onMounted(load)
         { icon: 'ri-time-line', text: `${stats.menunggu} menunggu` },
       ]">
       <template #actions>
-        <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
+        <!-- <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
           :loading="syncing" @click="syncRsus">
           <VIcon icon="ri-refresh-line" size="15" class="me-1" />Sync SIMRS
-        </VBtn>
+        </VBtn> -->
       </template>
     </PageHero>
 
@@ -250,9 +250,9 @@ onMounted(load)
         <VBtn variant="tonal" color="primary" rounded="lg" size="small" @click="dateFrom = ''; dateTo = ''; load()">
           <VIcon icon="ri-history-line" size="14" class="me-1" />Lihat Semua Riwayat
         </VBtn>
-        <VBtn variant="tonal" color="success" rounded="lg" size="small" :loading="syncing" @click="syncRsus">
+        <!-- <VBtn variant="tonal" color="success" rounded="lg" size="small" :loading="syncing" @click="syncRsus">
           <VIcon icon="ri-refresh-line" size="14" class="me-1" />Sync SIMRS
-        </VBtn>
+        </VBtn> -->
       </div>
     </div>
 
