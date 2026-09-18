@@ -28,7 +28,7 @@ class EdukasiLanjutanController extends Controller
             'nama_pasien'         => 'nullable|string|max:100',
             'jaminan'             => 'nullable|string|max:50',
             'bulan'               => 'required|string|max:20',
-            'edukasi_kamar'       => 'nullable|string|max:100',
+            'edukasi_kamar'       => 'nullable|string',
             'note'                => 'nullable|string',
             'petugas'             => 'required|string|max:100',
             'keluarga_pasien'     => 'required|string|max:100',
@@ -54,7 +54,7 @@ class EdukasiLanjutanController extends Controller
         $validated = $request->validate([
             'nama_pasien'         => 'nullable|string|max:100',
             'jaminan'             => 'nullable|string|max:50',
-            'edukasi_kamar'       => 'nullable|string|max:100',
+            'edukasi_kamar'       => 'nullable|string',
             'note'                => 'nullable|string',
             'petugas'             => 'sometimes|string|max:100',
             'keluarga_pasien'     => 'nullable|string|max:100',
