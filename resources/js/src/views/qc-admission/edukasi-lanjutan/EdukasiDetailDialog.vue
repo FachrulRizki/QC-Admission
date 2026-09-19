@@ -397,7 +397,7 @@ variant="tonal" size="x-small"
 </div>
 <div class="ig-grid">
 <div class="ig-cell"><span class="ic-lbl">Petugas</span><span class="ic-val">{{ h.petugas||'—' }}</span></div>
-<div class="ig-cell"><span class="ic-lbl">Ruangan</span><span class="ic-val">{{ h.edukasi_kamar||'—' }}</span></div>
+<div class="ig-cell ig-cell--full"><span class="ic-lbl">Ruangan / Edukasi Kamar</span><span class="ic-val" style="white-space:pre-wrap;word-break:break-word">{{ h.edukasi_kamar||'—' }}</span></div>
 <div class="ig-cell ig-cell--full"><span class="ic-lbl">Note</span><span class="ic-val">{{ h.note||'—' }}</span></div>
 <div class="ig-cell"><span class="ic-lbl">Keluarga</span><span class="ic-val">{{ h.keluarga_pasien||'—' }}</span></div>
 <div class="ig-cell">
@@ -464,8 +464,9 @@ Setiap simpan akan menambah <strong>sesi baru</strong>. Riwayat dapat dilihat di
 <span class="fs-required-badge">Wajib Diisi</span>
 </div>
 <div class="fs-body">
-<VTextField v-model="form.edukasi_kamar" label="Edukasi Kamar / Ruangan"
-variant="outlined" density="compact" prepend-inner-icon="ri-hospital-line" class="mb-3" hide-details />
+<VTextarea v-model="form.edukasi_kamar" label="Edukasi Kamar / Ruangan"
+variant="outlined" density="compact" prepend-inner-icon="ri-hospital-line" class="mb-3" hide-details
+rows="3" auto-grow />
 <VRow dense>
 <VCol cols="6">
 <VSelect v-model="form.note" :items="masterStore.noteKamarList" label="Note Kamar"

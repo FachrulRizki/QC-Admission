@@ -375,7 +375,7 @@ onMounted(() => {
             <div class="al-row__meta">
               <span>{{ item.no_reg }}</span>
               <span v-if="item.jaminan">{{ item.jaminan }}</span>
-              <span v-if="item.catatan" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              <span v-if="item.catatan" style="word-break:break-word;white-space:normal;max-width:100%">
                 <VIcon icon="ri-chat-3-line" size="10" />"{{ item.catatan }}"
               </span>
             </div>

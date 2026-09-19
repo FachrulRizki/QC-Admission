@@ -260,12 +260,13 @@ class="mb-3" hide-details="auto"
 <span>Data Quality Control</span>
 </div>
 <div class="fs-body">
-<VTextField
+<VTextarea
 v-model="form.edukasi_kamar"
 label="Edukasi Kamar / Ruangan"
 variant="outlined" density="compact"
 prepend-inner-icon="ri-hospital-line"
 class="mb-3" hide-details="auto"
+rows="3" auto-grow
 />
 <VRow dense class="mb-3">
 <VCol cols="6">
