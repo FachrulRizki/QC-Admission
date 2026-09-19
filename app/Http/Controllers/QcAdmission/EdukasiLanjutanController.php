@@ -34,7 +34,7 @@ class EdukasiLanjutanController extends Controller
             'keluarga_pasien'     => 'required|string|max:100',
             'ttd_keluarga_pasien' => 'nullable|string',
             'status'              => 'nullable|in:Menunggu,Selesai',
-            'quality_control_id'  => 'nullable|integer|exists:quality_controls,id',
+            'quality_control_id'  => 'nullable|integer|exists:qcw_quality_controls,id',
         ]);
 
         $record = $this->service->create($validated);
