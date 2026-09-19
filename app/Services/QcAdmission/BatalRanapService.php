@@ -14,17 +14,17 @@ class BatalRanapService
         if (! empty($filters['search'])) {
             $q = $filters['search'];
             $query->where(fn($s) => $s
-                ->where('no_reg',  'like', "%{$q}%")
-                ->orWhere('petugas', 'like', "%{$q}%")
-                ->orWhere('diagnosa','like', "%{$q}%")
+                ->where('no_reg',       'like', "%{$q}%")
+                ->orWhere('nama_pasien','like', "%{$q}%")
+                ->orWhere('petugas',    'like', "%{$q}%")
+                ->orWhere('diagnosa',   'like', "%{$q}%")
             );
         }
 
-        if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
-        if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
-        if (! empty($filters['status_ok'])) $query->where('status_ok', $filters['status_ok']);
+        if (! empty($filters['status_ok']))      $query->where('status_ok', $filters['status_ok']);
+        if (! empty($filters['status_closing'])) $query->where('status_closing', $filters['status_closing']);
 
-        return $query->paginate($filters['per_page'] ?? 10);
+        return $query->paginate($filters['per_page'] ?? 200);
     }
 
     public function create(array $data): BatalRanap
