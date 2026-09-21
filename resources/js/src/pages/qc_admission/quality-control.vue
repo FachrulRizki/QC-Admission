@@ -188,7 +188,7 @@ watch([dateFrom, dateTo], () => load())
       <template #actions>
         <VBtn color="white" variant="elevated" rounded="pill" size="small" style="color:#0369A1;font-weight:700"
           @click="openAdd">
-          <VIcon icon="ri-add-line" size="16" class="me-1" />Input Quality Control
+          <VIcon icon="ri-add-line" size="16" class="me-1" />Input Edukasi Awal
         </VBtn>
       </template>
     </PageHero>

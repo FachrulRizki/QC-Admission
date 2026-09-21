@@ -140,8 +140,8 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
 <VIcon icon="ri-shield-check-line" size="22" color="white" />
 </div>
 <div class="db-text">
-<p class="db-sub">Quality Control · IGD</p>
-<h3 class="db-title">{{ editItem ? 'Edit Quality Control' : 'Input Quality Control' }}</h3>
+<p class="db-sub">Edukasi Awal · IGD</p>
+<h3 class="db-title">{{ editItem ? 'Edit Edukasi Awal' : 'Input Edukasi Awal' }}</h3>
 </div>
 <div class="db-clock">
 <VIcon icon="ri-time-line" size="11" class="me-1 opacity-70" />
@@ -257,7 +257,7 @@ class="mb-3" hide-details="auto"
 <div class="form-section form-section--info">
 <div class="fs-header fs-header--info">
 <VIcon icon="ri-hospital-line" size="14" />
-<span>Data Quality Control</span>
+<span>Data Edukasi Awal</span>
 </div>
 <div class="fs-body">
 <VTextarea

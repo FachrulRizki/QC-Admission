@@ -66,19 +66,6 @@ function backToLogin() {
             Hubungi administrator sistem atau IT Support
           </p>
         </div>
-        <div class="d-flex align-start gap-3 mb-3">
-          <div class="step-num">2</div>
-          <p class="text-body-2 mb-0">
-            Minta assign role <code>admin</code>, <code>qc_admission</code>, atau <code>kasir</code>
-            di Keycloak untuk client <code>{{ clientId }}</code>
-          </p>
-        </div>
-        <div class="d-flex align-start gap-3">
-          <div class="step-num">3</div>
-          <p class="text-body-2 mb-0">
-            Setelah role di-assign, klik <strong>"Coba Login Lagi"</strong> di bawah
-          </p>
-        </div>
       </div>
 
       <!-- Actions -->

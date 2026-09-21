@@ -34,7 +34,7 @@ const isKasir = computed(() => !auth.hasPermission('quality-control:view'))
 
 const allTabs = [
   { key: 'summary',          label: 'Summary',          shortLabel: 'Summary', icon: 'ri-user-heart-line',       permission: 'quality-control:view' },
-  { key: 'quality-control',  label: 'Quality Control',  shortLabel: 'QC',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
+  { key: 'quality-control',  label: 'Edukasi Awal',  shortLabel: 'QC',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
   { key: 'batal-ranap',      label: 'Batal Ranap',      shortLabel: 'Batal',   icon: 'ri-close-circle-line',     permission: 'batal-ranap:view' },
   { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', shortLabel: 'Edukasi', icon: 'ri-book-open-line',        permission: 'edukasi-lanjutan:view' },
   { key: 'up-selling',       label: 'Up Selling',       shortLabel: 'Up Sell', icon: 'ri-arrow-up-circle-line',  permission: 'up-selling:view' },
@@ -216,7 +216,7 @@ watch(() => auth.permissions, (perms, prev) => {
 
     <!-- Stats -->
     <SummaryCards v-if="!isKasir" v-model="activeTab" :cards="[
-      { value: grandStats.qc, label: 'Quality Control', color: 'primary', icon: 'ri-shield-check-line', filterValue: 'quality-control' },
+      { value: grandStats.qc, label: 'Edukasi Awal', color: 'primary', icon: 'ri-shield-check-line', filterValue: 'quality-control' },
       { value: grandStats.batal, label: 'Batal Ranap', color: 'error', icon: 'ri-close-circle-line', filterValue: 'batal-ranap' },
       { value: grandStats.edukasi, label: 'Edukasi Lanjutan', color: 'warning', icon: 'ri-book-open-line', filterValue: 'edukasi-lanjutan' },
       { value: grandStats.up, label: 'Up Selling', color: 'success', icon: 'ri-arrow-up-circle-line', filterValue: 'up-selling' },

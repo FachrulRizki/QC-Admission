@@ -103,11 +103,6 @@ async function loginLocal() {
             <h2 class="login-form__title">
               {{ ssoEnabled ? 'Login SSO' : 'Login Lokal' }}
             </h2>
-            <p class="login-form__sub">
-              {{ ssoEnabled
-                ? 'Gunakan akun jaringan rumah sakit (Keycloak SSO)'
-                : 'Mode testing — login dengan akun lokal' }}
-            </p>
           </div>
 
           <!-- Network badge -->

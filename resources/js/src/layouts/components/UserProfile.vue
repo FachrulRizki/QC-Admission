@@ -51,14 +51,6 @@ function handleLogout() {
             <VListItemSubtitle>{{ roleLabel }}</VListItemSubtitle>
           </VListItem>
 
-          <!-- Login type badge -->
-          <div class="px-4 pb-2">
-            <VChip :color="user?.login_type === 'sso' ? 'info' : 'primary'" size="x-small" variant="tonal"
-              :prepend-icon="user?.login_type === 'sso' ? 'ri-key-2-line' : 'ri-user-3-line'">
-              {{ user?.login_type === 'sso' ? 'SSO Keycloak' : 'Login Lokal' }}
-            </VChip>
-          </div>
-
           <VDivider class="my-1" />
 
           <!-- Logout -->
