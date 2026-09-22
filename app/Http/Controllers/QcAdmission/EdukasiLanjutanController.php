@@ -15,7 +15,9 @@ class EdukasiLanjutanController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(
-            $this->service->paginate($request->only(['search', 'date_from', 'date_to', 'status', 'per_page', 'page']))
+            $this->service->paginate($request->only([
+                'search', 'date_from', 'date_to', 'status', 'per_page', 'page', 'include_transferred',
+            ]))
         );
     }
 

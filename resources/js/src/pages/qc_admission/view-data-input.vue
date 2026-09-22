@@ -34,9 +34,10 @@ const isKasir = computed(() => !auth.hasPermission('quality-control:view'))
 
 const allTabs = [
   { key: 'summary',          label: 'Summary',          shortLabel: 'Summary', icon: 'ri-user-heart-line',       permission: 'quality-control:view' },
+  { key: 'quality-control',  label: 'Alasan',  shortLabel: 'alasan',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
   { key: 'quality-control',  label: 'Edukasi Awal',  shortLabel: 'QC',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
-  { key: 'batal-ranap',      label: 'Batal Ranap',      shortLabel: 'Batal',   icon: 'ri-close-circle-line',     permission: 'batal-ranap:view' },
   { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', shortLabel: 'Edukasi', icon: 'ri-book-open-line',        permission: 'edukasi-lanjutan:view' },
+  { key: 'batal-ranap',      label: 'Batal Ranap',      shortLabel: 'Batal',   icon: 'ri-close-circle-line',     permission: 'batal-ranap:view' },
   { key: 'up-selling',       label: 'Up Selling',       shortLabel: 'Up Sell', icon: 'ri-arrow-up-circle-line',  permission: 'up-selling:view' },
 ]
 
@@ -45,6 +46,7 @@ const tabs = computed(() => allTabs.filter(t => auth.hasPermission(t.permission)
 const qcData = ref([])
 const batalData = ref([])
 const edukasiData = ref([])
+const edukasiTransferData = ref([])
 const upData = ref([])
 
 async function safeGet(url, params = {}) {
@@ -60,20 +62,27 @@ async function loadAll() {
     if (isKasir.value) {
       batalData.value = await safeGet('/api/batal-ranap', { per_page: 500 })
     } else {
-      const [qc, batal, edu, up] = await Promise.all([
+      const [qc, batal, edu, eduTransfer, up] = await Promise.all([
         safeGet('/api/quality-control', { per_page: 500 }),
         safeGet('/api/batal-ranap', { per_page: 500 }),
         safeGet('/api/edukasi-lanjutan', { per_page: 500 }),
+        safeGet('/api/edukasi-lanjutan', { per_page: 500, include_transferred: true }),
         safeGet('/api/up-selling', { per_page: 500 }),
       ])
-      qcData.value = qc; batalData.value = batal; edukasiData.value = edu; upData.value = up
+      qcData.value = qc
+      batalData.value = batal
+      edukasiData.value = edu
+      edukasiTransferData.value = eduTransfer
+      upData.value = up
     }
   } finally { loading.value = false }
 }
 
 const grandStats = computed(() => ({
   qc: qcData.value.length, batal: batalData.value.length,
-  edukasi: edukasiData.value.length, up: upData.value.length,
+  edukasi: edukasiData.value.length,
+  edukasiTransfer: edukasiTransferData.value.length,
+  up: upData.value.length,
 }))
 
 const summaryData = computed(() => {
@@ -90,7 +99,13 @@ const summaryData = computed(() => {
 })
 
 const activeData = computed(() => {
-  const map = { summary: summaryData.value, 'quality-control': qcData.value, 'batal-ranap': batalData.value, 'edukasi-lanjutan': edukasiData.value, 'up-selling': upData.value }
+  const map = {
+    summary: summaryData.value,
+    'quality-control': qcData.value,
+    'batal-ranap': batalData.value,
+    'edukasi-lanjutan': edukasiTransferData.value,
+    'up-selling': upData.value,
+  }
   return map[activeTab.value] ?? []
 })
 
@@ -141,7 +156,7 @@ const pageBannerColor = computed(() => ({
   'summary': 'primary',
   'quality-control': 'primary',
   'batal-ranap': 'error',
-  'edukasi-lanjutan': 'warning',
+  'edukasi-lanjutan': 'success',
   'up-selling': 'success',
 })[activeTab.value] ?? 'primary')
 
@@ -218,7 +233,7 @@ watch(() => auth.permissions, (perms, prev) => {
     <SummaryCards v-if="!isKasir" v-model="activeTab" :cards="[
       { value: grandStats.qc, label: 'Edukasi Awal', color: 'primary', icon: 'ri-shield-check-line', filterValue: 'quality-control' },
       { value: grandStats.batal, label: 'Batal Ranap', color: 'error', icon: 'ri-close-circle-line', filterValue: 'batal-ranap' },
-      { value: grandStats.edukasi, label: 'Edukasi Lanjutan', color: 'warning', icon: 'ri-book-open-line', filterValue: 'edukasi-lanjutan' },
+      { value: grandStats.edukasiTransfer, label: 'Sudah Masuk Kamar', color: 'success', icon: 'ri-home-heart-line', filterValue: 'edukasi-lanjutan' },
       { value: grandStats.up, label: 'Up Selling', color: 'success', icon: 'ri-arrow-up-circle-line', filterValue: 'up-selling' },
     ]" />
     <SummaryCards v-else :cards="[
@@ -346,8 +361,15 @@ watch(() => auth.permissions, (perms, prev) => {
 
               <!-- Edukasi tab -->
               <template v-else-if="activeTab === 'edukasi-lanjutan'">
-                <VChip v-if="item.status" :color="statusColor(item.status)" size="x-small" variant="tonal">{{
+                <VChip v-if="item.keterangan === 'Sudah Masuk Kamar'" color="success" size="x-small" variant="tonal">
+                  <VIcon icon="ri-home-heart-line" size="10" class="me-1" />Sudah Masuk Kamar
+                </VChip>
+                <VChip v-else-if="item.keterangan === 'Belum Diantar'" color="orange" size="x-small" variant="tonal">
+                  <VIcon icon="ri-walk-line" size="10" class="me-1" />Dapat Kamar · Belum Diantar
+                </VChip>
+                <VChip v-else-if="item.status" :color="statusColor(item.status)" size="x-small" variant="tonal">{{
                   item.status }}</VChip>
+                <VChip v-if="item.jaminan" size="x-small" color="secondary" variant="tonal">{{ item.jaminan }}</VChip>
               </template>
 
               <!-- Up Selling tab -->
@@ -368,6 +390,10 @@ watch(() => auth.permissions, (perms, prev) => {
               <span v-if="activeTab === 'batal-ranap' && item.keterangan_batal" class="text-caption text-truncate"
                 style="color:var(--qc-text-2);max-width:160px">
                 <VIcon icon="ri-error-warning-line" size="10" class="me-1" />{{ item.keterangan_batal }}
+              </span>
+              <span v-if="activeTab === 'edukasi-lanjutan' && item.edukasi_kamar" class="text-caption text-truncate"
+                style="color:var(--qc-text-2);max-width:200px">
+                <VIcon icon="ri-hospital-line" size="10" class="me-1" />{{ item.edukasi_kamar }}
               </span>
               <span v-if="activeTab === 'up-selling' && item.note" class="text-caption text-truncate"
                 style="color:var(--qc-text-2);max-width:140px">{{ item.note }}</span>
@@ -454,7 +480,7 @@ watch(() => auth.permissions, (perms, prev) => {
 }
 
 .vdi-page-banner--edukasi-lanjutan {
-  background: rgba(245, 158, 11, 0.06);
+  background: rgba(34, 197, 94, 0.06);
 }
 
 .vdi-page-banner--up-selling {

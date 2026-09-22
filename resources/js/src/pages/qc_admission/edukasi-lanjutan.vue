@@ -63,7 +63,8 @@ const uniquePatients = computed(() => {
   records.value.forEach(r => {
     if (!map[r.no_mr] || r.id > map[r.no_mr].id) map[r.no_mr] = r
   })
-  return Object.values(map)
+  // Exclude pasien yang sudah punya lembar transfer — pindah ke view-data-input
+  return Object.values(map).filter(r => !r.has_transfer)
 })
 
 const sesiCount = computed(() => {
@@ -292,6 +293,11 @@ onMounted(load)
               <!-- Lama menunggu bed — hanya jika masih Menunggu -->
               <VChip v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient)" :color="getWaktuColor(patient)"
                 variant="tonal" size="x-small" prepend-icon="ri-time-line">{{ getWaktuMenunggu(patient) }}</VChip>
+              <!-- Keterangan RSUS: dapat kamar tapi belum diantar -->
+              <VChip v-if="patient.keterangan === 'Belum Diantar'" color="orange" variant="tonal" size="x-small"
+                prepend-icon="ri-walk-line" title="Sudah dapat kamar tapi keterangan belum diantar ke ruangan">
+                Belum Diantar
+              </VChip>
             </div>
 
             <!-- Footer -->

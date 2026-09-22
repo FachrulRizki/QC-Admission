@@ -17,6 +17,8 @@ const masterStore = useMasterDataStore()
 
 const tabView = ref('riwayat')
 const form = ref({})
+const editForm = ref({})
+const editTarget = ref(null) // sesi yang sedang di-edit
 const history = ref([])
 const errorMsg = ref('')
 const successMsg = ref('')
@@ -80,6 +82,7 @@ if (open && props.patient) {
 tabView.value = props.mode === 'edit' ? 'baru' : 'riwayat'
 errorMsg.value = ''
 successMsg.value = ''
+editTarget.value = null
 resetForm()
 pegawaiStore.fetch()
 masterStore.fetch()
@@ -87,6 +90,7 @@ loadHistory()
 clockTimer = setInterval(() => { nowMs.value = Date.now() }, 30_000)
 } else {
 clearInterval(clockTimer)
+editTarget.value = null
 }
 })
 watch(() => props.mode, m => { if (m === 'edit') tabView.value = 'baru' })
@@ -132,6 +136,42 @@ emit('saved')
 setTimeout(() => close(), 600)
 } else {
 errorMsg.value = result?.message ?? 'Gagal menyimpan.'
+}
+}
+
+function openEditSesi(sesi) {
+editTarget.value = { ...sesi }
+editForm.value = {
+edukasi_kamar: sesi.edukasi_kamar ?? '',
+note: sesi.note ?? null,
+petugas: sesi.petugas ?? null,
+keluarga_pasien: sesi.keluarga_pasien ?? '',
+ttd_keluarga_pasien: sesi.ttd_keluarga_pasien ?? '',
+status: sesi.status ?? 'Menunggu',
+}
+errorMsg.value = ''
+successMsg.value = ''
+tabView.value = 'edit'
+}
+
+function cancelEdit() {
+editTarget.value = null
+tabView.value = 'riwayat'
+errorMsg.value = ''
+}
+
+async function handleUpdate() {
+errorMsg.value = ''
+if (!editForm.value.petugas) { errorMsg.value = 'Petugas wajib dipilih.'; return }
+if (!editForm.value.keluarga_pasien?.trim()) { errorMsg.value = 'Nama keluarga pasien wajib diisi.'; return }
+const result = await store.update(editTarget.value.id, editForm.value)
+if (result?.success) {
+successMsg.value = 'Sesi berhasil diperbarui!'
+editTarget.value = null
+tabView.value = 'riwayat'
+emit('saved')
+} else {
+errorMsg.value = result?.message ?? 'Gagal memperbarui.'
 }
 }
 
@@ -259,12 +299,15 @@ class="eb-pill"
 
 <!-- ── Tab bar — STICKY di bawah banner ──────────────────────────────── -->
 <div class="edu-tab-bar">
-<button class="edu-tab" :class="tabView==='riwayat'?'edu-tab--active':''" @click="tabView='riwayat'">
+<button class="edu-tab" :class="tabView==='riwayat'?'edu-tab--active':''" @click="tabView='riwayat'; editTarget=null">
 <VIcon icon="ri-history-line" size="13" class="me-1" />Riwayat
 <span class="edu-tab-badge" :class="tabView==='riwayat'?'edu-tab-badge--active':''">{{ sesiCount }}</span>
 </button>
-<button class="edu-tab" :class="tabView==='baru'?'edu-tab--active':''" @click="tabView='baru'">
+<button class="edu-tab" :class="tabView==='baru'?'edu-tab--active':''" @click="tabView='baru'; editTarget=null">
 <VIcon icon="ri-add-circle-line" size="13" class="me-1" />Tambah Sesi
+</button>
+<button v-if="editTarget" class="edu-tab edu-tab--edit edu-tab--active-edit" :class="tabView==='edit'?'edu-tab--active-edit-sel':''" @click="tabView='edit'">
+<VIcon icon="ri-edit-line" size="13" class="me-1" />Edit Sesi
 </button>
 </div>
 
@@ -393,6 +436,10 @@ variant="tonal" size="x-small"
 {{ getWaktuTungguSesi(idx) }}
 </VChip>
 <VChip :color="statusColor(h.status)" size="x-small" variant="tonal">{{ h.status }}</VChip>
+<VBtn icon size="x-small" variant="text" color="primary" :title="`Edit sesi ini`"
+@click.stop="openEditSesi(h)">
+<VIcon icon="ri-edit-line" size="14" />
+</VBtn>
 </div>
 </div>
 <div class="ig-grid">
@@ -420,7 +467,7 @@ style="height:28px;border:1px solid #eee;border-radius:4px;margin-top:2px" />
 </template>
 
 <!-- ═══ FORM BARU ════════════════════════════════════════════════ -->
-<template v-else>
+<template v-else-if="tabView==='baru'">
 <div class="auto-trigger-banner mb-4">
 <VIcon icon="ri-information-line" size="16" color="info" />
 <span class="text-caption">
@@ -494,15 +541,86 @@ variant="outlined" density="compact" prepend-inner-icon="ri-group-line" class="m
 </div>
 </div>
 </template>
+
+<!-- ═══ FORM EDIT SESI ════════════════════════════════════════════ -->
+<template v-else-if="tabView==='edit' && editTarget">
+<div class="auto-trigger-banner auto-trigger-banner--edit mb-4">
+<VIcon icon="ri-edit-line" size="16" color="warning" />
+<span class="text-caption">
+Mengedit <strong>Sesi #{{ history.findIndex(h => h.id === editTarget.id) >= 0 ? history.length - history.findIndex(h => h.id === editTarget.id) : '?' }}</strong>
+· {{ fmtDate(editTarget.created_at) }}
+</span>
+</div>
+
+<!-- Status -->
+<div class="form-section form-section--primary mb-4">
+<div class="fs-header fs-header--primary">
+<VIcon icon="ri-toggle-line" size="14" />
+<span>Status</span>
+</div>
+<div class="fs-body">
+<VSelect v-model="editForm.status"
+:items="[{ title: '⏳ Menunggu Bed', value: 'Menunggu' }, { title: '✅ Selesai', value: 'Selesai' }]"
+item-title="title" item-value="value"
+label="Status Sesi" variant="outlined" density="compact"
+prepend-inner-icon="ri-checkbox-circle-line" hide-details />
+</div>
+</div>
+
+<!-- Edukasi -->
+<div class="form-section form-section--info mb-4">
+<div class="fs-header fs-header--info">
+<VIcon icon="ri-hospital-line" size="14" />
+<span>Edukasi Lanjutan</span>
+</div>
+<div class="fs-body">
+<VTextarea v-model="editForm.edukasi_kamar" label="Edukasi Kamar / Ruangan"
+variant="outlined" density="compact" prepend-inner-icon="ri-hospital-line" class="mb-3" hide-details
+rows="3" auto-grow />
+<VRow dense>
+<VCol cols="6">
+<VSelect v-model="editForm.note" :items="masterStore.noteKamarList" label="Note Kamar"
+variant="outlined" density="compact" prepend-inner-icon="ri-sticky-note-line" clearable hide-details />
+</VCol>
+<VCol cols="6">
+<VAutocomplete v-model="editForm.petugas" :items="pegawaiStore.namaList" label="Petugas *"
+variant="outlined" density="compact" prepend-inner-icon="ri-nurse-line"
+clearable :loading="pegawaiStore.loading" no-data-text="Memuat..." hide-details />
+</VCol>
+</VRow>
+</div>
+</div>
+
+<!-- Keluarga & TTD -->
+<div class="form-section form-section--purple mb-4">
+<div class="fs-header fs-header--purple">
+<VIcon icon="ri-group-line" size="14" />
+<span>Keluarga &amp; Tanda Tangan</span>
+</div>
+<div class="fs-body">
+<VTextField v-model="editForm.keluarga_pasien" label="Nama Keluarga Pasien *"
+variant="outlined" density="compact" prepend-inner-icon="ri-group-line" class="mb-3" hide-details />
+<SignaturePad v-model="editForm.ttd_keluarga_pasien" label="Tanda Tangan Keluarga" :height="130" />
+</div>
+</div>
+</template>
 </div>
 
 <!-- ── Actions — FIXED di bawah ──────────────────────────────────── -->
 <div class="edu-actions">
-<VBtn variant="outlined" rounded="lg" size="small" @click="close">Tutup</VBtn>
+<VBtn variant="outlined" rounded="lg" size="small" @click="tabView==='edit' ? cancelEdit() : close()">
+{{ tabView === 'edit' ? 'Batal' : 'Tutup' }}
+</VBtn>
 <template v-if="tabView==='riwayat'">
 <VBtn color="warning" variant="tonal" rounded="lg" size="small"
 prepend-icon="ri-add-circle-line" class="flex-grow-1" @click="tabView='baru'">
 Tambah Sesi
+</VBtn>
+</template>
+<template v-else-if="tabView==='edit'">
+<VBtn color="primary" rounded="lg" size="small" class="flex-grow-1"
+prepend-icon="ri-save-line" :loading="store.loading" @click="handleUpdate">
+Simpan Perubahan
 </VBtn>
 </template>
 <template v-else>
@@ -606,6 +724,17 @@ color: rgb(var(--v-theme-warning));
 }
 .edu-tab-badge--active { background: rgb(var(--v-theme-warning)); color: #fff; }
 
+/* Tab edit */
+.edu-tab--edit {
+color: rgba(var(--v-theme-on-surface), 0.45);
+border-bottom: 2.5px solid transparent;
+}
+.edu-tab--active-edit-sel {
+color: rgb(var(--v-theme-primary));
+border-bottom-color: rgb(var(--v-theme-primary));
+background: rgba(var(--v-theme-primary), 0.04);
+}
+
 /* ── Scrollable body ── */
 .edu-body {
 flex: 1 1 auto;
@@ -630,6 +759,10 @@ padding: 10px 14px; border-radius: 10px;
 background: rgba(var(--v-theme-info), 0.06);
 border: 1px solid rgba(var(--v-theme-info), 0.18);
 color: rgba(var(--v-theme-on-surface), 0.75);
+}
+.auto-trigger-banner--edit {
+background: rgba(var(--v-theme-warning), 0.06);
+border-color: rgba(var(--v-theme-warning), 0.25);
 }
 
 /* ── Form sections ── */
