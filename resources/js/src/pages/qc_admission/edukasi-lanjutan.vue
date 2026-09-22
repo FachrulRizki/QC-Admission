@@ -58,13 +58,19 @@ const statusFilter = ref('All')
 const records = computed(() => store.records ?? [])
 
 // Dedupe per no_mr — tampilkan 1 card per pasien (entry terbaru)
+// Urutkan: terlama (created_at terkecil) di atas, terbaru di bawah
 const uniquePatients = computed(() => {
   const map = {}
   records.value.forEach(r => {
     if (!map[r.no_mr] || r.id > map[r.no_mr].id) map[r.no_mr] = r
   })
-  // Exclude pasien yang sudah punya lembar transfer — pindah ke view-data-input
-  return Object.values(map).filter(r => !r.has_transfer)
+  return Object.values(map)
+    .filter(r => !r.has_transfer)
+    .sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+      return ta - tb  // ascending: terlama di atas
+    })
 })
 
 const sesiCount = computed(() => {
