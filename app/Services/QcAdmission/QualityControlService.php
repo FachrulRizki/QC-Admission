@@ -26,6 +26,9 @@ class QualityControlService
         if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
         if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
 
+        // Sembunyikan QC yang sudah masuk ke Edukasi Lanjutan
+        $query->whereDoesntHave('edukasiLanjutans');
+
         return $query->paginate($filters['per_page'] ?? 20);
     }
 

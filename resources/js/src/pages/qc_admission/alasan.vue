@@ -202,13 +202,103 @@ function alasanColor(a) {
 
 // ── Riwayat tab ─────────────────────────────────────────────────────────────
 const searchRiwayatAll = ref('')
-const filteredRecords  = computed(() => {
-  if (!searchRiwayatAll.value.trim()) return store.records
-  const q = searchRiwayatAll.value.toLowerCase()
-  return store.records.filter(r =>
-    Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q))
-  )
+const riwayatDateFrom  = ref('')
+const riwayatDateTo    = ref('')
+const filterRiwayatAlasan = ref('')
+
+// SummaryCards emits null when deselecting — normalise to ''
+watch(filterRiwayatAlasan, v => {
+  if (v === null) filterRiwayatAlasan.value = ''
 })
+
+function parseTglAlasan(str) {
+  if (!str) return null
+  // Format: dd/mm/yyyy, HH.MM.SS
+  const m = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+  if (m) return new Date(`${m[3]}-${m[2]}-${m[1]}`)
+  const d = new Date(str)
+  return isNaN(d) ? null : d
+}
+
+const alasanUniqueList = computed(() => {
+  const unique = [...new Set(store.records.map(r => r.alasan).filter(Boolean))]
+  return [{ title: 'Semua Alasan', value: '' }, ...unique.map(a => ({ title: a, value: a }))]
+})
+
+const filteredRecords  = computed(() => {
+  let r = store.records
+
+  if (searchRiwayatAll.value.trim()) {
+    const q = searchRiwayatAll.value.toLowerCase()
+    r = r.filter(rec => Object.values(rec).some(v => String(v ?? '').toLowerCase().includes(q)))
+  }
+
+  if (riwayatDateFrom.value || riwayatDateTo.value) {
+    const from = riwayatDateFrom.value ? new Date(riwayatDateFrom.value + 'T00:00:00') : null
+    const to   = riwayatDateTo.value   ? new Date(riwayatDateTo.value   + 'T23:59:59') : null
+    r = r.filter(rec => {
+      const tgl = parseTglAlasan(rec.tanggal || '')
+      if (!tgl) return true
+      if (from && tgl < from) return false
+      if (to   && tgl > to)   return false
+      return true
+    })
+  }
+
+  if (filterRiwayatAlasan.value) {
+    r = r.filter(rec => rec.alasan === filterRiwayatAlasan.value)
+  }
+
+  return r
+})
+
+// ── Summary alasan dari semua records (tidak terpengaruh filter alasan) ──────
+// Hitung dari records yang sudah difilter search+tanggal, tapi BUKAN filter alasan
+// supaya cards tetap tampil semua category meski salah satu sedang aktif
+const baseForSummary = computed(() => {
+  let r = store.records
+
+  if (searchRiwayatAll.value.trim()) {
+    const q = searchRiwayatAll.value.toLowerCase()
+    r = r.filter(rec => Object.values(rec).some(v => String(v ?? '').toLowerCase().includes(q)))
+  }
+
+  if (riwayatDateFrom.value || riwayatDateTo.value) {
+    const from = riwayatDateFrom.value ? new Date(riwayatDateFrom.value + 'T00:00:00') : null
+    const to   = riwayatDateTo.value   ? new Date(riwayatDateTo.value   + 'T23:59:59') : null
+    r = r.filter(rec => {
+      const tgl = parseTglAlasan(rec.tanggal || '')
+      if (!tgl) return true
+      if (from && tgl < from) return false
+      if (to   && tgl > to)   return false
+      return true
+    })
+  }
+
+  return r
+})
+
+const riwayatAlasanSummary = computed(() => {
+  const map = {}
+  for (const rec of baseForSummary.value) {
+    const key = rec.alasan || 'Tidak Diketahui'
+    if (!map[key]) map[key] = { alasan: key, total: 0 }
+    map[key].total++
+  }
+  return Object.values(map).sort((a, b) => b.total - a.total)
+})
+
+function alasanIcon(a) {
+  const map = {
+    'Pelayanan':                 'ri-service-line',
+    'Kelengkapan Alat & Dokter': 'ri-stethoscope-line',
+    'Teman/Kerabat':             'ri-group-line',
+    'Rujukan':                   'ri-exchange-line',
+    'Marketing':                 'ri-megaphone-line',
+    'Sosial Media':              'ri-instagram-line',
+  }
+  return map[a] ?? 'ri-question-answer-line'
+}
 
 const todayFormatted = computed(() =>
   new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -344,14 +434,83 @@ onMounted(() => {
          TAB: RIWAYAT INPUT
     ═══════════════════════════════════ -->
     <div v-if="activeTab === 'riwayat' && auth.hasPermission('alasan:view')">
-      <div class="al-toolbar">
-        <div class="al-search-wrap">
+      <!-- Summary bar chart — klik untuk filter per alasan -->
+      <div v-if="store.records.length" class="al-rw-summary mt-3 mb-4">
+        <!-- Total header -->
+        <div class="al-rw-sum__header">
+          <div class="al-rw-sum__header-left">
+            <div class="al-rw-sum__icon">
+              <VIcon icon="ri-bar-chart-box-line" size="15" color="white" />
+            </div>
+            <div>
+              <p class="al-rw-sum__title">Alasan Kunjungan</p>
+              <p class="al-rw-sum__sub">{{ baseForSummary.length }} total · klik untuk filter</p>
+            </div>
+          </div>
+          <div v-if="filterRiwayatAlasan" class="al-rw-sum__active-badge">
+            {{ filterRiwayatAlasan }}
+            <button class="al-rw-sum__clear" @click="filterRiwayatAlasan = ''">
+              <VIcon icon="ri-close-line" size="12" />
+            </button>
+          </div>
+        </div>
+        <!-- Bar rows -->
+        <div class="al-rw-sum__body">
+          <div
+            v-for="(s, i) in riwayatAlasanSummary"
+            :key="s.alasan"
+            class="al-rw-sum__row"
+            :class="{
+              'al-rw-sum__row--active': filterRiwayatAlasan === s.alasan,
+              'al-rw-sum__row--dim': filterRiwayatAlasan && filterRiwayatAlasan !== s.alasan,
+            }"
+            @click="filterRiwayatAlasan = filterRiwayatAlasan === s.alasan ? '' : s.alasan"
+          >
+            <span class="al-rw-sum__rank">{{ i + 1 }}</span>
+            <div class="al-rw-sum__label">
+              <span class="al-rw-sum__dot" :class="`al-rw-sum__dot--${alasanColor(s.alasan)}`" />
+              <span class="al-rw-sum__name">{{ s.alasan }}</span>
+            </div>
+            <div class="al-rw-sum__track">
+              <div
+                class="al-rw-sum__fill"
+                :class="`al-rw-sum__fill--${alasanColor(s.alasan)}`"
+                :style="{ width: baseForSummary.length ? `${Math.round((s.total / baseForSummary.length) * 100)}%` : '0%' }"
+              />
+            </div>
+            <div class="al-rw-sum__stats">
+              <span class="al-rw-sum__count">{{ s.total }}</span>
+              <span class="al-rw-sum__pct">{{ baseForSummary.length ? Math.round((s.total / baseForSummary.length) * 100) : 0 }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar: search + filter tanggal + filter alasan -->
+      <div class="al-toolbar al-toolbar--wrap">
+        <div class="al-search-wrap" style="flex:1;min-width:200px">
           <VIcon icon="ri-search-line" size="16" class="al-search-icon" />
-          <input v-model="searchRiwayatAll" class="al-search-input" placeholder="Cari riwayat..." />
+          <input v-model="searchRiwayatAll" class="al-search-input" placeholder="Cari nama, no reg, petugas..." />
           <button v-if="searchRiwayatAll" class="al-search-clear" @click="searchRiwayatAll = ''">
             <VIcon icon="ri-close-line" size="14" />
           </button>
         </div>
+        <!-- Filter tanggal -->
+        <div class="al-date-wrap">
+          <VIcon icon="ri-calendar-line" size="14" style="opacity:.4" />
+          <input v-model="riwayatDateFrom" type="date" class="al-date-input" title="Dari tanggal" />
+          <span style="font-size:0.72rem;opacity:.4">s/d</span>
+          <input v-model="riwayatDateTo" type="date" class="al-date-input" title="Sampai tanggal" />
+        </div>
+        <!-- Filter alasan dropdown -->
+        <select v-model="filterRiwayatAlasan" class="al-select-input">
+          <option v-for="opt in alasanUniqueList" :key="opt.value" :value="opt.value">{{ opt.title }}</option>
+        </select>
+        <!-- Reset -->
+        <button class="al-reset-btn"
+          @click="searchRiwayatAll = ''; riwayatDateFrom = ''; riwayatDateTo = ''; filterRiwayatAlasan = ''">
+          Reset
+        </button>
         <span class="al-count-chip">{{ filteredRecords.length }} data</span>
       </div>
 
@@ -362,26 +521,45 @@ onMounted(() => {
       <div v-else-if="!filteredRecords.length" class="al-state-box">
         <VIcon icon="ri-inbox-line" size="48" style="opacity:.18" />
         <span class="al-state-box__title">Belum ada riwayat</span>
+        <span class="al-state-box__sub">
+          {{ filterRiwayatAlasan ? `Tidak ada data untuk alasan "${filterRiwayatAlasan}"` : 'Belum ada data tersimpan' }}
+        </span>
       </div>
 
       <div v-else class="al-list">
         <div v-for="item in filteredRecords" :key="item.id" class="al-rw-row">
-          <div class="al-rw-bar" :class="`al-rw-bar--${alasanColor(item.alasan)}`" />
+          <!-- Avatar dengan warna sesuai alasan -->
+          <div class="al-rw-av" :class="`al-rw-av--${alasanColor(item.alasan)}`">
+            {{ item.nama_pasien?.charAt(0) ?? '?' }}
+          </div>
+
+          <!-- Info utama -->
           <div class="al-row__info" style="flex:1">
             <div class="al-row__nameline">
               <span class="al-row__name">{{ item.nama_pasien }}</span>
-              <span class="al-chip" :class="`al-chip--${alasanColor(item.alasan)}`">{{ item.alasan }}</span>
+              <span class="al-chip" :class="`al-chip--${alasanColor(item.alasan)}`">
+                <VIcon :icon="alasanIcon(item.alasan)" size="10" />
+                {{ item.alasan }}
+              </span>
+              <span v-if="item.jaminan" class="al-chip al-chip--gray">{{ item.jaminan }}</span>
             </div>
             <div class="al-row__meta">
-              <span>{{ item.no_reg }}</span>
-              <span v-if="item.jaminan">{{ item.jaminan }}</span>
-              <span v-if="item.catatan" style="word-break:break-word;white-space:normal;max-width:100%">
+              <span v-if="item.no_reg"><VIcon icon="ri-hashtag" size="10" />{{ item.no_reg }}</span>
+              <span v-if="item.no_mr">MR: {{ item.no_mr }}</span>
+              <span v-if="item.nama_bangsal">
+                <VIcon icon="ri-hospital-line" size="10" />{{ item.nama_bangsal }}
+              </span>
+              <span v-if="item.catatan" style="word-break:break-word;white-space:normal;max-width:260px;color:rgba(var(--v-theme-on-surface),.55)">
                 <VIcon icon="ri-chat-3-line" size="10" />"{{ item.catatan }}"
               </span>
             </div>
           </div>
+
+          <!-- Right: petugas, waktu, aksi -->
           <div class="al-rw-right">
-            <span class="al-rw-right__petugas"><VIcon icon="ri-user-3-line" size="11" />{{ item.petugas || '—' }}</span>
+            <span class="al-rw-right__petugas">
+              <VIcon icon="ri-user-3-line" size="11" />{{ item.petugas || '—' }}
+            </span>
             <span class="al-rw-right__tgl">{{ item.tanggal || '—' }}</span>
             <div v-if="auth.hasPermission('alasan:write')" class="al-rw-right__acts">
               <button class="al-mini-btn al-mini-btn--edit" @click="openEditDialog(item)">
@@ -819,16 +997,25 @@ onMounted(() => {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  transition: background 0.1s;
 }
 
 .al-rw-row:last-child { border-bottom: none; }
+.al-rw-row:hover { background: rgba(var(--v-theme-primary), 0.03); }
 
-.al-rw-bar { width: 4px; height: 36px; flex-shrink: 0; border-radius: 3px; }
-.al-rw-bar--primary   { background: rgb(var(--v-theme-primary)); }
-.al-rw-bar--warning   { background: rgb(var(--v-theme-warning)); }
-.al-rw-bar--info      { background: rgb(var(--v-theme-info)); }
-.al-rw-bar--success   { background: rgb(var(--v-theme-success)); }
-.al-rw-bar--secondary { background: rgba(var(--v-theme-on-surface), 0.18); }
+/* Riwayat avatar */
+.al-rw-av {
+  flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+}
+
+.al-rw-av--primary   { background: rgba(var(--v-theme-primary), 0.1);  color: rgb(var(--v-theme-primary)); }
+.al-rw-av--warning   { background: rgba(var(--v-theme-warning), 0.1);  color: rgb(var(--v-theme-warning)); }
+.al-rw-av--info      { background: rgba(var(--v-theme-info), 0.1);     color: rgb(var(--v-theme-info)); }
+.al-rw-av--success   { background: rgba(var(--v-theme-success), 0.1);  color: rgb(var(--v-theme-success)); }
+.al-rw-av--secondary { background: rgba(var(--v-theme-on-surface), 0.07); color: rgba(var(--v-theme-on-surface), 0.5); }
 
 .al-rw-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 
@@ -1069,5 +1256,191 @@ onMounted(() => {
   .det-header__meta { gap: 6px; font-size: 0.7rem; }
   .frm-strip { flex-direction: row; flex-wrap: wrap; }
   .frm-strip__cell { min-width: calc(50% - 1px); }
+}
+
+/* ═══════════════════════════════════
+   TOOLBAR — wrappable (riwayat)
+══════════════════════════════════ */
+.al-toolbar--wrap {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.al-date-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px;
+  padding: 0 10px;
+  height: 38px;
+}
+
+.al-date-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  width: 120px;
+  cursor: pointer;
+}
+
+.al-select-input {
+  height: 38px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  padding: 0 10px;
+  outline: none;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.al-select-input:focus {
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.al-reset-btn {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.al-reset-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.05);
+  color: rgb(var(--v-theme-primary));
+}
+
+@media (max-width: 500px) {
+  .al-rs__label { min-width: 90px; }
+}
+
+/* ═══════════════════════════════════
+   RIWAYAT SUMMARY BAR CHART
+══════════════════════════════════ */
+.al-rw-summary {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.al-rw-sum__header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.06), rgba(var(--v-theme-info), 0.04));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.al-rw-sum__header-left { display: flex; align-items: center; gap: 10px; }
+
+.al-rw-sum__icon {
+  width: 30px; height: 30px; border-radius: 9px;
+  background: rgb(var(--v-theme-primary));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.al-rw-sum__title {
+  font-size: 0.84rem; font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.87); margin: 0 0 2px;
+}
+
+.al-rw-sum__sub {
+  font-size: 0.7rem; color: rgba(var(--v-theme-on-surface), 0.45); margin: 0;
+}
+
+.al-rw-sum__active-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+}
+
+.al-rw-sum__clear {
+  background: none; border: none; cursor: pointer; padding: 0;
+  display: flex; align-items: center;
+  color: rgba(var(--v-theme-primary), 0.7);
+}
+
+.al-rw-sum__body { padding: 4px 0; }
+
+.al-rw-sum__row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; cursor: pointer;
+  transition: background 0.12s;
+}
+
+.al-rw-sum__row:hover { background: rgba(var(--v-theme-primary), 0.04); }
+.al-rw-sum__row--active { background: rgba(var(--v-theme-primary), 0.07) !important; }
+.al-rw-sum__row--dim { opacity: 0.4; }
+
+.al-rw-sum__rank {
+  flex-shrink: 0; width: 18px; text-align: center;
+  font-size: 0.68rem; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.3);
+}
+
+.al-rw-sum__label {
+  display: flex; align-items: center; gap: 7px;
+  min-width: 150px; flex-shrink: 0;
+}
+
+.al-rw-sum__dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.al-rw-sum__dot--primary   { background: rgb(var(--v-theme-primary)); }
+.al-rw-sum__dot--warning   { background: rgb(var(--v-theme-warning)); }
+.al-rw-sum__dot--info      { background: rgb(var(--v-theme-info)); }
+.al-rw-sum__dot--success   { background: rgb(var(--v-theme-success)); }
+.al-rw-sum__dot--secondary { background: rgba(var(--v-theme-on-surface), 0.3); }
+
+.al-rw-sum__name {
+  font-size: 0.82rem; font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.82); white-space: nowrap;
+}
+
+.al-rw-sum__track {
+  flex: 1; height: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  border-radius: 99px; overflow: hidden;
+}
+
+.al-rw-sum__fill {
+  height: 100%; border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.al-rw-sum__fill--primary   { background: rgb(var(--v-theme-primary)); }
+.al-rw-sum__fill--warning   { background: rgb(var(--v-theme-warning)); }
+.al-rw-sum__fill--info      { background: rgb(var(--v-theme-info)); }
+.al-rw-sum__fill--success   { background: rgb(var(--v-theme-success)); }
+.al-rw-sum__fill--secondary { background: rgba(var(--v-theme-on-surface), 0.25); }
+
+.al-rw-sum__stats {
+  display: flex; flex-direction: column; align-items: flex-end;
+  flex-shrink: 0; min-width: 48px;
+}
+
+.al-rw-sum__count {
+  font-size: 0.9rem; font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.87); line-height: 1;
+}
+
+.al-rw-sum__pct {
+  font-size: 0.67rem; color: rgba(var(--v-theme-on-surface), 0.4); margin-top: 2px;
+}
+
+@media (max-width: 500px) {
+  .al-rw-sum__label { min-width: 100px; }
 }
 </style>

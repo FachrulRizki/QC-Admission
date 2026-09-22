@@ -73,11 +73,34 @@ const sesiCount = computed(() => {
   return map
 })
 
+// Timestamp sesi TERBARU per no_mr
+const latestSesiAt = computed(() => {
+  const map = {}
+  records.value.forEach(r => {
+    if (!r.created_at) return
+    const t = new Date(r.created_at).getTime()
+    if (!map[r.no_mr] || t > map[r.no_mr]) map[r.no_mr] = t
+  })
+  return map
+})
+
+const COOLDOWN_MS = 2 * 60 * 60 * 1000 // 2 jam
+
 const filtered = computed(() => {
   let d = uniquePatients.value
-  // Status filter (client-side, sudah ada datanya)
+
+  // Sembunyikan pasien yang sesi terakhirnya < 2 jam lalu
+  // (sudah diisi baru, muncul lagi setelah 2 jam)
+  d = d.filter(r => {
+    const latest = latestSesiAt.value[r.no_mr]
+    if (!latest) return true // belum pernah ada sesi — tetap tampil
+    return (now.value - latest) >= COOLDOWN_MS
+  })
+
+  // Status filter
   if (statusFilter.value !== 'All') d = d.filter(r => r.status === statusFilter.value)
-  // Search filter (client-side)
+
+  // Search filter
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r =>
@@ -87,7 +110,7 @@ const filtered = computed(() => {
       r.petugas?.toLowerCase().includes(q)
     )
   }
-  // Date filter sudah dilakukan server-side via load() — tidak perlu client filter
+
   return d
 })
 
@@ -273,7 +296,6 @@ onMounted(load)
                 </p>
                 <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ patient.no_mr }}</p>
               </div>
-              <!-- Session count -->
               <VChip color="warning" variant="tonal" size="x-small" class="flex-shrink-0">
                 {{ sesiCount[patient.no_mr] ?? 1 }} sesi
               </VChip>
@@ -281,23 +303,17 @@ onMounted(load)
 
             <!-- Status + info -->
             <div class="d-flex align-center gap-2 flex-wrap mb-2">
-              <!-- Badge ranap — prioritas -->
               <VChip v-if="patient.status_ranap" color="purple" variant="tonal" size="x-small">
                 <VIcon icon="ri-hospital-fill" size="10" class="me-1" />{{ patient.status_ranap }}
               </VChip>
-              <VChip v-else :color="patient.status === 'Selesai' ? 'success' : 'warning'" variant="tonal"
-                size="x-small">{{
-                patient.status }}</VChip>
-              <span v-if="patient.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ patient.jaminan
-                }}</span>
-              <!-- Lama menunggu bed — hanya jika masih Menunggu -->
+              <VChip v-else :color="patient.status === 'Selesai' ? 'success' : 'warning'" variant="tonal" size="x-small">
+                {{ patient.status }}
+              </VChip>
+              <span v-if="patient.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ patient.jaminan }}</span>
               <VChip v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient)" :color="getWaktuColor(patient)"
                 variant="tonal" size="x-small" prepend-icon="ri-time-line">{{ getWaktuMenunggu(patient) }}</VChip>
-              <!-- Keterangan RSUS: dapat kamar tapi belum diantar -->
               <VChip v-if="patient.keterangan === 'Belum Diantar'" color="orange" variant="tonal" size="x-small"
-                prepend-icon="ri-walk-line" title="Sudah dapat kamar tapi keterangan belum diantar ke ruangan">
-                Belum Diantar
-              </VChip>
+                prepend-icon="ri-walk-line">Belum Diantar</VChip>
             </div>
 
             <!-- Footer -->

@@ -12,7 +12,6 @@ const emit = defineEmits(['update:modelValue'])
 
 function toggle(card) {
   if (card.filterValue === undefined) return
-  // If same card clicked again and it's not a "reset" card → deselect
   if (props.modelValue === card.filterValue && card.filterValue !== null && card.filterValue !== 'All') {
     emit('update:modelValue', null)
   } else {
@@ -38,62 +37,94 @@ function borderClass(card) {
 
 function numColor(card) {
   const map = {
-    primary: 'var(--qc-green)',
+    primary: 'rgb(var(--v-theme-primary))',
     success: 'rgb(var(--v-theme-success))',
     warning: 'rgb(var(--v-theme-warning))',
-    error: 'rgb(var(--v-theme-error))',
-    info: 'rgb(var(--v-theme-info))',
+    error:   'rgb(var(--v-theme-error))',
+    info:    'rgb(var(--v-theme-info))',
   }
-  return map[card.color] ?? 'var(--qc-green)'
+  return map[card.color] ?? 'rgb(var(--v-theme-primary))'
 }
 
-const colsMap = {
-  2: { cols: 6, sm: 6 },
-  3: { cols: 4, sm: 4 },
-  4: { cols: 6, sm: 3 },
-}
-const colConfig = computed(() => colsMap[props.cards.length] ?? { cols: 6, sm: 3 })
+
 </script>
 
 <template>
-  <VRow dense class="mb-4">
-    <VCol v-for="(card, i) in cards" :key="i" :cols="colConfig.cols" :sm="colConfig.sm">
-      <VCard elevation="0" border rounded="xl" class="stat-card pa-4 text-center"
-        :class="[borderClass(card), card.filterValue !== undefined ? 'cursor-pointer' : '']" @click="toggle(card)">
-        <!-- Icon -->
-        <div class="d-flex justify-center mb-2">
-          <div class="d-flex align-center justify-center rounded-lg" :style="{
-            width: '36px', height: '36px',
+  <!-- All layouts: flex row, wrap on mobile -->
+  <div class="sc-flex-row mb-4">
+    <div
+      v-for="(card, i) in cards"
+      :key="i"
+      class="sc-flex-card"
+    >
+      <VCard elevation="0" border rounded="lg" class="stat-card px-3 py-2 h-100"
+        :class="[borderClass(card), card.filterValue !== undefined ? 'cursor-pointer' : '']"
+        @click="toggle(card)">
+        <div class="d-flex align-center gap-2">
+          <!-- Icon bubble -->
+          <div class="sc-icon-wrap flex-shrink-0" :style="{
             background: isActive(card)
-              ? `color-mix(in srgb, ${numColor(card)} 15%, transparent)`
-              : 'var(--qc-bg)',
+              ? `color-mix(in srgb, ${numColor(card)} 18%, transparent)`
+              : 'rgba(var(--v-theme-on-surface), 0.05)',
           }">
-            <VIcon :icon="card.icon" size="18" :style="{ color: numColor(card) }" />
+            <VIcon :icon="card.icon" size="14" :style="{ color: numColor(card) }" />
+          </div>
+          <!-- Value + label -->
+          <div class="min-width-0">
+            <p class="sc-value mb-0" :style="{ color: numColor(card) }">
+              {{ typeof card.value === 'number' ? card.value.toLocaleString('id-ID') : (card.value ?? 0) }}
+            </p>
+            <p class="sc-label mb-0 text-truncate">{{ card.label }}</p>
           </div>
         </div>
-
-        <!-- Value -->
-        <p class="text-h3 font-weight-black mb-0 lh-1" :style="{ color: numColor(card) }">
-          {{ typeof card.value === 'number' ? card.value.toLocaleString('id-ID') : (card.value ?? 0) }}
-        </p>
-
-        <!-- Label -->
-        <p class="text-caption mt-1 mb-0" style="color:var(--qc-text-2)">{{ card.label }}</p>
-
-        <!-- Optional progress -->
-        <template v-if="card.pct != null">
-          <VProgressLinear :model-value="card.pct" :color="card.color ?? 'primary'" rounded height="3"
-            :bg-color="card.color" bg-opacity="0.1" class="mt-2" />
-          <p class="text-caption mt-1 mb-0" style="color:var(--qc-text-2)">{{ card.pct }}%</p>
-        </template>
       </VCard>
-    </VCol>
-  </VRow>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.lh-1 {
+/* Icon bubble */
+.sc-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+/* Value number */
+.sc-value {
+  font-size: 1.05rem;
+  font-weight: 800;
   line-height: 1.1;
+}
+
+/* Label */
+.sc-label {
+  font-size: 0.7rem;
+  color: var(--qc-text-2, #64748b);
+  line-height: 1.2;
+}
+
+/* Flex row — all cards in one line */
+.sc-flex-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sc-flex-card {
+  flex: 1 1 0;
+  min-width: 110px;
+}
+
+@media (max-width: 599px) {
+  .sc-flex-card {
+    flex: 1 1 calc(50% - 4px);
+    max-width: calc(50% - 4px);
+  }
 }
 
 .stat-card {
@@ -101,7 +132,14 @@ const colConfig = computed(() => colsMap[props.cards.length] ?? { cols: 6, sm: 3
 }
 
 .stat-card.cursor-pointer:hover {
-  box-shadow: 0 6px 20px rgba(0, 179, 126, 0.12) !important;
-  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.09) !important;
+  transform: translateY(-1px);
 }
+
+/* Active border states */
+.stat-active         { border-color: rgb(var(--v-theme-primary)) !important; }
+.stat-active-success { border-color: rgb(var(--v-theme-success)) !important; }
+.stat-active-warning { border-color: rgb(var(--v-theme-warning)) !important; }
+.stat-active-error   { border-color: rgb(var(--v-theme-error))   !important; }
+.stat-active-info    { border-color: rgb(var(--v-theme-info))    !important; }
 </style>

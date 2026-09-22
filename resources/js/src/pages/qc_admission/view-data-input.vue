@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useDisplay } from 'vuetify'
 import SummaryCards from '@/components/SummaryCards.vue'
 import PageHero from '@/components/PageHero.vue'
+import VdiDetailDialog from '@/views/qc-admission/view-data-input/VdiDetailDialog.vue'
 
 const auth = useAuthStore()
 const { xs } = useDisplay()
@@ -22,6 +23,7 @@ const todayFormatted = computed(() =>
 const dateFrom = ref(todayStr())
 const dateTo = ref(todayStr())
 const filterClosing = ref('')
+const filterAlasan = ref('')
 const activeTab = ref('batal-ranap')
 
 const CLOSING_OPTIONS = [
@@ -33,9 +35,9 @@ const CLOSING_OPTIONS = [
 const isKasir = computed(() => !auth.hasPermission('quality-control:view'))
 
 const allTabs = [
-  { key: 'summary',          label: 'Summary',          shortLabel: 'Summary', icon: 'ri-user-heart-line',       permission: 'quality-control:view' },
-  { key: 'quality-control',  label: 'Alasan',  shortLabel: 'alasan',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
-  { key: 'quality-control',  label: 'Edukasi Awal',  shortLabel: 'QC',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
+  { key: 'summary',          label: 'Summary',          shortLabel: 'Summary', icon: 'ri-bar-chart-box-line',    permission: 'quality-control:view' },
+  { key: 'alasan',           label: 'Alasan',           shortLabel: 'Alasan',  icon: 'ri-question-answer-line',  permission: 'alasan:view' },
+  { key: 'quality-control',  label: 'Edukasi Awal',     shortLabel: 'QC',      icon: 'ri-shield-check-line',     permission: 'quality-control:view' },
   { key: 'edukasi-lanjutan', label: 'Edukasi Lanjutan', shortLabel: 'Edukasi', icon: 'ri-book-open-line',        permission: 'edukasi-lanjutan:view' },
   { key: 'batal-ranap',      label: 'Batal Ranap',      shortLabel: 'Batal',   icon: 'ri-close-circle-line',     permission: 'batal-ranap:view' },
   { key: 'up-selling',       label: 'Up Selling',       shortLabel: 'Up Sell', icon: 'ri-arrow-up-circle-line',  permission: 'up-selling:view' },
@@ -48,6 +50,7 @@ const batalData = ref([])
 const edukasiData = ref([])
 const edukasiTransferData = ref([])
 const upData = ref([])
+const alasanData = ref([])
 
 async function safeGet(url, params = {}) {
   try {
@@ -62,45 +65,77 @@ async function loadAll() {
     if (isKasir.value) {
       batalData.value = await safeGet('/api/batal-ranap', { per_page: 500 })
     } else {
-      const [qc, batal, edu, eduTransfer, up] = await Promise.all([
+      const promises = [
         safeGet('/api/quality-control', { per_page: 500 }),
         safeGet('/api/batal-ranap', { per_page: 500 }),
         safeGet('/api/edukasi-lanjutan', { per_page: 500 }),
         safeGet('/api/edukasi-lanjutan', { per_page: 500, include_transferred: true }),
         safeGet('/api/up-selling', { per_page: 500 }),
-      ])
+      ]
+      if (auth.hasPermission('alasan:view')) {
+        promises.push(safeGet('/api/alasan', { per_page: 500 }))
+      }
+      const [qc, batal, edu, eduTransfer, up, alasan] = await Promise.all(promises)
       qcData.value = qc
       batalData.value = batal
       edukasiData.value = edu
       edukasiTransferData.value = eduTransfer
       upData.value = up
+      alasanData.value = alasan ?? []
     }
   } finally { loading.value = false }
 }
 
 const grandStats = computed(() => ({
-  qc: qcData.value.length, batal: batalData.value.length,
+  qc: qcData.value.length,
+  batal: batalData.value.length,
   edukasi: edukasiData.value.length,
   edukasiTransfer: edukasiTransferData.value.length,
   up: upData.value.length,
+  alasan: alasanData.value.length,
 }))
 
 const summaryData = computed(() => {
   const map = {}
   const merge = (list, countKey, tglKey = 'tanggal') => list.forEach(r => {
     const k = r.no_mr ?? r.no_reg ?? 'x'
-    if (!map[k]) map[k] = { no_mr: k, nama_pasien: r.nama_pasien, jaminan: r.jaminan || '—', qc: 0, edukasi: 0, batal: 0, up: 0, tanggal: r[tglKey] }
+    if (!map[k]) map[k] = { no_mr: k, nama_pasien: r.nama_pasien, jaminan: r.jaminan || '—', qc: 0, edukasi: 0, batal: 0, up: 0, alasan: 0, tanggal: r[tglKey] }
     map[k][countKey]++
     if (r[tglKey] > (map[k].tanggal || '')) map[k].tanggal = r[tglKey]
   })
-  merge(qcData.value, 'qc'); merge(edukasiData.value, 'edukasi')
-  merge(batalData.value, 'batal'); merge(upData.value, 'up')
+  merge(qcData.value, 'qc')
+  merge(edukasiData.value, 'edukasi')
+  merge(batalData.value, 'batal')
+  merge(upData.value, 'up')
+  merge(alasanData.value, 'alasan')
   return Object.values(map)
+})
+
+// ── Summary alasan: hitung per kategori alasan memilih RS ──────────────────
+const alasanSummary = computed(() => {
+  const map = {}
+  for (const r of alasanData.value) {
+    const key = r.alasan || 'Tidak Diketahui'
+    if (!map[key]) map[key] = { alasan: key, total: 0, bpjs: 0, umum: 0, asuransi: 0 }
+    map[key].total++
+    const jam = (r.jaminan || '').toLowerCase()
+    if (jam.includes('bpjs'))      map[key].bpjs++
+    else if (jam.includes('umum')) map[key].umum++
+    else if (jam.includes('asuransi') || jam.includes('jasa')) map[key].asuransi++
+  }
+  return Object.values(map).sort((a, b) => b.total - a.total)
+})
+
+// Daftar unik alasan untuk dropdown filter
+const alasanOptions = computed(() => {
+  const unique = [...new Set(alasanData.value.map(r => r.alasan).filter(Boolean))]
+  return [{ title: 'Semua Alasan', value: '' }, ...unique.map(a => ({ title: a, value: a }))]
 })
 
 const activeData = computed(() => {
   const map = {
     summary: summaryData.value,
+    alasan: alasanData.value,
     'quality-control': qcData.value,
     'batal-ranap': batalData.value,
     'edukasi-lanjutan': edukasiTransferData.value,
@@ -111,6 +146,7 @@ const activeData = computed(() => {
 
 function parseTanggal(str) {
   if (!str) return null
+  // Format dd/mm/yyyy, HH.MM.SS
   const dmyMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
   if (dmyMatch) return new Date(`${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`)
   const d = new Date(str)
@@ -141,8 +177,37 @@ const filteredData = computed(() => {
       d = d.filter(r => r.status_closing === filterClosing.value)
     }
   }
+  if (activeTab.value === 'alasan' && filterAlasan.value !== '') {
+    d = d.filter(r => r.alasan === filterAlasan.value)
+  }
   return d
 })
+
+// ── Summary alasan yang sudah difilter tanggal ──────────────────────────────
+const filteredAlasanSummary = computed(() => {
+  const base = activeTab.value === 'alasan' ? filteredData.value : alasanData.value
+  const map = {}
+  for (const r of base) {
+    const key = r.alasan || 'Tidak Diketahui'
+    if (!map[key]) map[key] = { alasan: key, total: 0, jaminanMap: {} }
+    map[key].total++
+    const jam = r.jaminan || 'Lainnya'
+    map[key].jaminanMap[jam] = (map[key].jaminanMap[jam] || 0) + 1
+  }
+  return Object.values(map).sort((a, b) => b.total - a.total)
+})
+
+function alasanColor(a) {
+  const map = {
+    'Pelayanan':                 'primary',
+    'Kelengkapan Alat & Dokter': 'warning',
+    'Teman/Kerabat':             'info',
+    'Rujukan':                   'success',
+    'Marketing':                 'secondary',
+    'Sosial Media':              'info',
+  }
+  return map[a] ?? 'secondary'
+}
 
 function statusColor(s) {
   return ({ 'Edukasi': 'success', 'Edukasi lanjutan': 'warning', 'Bedah': 'success', 'Non Bedah': 'info', 'Selesai': 'success', 'Menunggu': 'warning', 'Berhasil': 'success', 'Tidak Berhasil': 'error', 'Pending': 'warning' })[s] ?? 'secondary'
@@ -171,7 +236,11 @@ function exportCSV() {
 const summaryHeaders = [
   { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' }, { title: 'Jaminan', key: 'jaminan' },
   { title: 'QC', key: 'qc' }, { title: 'Edukasi', key: 'edukasi' },
-  { title: 'Batal Ranap', key: 'batal' }, { title: 'Up Selling', key: 'up' }, { title: 'Tanggal', key: 'tanggal' },
+  { title: 'Batal Ranap', key: 'batal' }, { title: 'Up Selling', key: 'up' }, { title: 'Alasan', key: 'alasan' }, { title: 'Tanggal', key: 'tanggal' },
+]
+const alasanHeaders = [
+  { title: 'Tanggal', key: 'tanggal' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
+  { title: 'Alasan', key: 'alasan' }, { title: 'Jaminan', key: 'jaminan' }, { title: 'Catatan', key: 'catatan' }, { title: 'Petugas', key: 'petugas' },
 ]
 const qcHeaders = [
   { title: 'Tanggal', key: 'tanggal' }, { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' },
@@ -190,7 +259,14 @@ const upHeaders = [
   { title: 'Tgl Daftar', key: 'tgl_daftar' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
   { title: 'Keterangan', key: 'alasan' }, { title: 'Notes', key: 'note' }, { title: 'Petugas', key: 'petugas' },
 ]
-const activeHeaders = computed(() => ({ summary: summaryHeaders, 'quality-control': qcHeaders, 'batal-ranap': batalHeaders, 'edukasi-lanjutan': edukasiHeaders, 'up-selling': upHeaders })[activeTab.value] ?? [])
+const activeHeaders = computed(() => ({
+  summary: summaryHeaders,
+  alasan: alasanHeaders,
+  'quality-control': qcHeaders,
+  'batal-ranap': batalHeaders,
+  'edukasi-lanjutan': edukasiHeaders,
+  'up-selling': upHeaders,
+})[activeTab.value] ?? [])
 
 let tabInitialized = false
 onMounted(() => {
@@ -200,6 +276,15 @@ onMounted(() => {
   }
   loadAll()
 })
+
+// ── Detail dialog ─────────────────────────────────────────────────────────────
+const showDetail = ref(false)
+const detailItem = ref(null)
+
+function openDetail(item) {
+  detailItem.value = { ...item }
+  showDetail.value = true
+}
 
 watch(() => auth.permissions, (perms, prev) => {
   if (perms?.length && perms !== prev) {
@@ -231,9 +316,10 @@ watch(() => auth.permissions, (perms, prev) => {
 
     <!-- Stats -->
     <SummaryCards v-if="!isKasir" v-model="activeTab" :cards="[
+      { value: grandStats.alasan, label: 'Alasan Kunjungan', color: 'info', icon: 'ri-question-answer-line', filterValue: 'alasan' },
       { value: grandStats.qc, label: 'Edukasi Awal', color: 'primary', icon: 'ri-shield-check-line', filterValue: 'quality-control' },
       { value: grandStats.batal, label: 'Batal Ranap', color: 'error', icon: 'ri-close-circle-line', filterValue: 'batal-ranap' },
-      { value: grandStats.edukasiTransfer, label: 'Sudah Masuk Kamar', color: 'success', icon: 'ri-home-heart-line', filterValue: 'edukasi-lanjutan' },
+      { value: grandStats.edukasiTransfer, label: 'Edukasi Lanjutan', color: 'success', icon: 'ri-home-heart-line', filterValue: 'edukasi-lanjutan' },
       { value: grandStats.up, label: 'Up Selling', color: 'success', icon: 'ri-arrow-up-circle-line', filterValue: 'up-selling' },
     ]" />
     <SummaryCards v-else :cards="[
@@ -281,6 +367,11 @@ watch(() => auth.permissions, (perms, prev) => {
             <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details
               rounded="lg" />
           </VCol>
+          <!-- Filter Alasan (hanya tab alasan) -->
+          <VCol v-if="activeTab === 'alasan'" cols="12" sm="auto" md="3">
+            <VSelect v-model="filterAlasan" :items="alasanOptions" item-title="title" item-value="value"
+              label="Filter Alasan RS" variant="outlined" density="compact" hide-details rounded="lg" />
+          </VCol>
           <!-- Status Closing dropdown (hanya batal-ranap) -->
           <VCol v-if="activeTab === 'batal-ranap'" cols="12" sm="auto" md="3">
             <VSelect v-model="filterClosing" :items="CLOSING_OPTIONS" item-title="title" item-value="value"
@@ -289,7 +380,7 @@ watch(() => auth.permissions, (perms, prev) => {
           <!-- Reset -->
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary"
-              @click="search = ''; dateFrom = todayStr(); dateTo = todayStr(); filterClosing = ''">
+              @click="search = ''; dateFrom = todayStr(); dateTo = todayStr(); filterClosing = ''; filterAlasan = ''">
               Reset
             </VBtn>
           </VCol>
@@ -318,8 +409,9 @@ watch(() => auth.permissions, (perms, prev) => {
 
       <!-- Items -->
       <div v-else>
-        <div v-for="(item, idx) in filteredData" :key="item.id ?? idx" class="vdi-row"
-          :class="{ 'vdi-row--bordered': idx < filteredData.length - 1 }">
+        <div v-for="(item, idx) in filteredData" :key="item.id ?? idx" class="vdi-row cursor-pointer"
+          :class="{ 'vdi-row--bordered': idx < filteredData.length - 1 }"
+          @click="openDetail(item)">
           <!-- Avatar -->
           <VAvatar color="primary" variant="tonal" size="38" rounded="md" class="flex-shrink-0">
             <span style="font-size:12px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
@@ -339,6 +431,14 @@ watch(() => auth.permissions, (perms, prev) => {
                 <VChip v-if="item.edukasi" size="x-small" color="warning" variant="tonal">Edu {{ item.edukasi }}</VChip>
                 <VChip v-if="item.batal" size="x-small" color="error" variant="tonal">Batal {{ item.batal }}</VChip>
                 <VChip v-if="item.up" size="x-small" color="success" variant="tonal">Up {{ item.up }}</VChip>
+              </template>
+
+              <!-- Alasan tab -->
+              <template v-else-if="activeTab === 'alasan'">
+                <VChip v-if="item.alasan" :color="alasanColor(item.alasan)" size="x-small" variant="tonal">
+                  <VIcon icon="ri-question-answer-line" size="10" class="me-1" />{{ item.alasan }}
+                </VChip>
+                <VChip v-if="item.jaminan" size="x-small" color="secondary" variant="tonal">{{ item.jaminan }}</VChip>
               </template>
 
               <!-- QC tab -->
@@ -387,6 +487,10 @@ watch(() => auth.permissions, (perms, prev) => {
               <span v-if="activeTab === 'summary' && item.jaminan" class="text-caption"
                 style="color:var(--qc-text-2)">{{
                 item.jaminan }}</span>
+              <span v-if="activeTab === 'alasan' && item.catatan" class="text-caption text-truncate"
+                style="color:var(--qc-text-2);max-width:200px">
+                <VIcon icon="ri-chat-3-line" size="10" class="me-1" />"{{ item.catatan }}"
+              </span>
               <span v-if="activeTab === 'batal-ranap' && item.keterangan_batal" class="text-caption text-truncate"
                 style="color:var(--qc-text-2);max-width:160px">
                 <VIcon icon="ri-error-warning-line" size="10" class="me-1" />{{ item.keterangan_batal }}
@@ -408,6 +512,9 @@ watch(() => auth.permissions, (perms, prev) => {
         </div>
       </div>
     </VCard>
+
+    <!-- Detail Dialog -->
+    <VdiDetailDialog v-model="showDetail" :item="detailItem" :type="activeTab" />
   </div>
 </template>
 
@@ -475,6 +582,10 @@ watch(() => auth.permissions, (perms, prev) => {
   background: rgba(99, 102, 241, 0.06);
 }
 
+.vdi-page-banner--alasan {
+  background: rgba(14, 165, 233, 0.06);
+}
+
 .vdi-page-banner--batal-ranap {
   background: rgba(239, 68, 68, 0.06);
 }
@@ -489,5 +600,176 @@ watch(() => auth.permissions, (perms, prev) => {
 
 .vdi-page-banner--summary {
   background: rgba(14, 165, 233, 0.06);
+}
+
+/* ── Alasan Summary ── */
+.als-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.06) 0%, rgba(var(--v-theme-info), 0.04) 100%);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.als-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.als-header__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgb(var(--v-theme-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.als-header__title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+  margin: 0 0 2px;
+}
+
+.als-header__sub {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  margin: 0;
+}
+
+.als-body {
+  padding: 8px 0;
+}
+
+.als-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-radius: 0;
+}
+
+.als-row:hover { background: rgba(var(--v-theme-primary), 0.04); }
+
+.als-row--active {
+  background: rgba(var(--v-theme-primary), 0.07) !important;
+}
+
+.als-row--dim {
+  opacity: 0.45;
+}
+
+.als-rank {
+  flex-shrink: 0;
+  width: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.3);
+  text-align: center;
+}
+
+.als-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
+.als-label__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.als-dot--primary   { background: rgb(var(--v-theme-primary)); }
+.als-dot--warning   { background: rgb(var(--v-theme-warning)); }
+.als-dot--info      { background: rgb(var(--v-theme-info)); }
+.als-dot--success   { background: rgb(var(--v-theme-success)); }
+.als-dot--secondary { background: rgba(var(--v-theme-on-surface), 0.3); }
+
+.als-label__text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  white-space: nowrap;
+}
+
+.als-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.als-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.als-fill--primary   { background: rgb(var(--v-theme-primary)); }
+.als-fill--warning   { background: rgb(var(--v-theme-warning)); }
+.als-fill--info      { background: rgb(var(--v-theme-info)); }
+.als-fill--success   { background: rgb(var(--v-theme-success)); }
+.als-fill--secondary { background: rgba(var(--v-theme-on-surface), 0.25); }
+
+.als-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-width: 52px;
+}
+
+.als-stats__count {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+  line-height: 1;
+}
+
+.als-stats__pct {
+  font-size: 0.68rem;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  margin-top: 2px;
+}
+
+.als-jaminan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 140px;
+  justify-content: flex-end;
+}
+
+.als-jam-chip {
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  white-space: nowrap;
+}
+
+.als-jam-chip strong {
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .als-jaminan { display: none; }
+  .als-label   { min-width: 110px; }
 }
 </style>
