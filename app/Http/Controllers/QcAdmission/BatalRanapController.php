@@ -100,9 +100,23 @@ class BatalRanapController extends Controller
     /** Update status_closing. Jika "Siap Closing" → auto-lookup kode bed dari No_Reg → trigger Bed Management API. */
     public function konfirmasiClosing(Request $request, int $id): JsonResponse
     {
+        Log::info("konfirmasiClosing: START", [
+            'id'      => $id,
+            'payload' => $request->all(),
+            'ip'      => $request->ip(),
+        ]);
+
         $record = $this->service->findOrFail($id);
 
+        Log::info("konfirmasiClosing: record ditemukan", [
+            'id'             => $record->id,
+            'no_reg'         => $record->no_reg,
+            'status_closing' => $record->status_closing,
+            'bed_id'         => $record->bed_id,
+        ]);
+
         if ($record->status_closing === 'Siap Closing') {
+            Log::warning("konfirmasiClosing: 422 — record sudah Siap Closing", ['id' => $id]);
             return response()->json([
                 'message' => 'Status closing sudah dikonfirmasi "Siap Closing" dan tidak dapat diubah.',
             ], 422);
@@ -113,19 +127,22 @@ class BatalRanapController extends Controller
             'kode_bed'       => 'nullable|string|max:50',
         ]);
 
+        Log::info("konfirmasiClosing: validasi lolos", ['validated' => $validated]);
+
         // Auto-resolve kode_bed dari No_Reg jika tidak dikirim dari frontend
         $kodeBed = $validated['kode_bed'] ?? null;
 
         if ($validated['status_closing'] === 'Siap Closing' && ! $kodeBed) {
             $kodeBed = $this->bedIgd->getKodeBedByNoReg($record->no_reg);
-            Log::info("konfirmasiClosing: auto-lookup kode_bed untuk No_Reg={$record->no_reg} → {$kodeBed}");
+            Log::info("konfirmasiClosing: auto-lookup kode_bed untuk No_Reg={$record->no_reg} → " . ($kodeBed ?? 'NULL'));
         }
+
+        Log::info("konfirmasiClosing: kode_bed resolved", ['kode_bed' => $kodeBed]);
 
         // update status bed
         $bedUpdateResult = null;
         if ($validated['status_closing'] === 'Siap Closing') {
             if (! $kodeBed) {
-                // Pasien tidak memiliki bed IGD — kemungkinan menunggu di rumah, langsung boleh closing.
                 $bedUpdateResult = [
                     'success' => true,
                     'source'  => 'none',
@@ -133,28 +150,44 @@ class BatalRanapController extends Controller
                 ];
                 Log::info("konfirmasiClosing: tidak ada bed IGD untuk No_Reg={$record->no_reg} — skip release bed");
             } else {
-                // Ada bed → coba release, tapi tidak block closing jika gagal
+                Log::info("konfirmasiClosing: mencoba release bed", ['kode_bed' => $kodeBed, 'no_reg' => $record->no_reg]);
                 $tempRecord = clone $record;
                 $tempRecord->bed_id = $kodeBed;
                 $bedUpdateResult = $this->updateBedManagement($tempRecord);
 
+                Log::info("konfirmasiClosing: hasil release bed", ['result' => $bedUpdateResult]);
+
                 if (! $bedUpdateResult['success']) {
-                    // Catat error tapi tetap lanjut simpan — bed management bisa diselesaikan manual
-                    Log::warning("konfirmasiClosing: release bed GAGAL untuk No_Reg={$record->no_reg}, Kode_Bed={$kodeBed} — status tetap disimpan (soft fail)", [
-                        'error' => $bedUpdateResult['message'] ?? '-',
+                    Log::warning("konfirmasiClosing: release bed GAGAL — tetap simpan (soft fail)", [
+                        'no_reg'   => $record->no_reg,
+                        'kode_bed' => $kodeBed,
+                        'error'    => $bedUpdateResult['message'] ?? '-',
+                        'source'   => $bedUpdateResult['source'] ?? '-',
                     ]);
                 }
             }
         }
 
-        // Baru simpan ke DB setelah bed berhasil dibebaskan (atau tidak ada bed)
+        // Simpan ke DB
         $updateData = ['status_closing' => $validated['status_closing']];
         if ($kodeBed) {
             $updateData['bed_id'] = $kodeBed;
         }
 
-        $record->update($updateData);
-        $record = $record->fresh();
+        Log::info("konfirmasiClosing: menyimpan ke DB", ['update_data' => $updateData]);
+
+        try {
+            $record->update($updateData);
+            $record = $record->fresh();
+            Log::info("konfirmasiClosing: DB update sukses", ['id' => $record->id, 'status_closing' => $record->status_closing]);
+        } catch (\Exception $e) {
+            Log::error("konfirmasiClosing: DB update GAGAL", [
+                'id'    => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['message' => 'Gagal menyimpan data: ' . $e->getMessage()], 500);
+        }
 
         if ($validated['status_closing'] === 'Siap Closing') {
             $bedStatus = $bedUpdateResult['success'] ? 'berhasil' : 'gagal';
