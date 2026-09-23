@@ -158,14 +158,18 @@ class BatalRanapController extends Controller
                 Log::info("konfirmasiClosing: hasil release bed", ['result' => $bedUpdateResult]);
 
                 if (! $bedUpdateResult['success']) {
-                    Log::warning("konfirmasiClosing: release bed GAGAL — tetap simpan (soft fail)", [
+                    Log::warning("konfirmasiClosing: release bed GAGAL — closing DITOLAK", [
                         'no_reg'   => $record->no_reg,
                         'kode_bed' => $kodeBed,
                         'error'    => $bedUpdateResult['message'] ?? '-',
                         'source'   => $bedUpdateResult['source'] ?? '-',
                     ]);
-                    // Sanitize — jangan expose detail teknis ke response
-                    $bedUpdateResult['message'] = 'Bed IGD tidak dapat dibebaskan otomatis. Harap informasikan ke petugas IT.';
+
+                    return response()->json([
+                        'data'       => $record->fresh(),
+                        'message'    => 'Sistem Bed IGD sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi atau hubungi petugas IT.',
+                        'bed_update' => $bedUpdateResult,
+                    ], 422);
                 }
             }
         }
