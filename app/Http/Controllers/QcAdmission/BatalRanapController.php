@@ -133,21 +133,16 @@ class BatalRanapController extends Controller
                 ];
                 Log::info("konfirmasiClosing: tidak ada bed IGD untuk No_Reg={$record->no_reg} — skip release bed");
             } else {
-                // Ada bed → wajib berhasil release sebelum status disimpan
+                // Ada bed → coba release, tapi tidak block closing jika gagal
                 $tempRecord = clone $record;
                 $tempRecord->bed_id = $kodeBed;
                 $bedUpdateResult = $this->updateBedManagement($tempRecord);
 
                 if (! $bedUpdateResult['success']) {
-                    Log::warning("konfirmasiClosing: release bed GAGAL untuk No_Reg={$record->no_reg}, Kode_Bed={$kodeBed} — status TIDAK disimpan", [
+                    // Catat error tapi tetap lanjut simpan — bed management bisa diselesaikan manual
+                    Log::warning("konfirmasiClosing: release bed GAGAL untuk No_Reg={$record->no_reg}, Kode_Bed={$kodeBed} — status tetap disimpan (soft fail)", [
                         'error' => $bedUpdateResult['message'] ?? '-',
                     ]);
-
-                    return response()->json([
-                        'data'       => $record->fresh(),
-                        'message'    => 'Sistem Bed IGD sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi atau hubungi petugas IT.',
-                        'bed_update' => $bedUpdateResult,
-                    ], 422);
                 }
             }
         }
@@ -172,8 +167,12 @@ class BatalRanapController extends Controller
         }
 
         $message = 'Status closing berhasil disimpan.';
-        if ($bedUpdateResult !== null && $bedUpdateResult['source'] !== 'none') {
-            $message .= " Bed {$record->bed_id} berhasil dibebaskan via {$bedUpdateResult['source']}.";
+        if ($bedUpdateResult !== null && ($bedUpdateResult['source'] ?? '') !== 'none') {
+            if ($bedUpdateResult['success']) {
+                $message .= " Bed {$record->bed_id} berhasil dibebaskan via {$bedUpdateResult['source']}.";
+            } else {
+                $message .= " Catatan: bed {$record->bed_id} belum dapat dibebaskan otomatis (sistem Bed IGD tidak terjangkau). Harap informasikan ke petugas IT.";
+            }
         }
 
         return response()->json([
