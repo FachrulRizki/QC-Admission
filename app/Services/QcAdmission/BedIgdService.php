@@ -241,11 +241,9 @@ class BedIgdService
      */
     private function getPassthroughToken(): string
     {
-        // Ambil token dari session user yang sedang aktif
         $token = session('keycloak_access_token');
 
         if (! $token) {
-            // Fallback: cek apakah token bisa di-refresh dulu
             Log::warning('BedIgdService[passthrough]: keycloak_access_token tidak ada di session.');
             throw new \RuntimeException(
                 'Token Keycloak user tidak ditemukan di session. ' .
@@ -253,16 +251,25 @@ class BedIgdService
             );
         }
 
-        // Cek token belum expired — decode payload tanpa verify signature (cukup untuk cek exp)
-        $parts = explode('.', $token);
+        // Decode payload JWT tanpa verify signature — cukup untuk cek exp
+        $payload = [];
+        $parts   = explode('.', $token);
         if (count($parts) === 3) {
             $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true) ?? [];
             $exp     = $payload['exp'] ?? 0;
 
-            if ($exp > 0 && $exp < (time() + 30)) {
-                // Token expired atau hampir expired — coba refresh
-                Log::info('BedIgdService[passthrough]: token mendekati/sudah expired, coba refresh.');
-                $token = $this->tryRefreshKeycloakToken($token);
+            // Refresh jika token expired atau akan expired dalam 60 detik
+            if ($exp > 0 && $exp < (time() + 60)) {
+                Log::info('BedIgdService[passthrough]: token mendekati/sudah expired, coba refresh.', [
+                    'exp' => date('Y-m-d H:i:s', $exp),
+                    'sisa_detik' => $exp - time(),
+                ]);
+                $token   = $this->tryRefreshKeycloakToken($token);
+                // Re-decode payload dari token baru
+                $parts2  = explode('.', $token);
+                if (count($parts2) === 3) {
+                    $payload = json_decode(base64_decode(strtr($parts2[1], '-_', '+/')), true) ?? [];
+                }
             }
         }
 
