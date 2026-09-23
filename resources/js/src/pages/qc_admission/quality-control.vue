@@ -3,8 +3,9 @@ import { useQualityControlStore } from '@/stores/useQualityControlStore'
 import QCFormDialog from '@/views/qc-admission/quality-control/QCFormDialog.vue'
 import SummaryCards from '@/components/SummaryCards.vue'
 import PageHero from '@/components/PageHero.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import { usePagination } from '@/composables/usePagination'
 import axios from 'axios'
-
 const store = useQualityControlStore()
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -147,6 +148,8 @@ function resetFilter() { search.value = ''; filterStatus.value = 'all'; dateFrom
 
 async function onSaved() { showForm.value = false; toast('Data QC disimpan.'); await load() }
 
+// ── Pagination ────────────────────────────────────────────────────────────────
+const { page, pageCount, paginated: paginatedFiltered, setPage } = usePagination(filtered, 10)
 async function doDelete() {
   if (!deleteTarget.value) return
   loading.value = true
@@ -201,7 +204,7 @@ watch([dateFrom, dateTo], () => load())
     ]" />
 
     <!-- ── Filter ─────────────────────────────────────────────────────────── -->
-    <VCard elevation="0" border rounded="xl" class="mb-4">
+    <VCard elevation="0" border rounded="lg" class="mb-4">
       <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="4">
@@ -245,7 +248,7 @@ watch([dateFrom, dateTo], () => load())
     </div>
 
     <!-- ── List ───────────────────────────────────────────────────────────── -->
-    <VCard elevation="0" border rounded="xl" class="overflow-hidden">
+    <VCard elevation="0" border rounded="lg" class="overflow-hidden">
       <div v-if="loading" class="text-center py-12">
         <VProgressCircular indeterminate color="primary" size="32" />
         <p class="text-caption mt-3" style="color:var(--qc-text-2)">Memuat data...</p>
@@ -261,7 +264,7 @@ watch([dateFrom, dateTo], () => load())
       </div>
 
       <div v-else>
-        <div v-for="item in filtered" :key="item.id" class="qc-row" @click="openRow(item)">
+        <div v-for="item in paginatedFiltered" :key="item.id" class="qc-row" @click="openRow(item)">
           <VAvatar color="primary" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
             <span class="font-weight-bold" style="font-size:14px">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
           </VAvatar>
@@ -309,6 +312,8 @@ watch([dateFrom, dateTo], () => load())
             </div>
           </div>
         </div>
+        <PaginationBar :page="page" :page-count="pageCount" :total="filtered.length" :per-page="10"
+          @update:page="setPage" />
       </div>
     </VCard>
 

@@ -23,8 +23,11 @@ class BatalRanapService
 
         if (! empty($filters['status_ok']))      $query->where('status_ok', $filters['status_ok']);
         if (! empty($filters['status_closing'])) $query->where('status_closing', $filters['status_closing']);
+        if (! empty($filters['date_from']))       $query->whereDate('created_at', '>=', $filters['date_from']);
+        if (! empty($filters['date_to']))         $query->whereDate('created_at', '<=', $filters['date_to']);
 
-        return $query->paginate($filters['per_page'] ?? 200);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 500);
+        return $query->paginate($perPage);
     }
 
     public function create(array $data): BatalRanap

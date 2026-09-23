@@ -20,7 +20,7 @@ class BatalRanapController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(
-            $this->service->paginate($request->only(['search', 'status_ok', 'status_closing', 'belum_closing', 'per_page', 'page']))
+            $this->service->paginate($request->only(['search', 'status_ok', 'status_closing', 'belum_closing', 'date_from', 'date_to', 'per_page', 'page']))
         );
     }
 

@@ -3,6 +3,8 @@ import { useEdukasiLanjutanStore } from '@/stores/useEdukasiLanjutanStore'
 import EdukasiDetailDialog from '@/views/qc-admission/edukasi-lanjutan/EdukasiDetailDialog.vue'
 import SummaryCards from '@/components/SummaryCards.vue'
 import PageHero from '@/components/PageHero.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import { usePagination } from '@/composables/usePagination'
 
 const store = useEdukasiLanjutanStore()
 const loading = ref(false)
@@ -57,19 +59,24 @@ const statusFilter = ref('All')
 
 const records = computed(() => store.records ?? [])
 
-// Dedupe per no_mr — tampilkan 1 card per pasien (entry terbaru)
-// Urutkan: terlama (created_at terkecil) di atas, terbaru di bawah
-const uniquePatients = computed(() => {
+// Semua unique pasien (tanpa filter has_transfer) — untuk stats
+const allUniquePatients = computed(() => {
   const map = {}
   records.value.forEach(r => {
     if (!map[r.no_mr] || r.id > map[r.no_mr].id) map[r.no_mr] = r
   })
   return Object.values(map)
+})
+
+// Unique pasien yang BELUM transfer — untuk tampilan list
+// Urutkan: terlama (created_at terkecil) di atas, terbaru di bawah
+const uniquePatients = computed(() => {
+  return allUniquePatients.value
     .filter(r => !r.has_transfer)
     .sort((a, b) => {
       const ta = a.created_at ? new Date(a.created_at).getTime() : 0
       const tb = b.created_at ? new Date(b.created_at).getTime() : 0
-      return ta - tb  // ascending: terlama di atas
+      return ta - tb
     })
 })
 
@@ -121,11 +128,9 @@ const filtered = computed(() => {
 })
 
 const stats = computed(() => ({
-  total: uniquePatients.value.length,
-  menunggu: uniquePatients.value.filter(r => r.status === 'Menunggu').length,
-  selesai: uniquePatients.value.filter(r => r.status === 'Selesai').length,
-  pct: uniquePatients.value.length
-    ? Math.round(uniquePatients.value.filter(r => r.status === 'Selesai').length / uniquePatients.value.length * 100) : 0,
+  total:    allUniquePatients.value.length,
+  menunggu: allUniquePatients.value.filter(r => r.status === 'Menunggu' && !r.has_transfer).length,
+  selesai:  allUniquePatients.value.filter(r => r.has_transfer || r.status === 'Selesai').length,
 }))
 
 function openDetail(patient) { detailPatient.value = { ...patient }; dialogMode.value = 'view'; showDetail.value = true }
@@ -157,7 +162,7 @@ async function load() {
   loading.value = true
   try {
     await store.fetchRecords({
-      per_page: 200,
+      per_page: 100,
       search: search.value || undefined,
       status: statusFilter.value !== 'All' ? statusFilter.value : undefined,
       date_from: dateFrom.value || undefined,
@@ -167,8 +172,15 @@ async function load() {
   finally { loading.value = false }
 }
 
-// Watch filter — re-fetch dari API saat tanggal atau status berubah
-watch([dateFrom, dateTo, statusFilter], () => load())
+// Watch filter — re-fetch dari API saat tanggal atau status berubah (debounced)
+let filterTimer = null
+watch([dateFrom, dateTo, statusFilter], () => {
+  clearTimeout(filterTimer)
+  filterTimer = setTimeout(() => load(), 300)
+})
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+const { page, pageCount, paginated: paginatedFiltered, setPage } = usePagination(filtered, 10)
 
 onMounted(load)
 </script>
@@ -197,7 +209,7 @@ onMounted(load)
     ]" />
 
     <!-- Filter -->
-    <VCard elevation="0" border rounded="xl" class="mb-4">
+    <VCard elevation="0" border rounded="lg" class="mb-4">
       <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="4">
@@ -257,82 +269,81 @@ onMounted(load)
       </span>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="text-center py-12">
-      <VProgressCircular indeterminate color="success" size="32" />
-    </div>
+    <!-- List -->
+    <VCard elevation="0" border rounded="lg" class="overflow-hidden">
+      <div v-if="loading" class="text-center py-12">
+        <VProgressCircular indeterminate color="success" size="32" />
+        <p class="text-caption mt-3" style="color:var(--qc-text-2)">Memuat data...</p>
+      </div>
 
-    <!-- Empty -->
-    <div v-else-if="!filtered.length" class="text-center py-16" style="color:var(--qc-text-2)">
-      <VIcon icon="ri-book-open-line" size="52" class="mb-3 opacity-30" />
-      <p class="text-body-1 font-weight-semibold mb-1">
-        {{ (dateFrom || dateTo) ? 'Tidak ada data pada periode ini' : 'Belum ada data' }}
-      </p>
-      <p class="text-caption mb-4">
-        <template v-if="dateFrom === todayStr() || dateTo === todayStr()">
-          Belum ada edukasi lanjutan hari ini · Data masuk otomatis dari QC setelah ≥ 2 jam
-        </template>
-        <template v-else>
-          Coba filter ke tanggal lain atau klik "Semua Riwayat" untuk melihat semua data
-        </template>
-      </p>
-      <div class="d-flex gap-2 justify-center flex-wrap">
+      <div v-else-if="!filtered.length" class="text-center py-16" style="color:var(--qc-text-2)">
+        <VIcon icon="ri-book-open-line" size="52" class="mb-3 opacity-30" />
+        <p class="text-body-1 font-weight-semibold mb-1">
+          {{ (dateFrom || dateTo) ? 'Tidak ada data pada periode ini' : 'Belum ada data' }}
+        </p>
+        <p class="text-caption mb-4">
+          <template v-if="dateFrom === todayStr() || dateTo === todayStr()">
+            Belum ada edukasi lanjutan hari ini · Data masuk otomatis dari QC setelah ≥ 2 jam
+          </template>
+          <template v-else>
+            Coba filter ke tanggal lain atau klik "Semua Riwayat" untuk melihat semua data
+          </template>
+        </p>
         <VBtn variant="tonal" color="primary" rounded="lg" size="small" @click="dateFrom = ''; dateTo = ''; load()">
           <VIcon icon="ri-history-line" size="14" class="me-1" />Lihat Semua Riwayat
         </VBtn>
-        <!-- <VBtn variant="tonal" color="success" rounded="lg" size="small" :loading="syncing" @click="syncRsus">
-          <VIcon icon="ri-refresh-line" size="14" class="me-1" />Sync SIMRS
-        </VBtn> -->
       </div>
-    </div>
 
-    <!-- Cards grid -->
-    <VRow v-else dense>
-      <VCol v-for="patient in filtered" :key="patient.no_mr" cols="12" sm="6" md="4" lg="3">
-        <VCard elevation="0" border rounded="xl" class="edu-card cursor-pointer h-100" @click="openDetail(patient)">
-          <VCardText class="pa-4">
-            <!-- Top row -->
-            <div class="d-flex align-start gap-3 mb-3">
-              <VAvatar color="success" variant="tonal" size="44" rounded="lg">
-                <span style="font-size:15px;font-weight:700">{{ patient.nama_pasien?.charAt(0) ?? '?' }}</span>
-              </VAvatar>
-              <div class="flex-grow-1 min-width-0">
-                <p class="font-weight-semibold mb-0 text-truncate" style="font-size:0.9rem;color:var(--qc-text)">
-                  {{ patient.nama_pasien }}
-                </p>
-                <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ patient.no_mr }}</p>
-              </div>
-              <VChip color="warning" variant="tonal" size="x-small" class="flex-shrink-0">
-                {{ sesiCount[patient.no_mr] ?? 1 }} sesi
-              </VChip>
-            </div>
+      <div v-else>
+        <div v-for="patient in paginatedFiltered" :key="patient.no_mr" class="edu-row" @click="openDetail(patient)">
+          <VAvatar :color="patient.status === 'Selesai' ? 'success' : 'warning'" variant="tonal" size="40" rounded="lg"
+            class="flex-shrink-0">
+            <span class="font-weight-bold" style="font-size:14px">{{ patient.nama_pasien?.charAt(0) ?? '?' }}</span>
+          </VAvatar>
 
-            <!-- Status + info -->
-            <div class="d-flex align-center gap-2 flex-wrap mb-2">
-              <VChip v-if="patient.status_ranap" color="purple" variant="tonal" size="x-small">
+          <div class="flex-grow-1 min-width-0">
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <span class="font-weight-semibold" style="font-size:0.9rem;color:var(--qc-text)">{{ patient.nama_pasien }}</span>
+              <VChip v-if="patient.status_ranap" color="purple" size="x-small" variant="tonal">
                 <VIcon icon="ri-hospital-fill" size="10" class="me-1" />{{ patient.status_ranap }}
               </VChip>
-              <VChip v-else :color="patient.status === 'Selesai' ? 'success' : 'warning'" variant="tonal" size="x-small">
+              <VChip v-else :color="patient.status === 'Selesai' ? 'success' : 'warning'" size="x-small" variant="tonal">
                 {{ patient.status }}
               </VChip>
-              <span v-if="patient.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ patient.jaminan }}</span>
-              <VChip v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient)" :color="getWaktuColor(patient)"
-                variant="tonal" size="x-small" prepend-icon="ri-time-line">{{ getWaktuMenunggu(patient) }}</VChip>
-              <VChip v-if="patient.keterangan === 'Belum Diantar'" color="orange" variant="tonal" size="x-small"
-                prepend-icon="ri-walk-line">Belum Diantar</VChip>
+              <VChip v-if="patient.keterangan === 'Belum Diantar'" color="orange" size="x-small" variant="tonal">
+                <VIcon icon="ri-walk-line" size="10" class="me-1" />Belum Diantar
+              </VChip>
             </div>
-
-            <!-- Footer -->
-            <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center gap-3 mt-1 flex-wrap">
+              <span class="text-caption" style="color:var(--qc-text-2)">
+                <VIcon icon="ri-hashtag" size="11" />{{ patient.no_mr }}
+              </span>
+              <span v-if="patient.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ patient.jaminan }}</span>
               <span class="text-caption" style="color:var(--qc-text-2)">
                 <VIcon icon="ri-user-line" size="11" class="me-1" />{{ patient.petugas }}
               </span>
-              <span class="text-caption" style="color:var(--qc-text-2)">{{ patient.tanggal }}</span>
+              <VChip color="warning" variant="tonal" size="x-small">
+                {{ sesiCount[patient.no_mr] ?? 1 }} sesi
+              </VChip>
             </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+          </div>
+
+          <div class="text-end flex-shrink-0">
+            <div v-if="patient.status === 'Menunggu' && getWaktuMenunggu(patient)"
+              class="d-flex align-center gap-1 justify-end mb-1">
+              <VIcon icon="ri-time-line" size="11" :color="getWaktuColor(patient)" />
+              <span class="text-caption font-weight-semibold"
+                :style="`color:rgb(var(--v-theme-${getWaktuColor(patient)}))`">
+                {{ getWaktuMenunggu(patient) }}
+              </span>
+            </div>
+            <p class="text-caption mb-0" style="color:var(--qc-text-2);font-size:0.65rem">{{ patient.tanggal }}</p>
+          </div>
+        </div>
+        <PaginationBar :page="page" :page-count="pageCount" :total="filtered.length" :per-page="10"
+          @update:page="setPage" />
+      </div>
+    </VCard>
 
     <!-- Detail Dialog -->
     <EdukasiDetailDialog v-model="showDetail" :patient="detailPatient" :mode="dialogMode" @saved="onSaved" />
@@ -347,13 +358,23 @@ onMounted(load)
 </template>
 
 <style scoped>
-.edu-card {
-  transition: box-shadow 0.18s, transform 0.18s, border-color 0.15s;
+.edu-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0, 0, 0, 0.07));
 }
 
-.edu-card:hover {
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.15) !important;
-  transform: translateY(-2px);
-  border-color: rgba(16, 185, 129, 0.35) !important;
+.edu-row:last-child {
+  border-bottom: none;
+}
+
+.edu-row:hover {
+  background: var(--qc-green-light, rgba(0, 179, 126, 0.04));
+  border-left: 3px solid rgba(16, 185, 129, 0.35);
+  padding-left: 13px;
 }
 </style>

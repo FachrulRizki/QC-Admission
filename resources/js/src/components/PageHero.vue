@@ -66,11 +66,11 @@ defineProps({
 .page-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: 12px;
   padding: 24px 28px;
   margin-bottom: 24px;
   background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%);
-  box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--hero-from) 55%, transparent);
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--hero-from) 50%, transparent);
   isolation: isolate;
   /* Fixed min-height agar ukuran konsisten di semua menu */
   min-height: 130px;
@@ -234,7 +234,7 @@ defineProps({
 .page-hero__art-core {
   width: 84px;
   height: 84px;
-  border-radius: 26px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -320,7 +320,7 @@ defineProps({
 @media (max-width: 960px) {
   .page-hero {
     padding: 20px 22px;
-    border-radius: 20px;
+    border-radius: 10px;
     min-height: 120px;
   }
 
@@ -332,7 +332,7 @@ defineProps({
   .page-hero__art-core {
     width: 66px;
     height: 66px;
-    border-radius: 20px;
+    border-radius: 12px;
   }
 }
 

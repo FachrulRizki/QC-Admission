@@ -57,7 +57,7 @@ function numColor(card) {
       :key="i"
       class="sc-flex-card"
     >
-      <VCard elevation="0" border rounded="lg" class="stat-card px-3 py-2 h-100"
+      <VCard elevation="0" border rounded="md" class="stat-card px-3 py-2 h-100"
         :class="[borderClass(card), card.filterValue !== undefined ? 'cursor-pointer' : '']"
         @click="toggle(card)">
         <div class="d-flex align-center gap-2">

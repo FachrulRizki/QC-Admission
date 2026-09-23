@@ -68,6 +68,7 @@ Route::middleware(['keycloak.auth'])->group(function () {
     // Butuh permission edukasi-lanjutan:view 
     Route::middleware(['keycloak.role:edukasi-lanjutan:view'])->group(function () {
         Route::get('edukasi-lanjutan/sync-rsus', [EdukasiLanjutanController::class, 'syncRsus']);
+        Route::get('edukasi-lanjutan/split',     [EdukasiLanjutanController::class, 'split']);
         Route::get('edukasi-lanjutan-pending',   [EdukasiLanjutanController::class, 'pending']);
         Route::get('edukasi-lanjutan',           [EdukasiLanjutanController::class, 'index']);
         Route::get('edukasi-lanjutan/{id}',      [EdukasiLanjutanController::class, 'show']);

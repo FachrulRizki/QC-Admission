@@ -5,6 +5,8 @@ import { useMasterDataStore } from '@/stores/useMasterDataStore'
 import { usePegawaiStore } from '@/stores/usePegawaiStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import PageHero from '@/components/PageHero.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import { usePagination } from '@/composables/usePagination'
 
 const auth         = useAuthStore()
 const store        = useAlasanStore()
@@ -308,6 +310,10 @@ onMounted(() => {
   fetchPendaftaranAktif()
   if (auth.hasPermission('alasan:view')) store.fetchRecords({ per_page: 200 })
 })
+
+// ── Pagination — tab riwayat ──────────────────────────────────────────────
+const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwayat, setPage: setPageRiwayat }
+  = usePagination(filteredRecords, 10)
 </script>
 
 <template>
@@ -527,7 +533,7 @@ onMounted(() => {
       </div>
 
       <div v-else class="al-list">
-        <div v-for="item in filteredRecords" :key="item.id" class="al-rw-row">
+        <div v-for="item in paginatedRiwayat" :key="item.id" class="al-rw-row">
           <!-- Avatar dengan warna sesuai alasan -->
           <div class="al-rw-av" :class="`al-rw-av--${alasanColor(item.alasan)}`">
             {{ item.nama_pasien?.charAt(0) ?? '?' }}
@@ -573,6 +579,8 @@ onMounted(() => {
             </div>
           </div>
         </div>
+        <PaginationBar :page="pageRiwayat" :page-count="pageCountRiwayat" :total="filteredRecords.length" :per-page="10"
+          @update:page="setPageRiwayat" />
       </div>
     </div>
 

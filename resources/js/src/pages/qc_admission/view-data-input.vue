@@ -5,6 +5,8 @@ import { useDisplay } from 'vuetify'
 import SummaryCards from '@/components/SummaryCards.vue'
 import PageHero from '@/components/PageHero.vue'
 import VdiDetailDialog from '@/views/qc-admission/view-data-input/VdiDetailDialog.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import { usePagination } from '@/composables/usePagination'
 
 const auth = useAuthStore()
 const { xs } = useDisplay()
@@ -62,26 +64,33 @@ async function safeGet(url, params = {}) {
 async function loadAll() {
   loading.value = true
   try {
+    const dateParams = {
+      date_from: dateFrom.value || undefined,
+      date_to:   dateTo.value   || undefined,
+    }
+
     if (isKasir.value) {
-      batalData.value = await safeGet('/api/batal-ranap', { per_page: 500 })
+      batalData.value = await safeGet('/api/batal-ranap', { per_page: 300, ...dateParams })
     } else {
+      // Bangun promises — edukasi hanya 1x call via /split
       const promises = [
-        safeGet('/api/quality-control', { per_page: 500 }),
-        safeGet('/api/batal-ranap', { per_page: 500 }),
-        safeGet('/api/edukasi-lanjutan', { per_page: 500 }),
-        safeGet('/api/edukasi-lanjutan', { per_page: 500, include_transferred: true }),
-        safeGet('/api/up-selling', { per_page: 500 }),
+        safeGet('/api/quality-control', { per_page: 300, ...dateParams }),
+        safeGet('/api/batal-ranap',     { per_page: 300, ...dateParams }),
+        axios.get('/api/edukasi-lanjutan/split', { params: { per_page: 300, ...dateParams } })
+          .then(r => r.data).catch(() => ({ active: [], transferred: [] })),
+        safeGet('/api/up-selling', { per_page: 300, ...dateParams }),
       ]
       if (auth.hasPermission('alasan:view')) {
-        promises.push(safeGet('/api/alasan', { per_page: 500 }))
+        promises.push(safeGet('/api/alasan', { per_page: 300, ...dateParams }))
       }
-      const [qc, batal, edu, eduTransfer, up, alasan] = await Promise.all(promises)
-      qcData.value = qc
-      batalData.value = batal
-      edukasiData.value = edu
-      edukasiTransferData.value = eduTransfer
-      upData.value = up
-      alasanData.value = alasan ?? []
+
+      const [qc, batal, eduSplit, up, alasan] = await Promise.all(promises)
+      qcData.value             = qc
+      batalData.value          = batal
+      edukasiData.value        = eduSplit.active      ?? []
+      edukasiTransferData.value = eduSplit.transferred ?? []
+      upData.value             = up
+      alasanData.value         = alasan ?? []
     }
   } finally { loading.value = false }
 }
@@ -277,6 +286,9 @@ onMounted(() => {
   loadAll()
 })
 
+// Reload saat tanggal berubah
+watch([dateFrom, dateTo], () => loadAll())
+
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 const showDetail = ref(false)
 const detailItem = ref(null)
@@ -295,6 +307,13 @@ watch(() => auth.permissions, (perms, prev) => {
     loadAll()
   }
 })
+
+// ── Pagination — reset saat tab atau filter berubah ───────────────────────────
+const { page: vdiPage, pageCount: vdiPageCount, paginated: vdiPaginated, setPage: vdiSetPage }
+  = usePagination(filteredData, 10)
+
+// Reset ke page 1 saat tab berubah
+watch(activeTab, () => { vdiPage.value = 1 })
 </script>
 
 <template>
@@ -329,7 +348,7 @@ watch(() => auth.permissions, (perms, prev) => {
     ]" />
 
     <!-- Tabs + Filter dalam 1 card -->
-    <VCard elevation="0" border rounded="xl" class="mb-4">
+    <VCard elevation="0" border rounded="lg" class="mb-4">
       <!-- Tabs — scrollable, short label on mobile -->
       <VTabs v-model="activeTab" color="primary" show-arrows density="compact" class="vdi-tabs">
         <VTab v-for="t in tabs" :key="t.key" :value="t.key" class="vdi-tab">
@@ -395,7 +414,7 @@ watch(() => auth.permissions, (perms, prev) => {
     </div>
 
     <!-- ── LIST VIEW — responsif, no horizontal scroll ─── -->
-    <VCard elevation="0" border rounded="xl" class="overflow-hidden">
+    <VCard elevation="0" border rounded="lg" class="overflow-hidden">
       <!-- Loading -->
       <div v-if="loading" class="text-center py-12">
         <VProgressCircular indeterminate color="primary" size="32" />
@@ -409,8 +428,8 @@ watch(() => auth.permissions, (perms, prev) => {
 
       <!-- Items -->
       <div v-else>
-        <div v-for="(item, idx) in filteredData" :key="item.id ?? idx" class="vdi-row cursor-pointer"
-          :class="{ 'vdi-row--bordered': idx < filteredData.length - 1 }"
+        <div v-for="(item, idx) in vdiPaginated" :key="item.id ?? idx" class="vdi-row cursor-pointer"
+          :class="{ 'vdi-row--bordered': idx < vdiPaginated.length - 1 }"
           @click="openDetail(item)">
           <!-- Avatar -->
           <VAvatar color="primary" variant="tonal" size="38" rounded="md" class="flex-shrink-0">
@@ -510,6 +529,8 @@ watch(() => auth.permissions, (perms, prev) => {
             <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ item.tanggal || item.tgl_daftar || '—' }}</p>
           </div>
         </div>
+        <PaginationBar :page="vdiPage" :page-count="vdiPageCount" :total="filteredData.length" :per-page="10"
+          @update:page="vdiSetPage" />
       </div>
     </VCard>
 

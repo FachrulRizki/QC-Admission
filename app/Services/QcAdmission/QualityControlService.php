@@ -9,7 +9,13 @@ class QualityControlService
 {
     public function paginate(array $filters = []): LengthAwarePaginator
     {
-        $query = QualityControl::query()->latest();
+        $query = QualityControl::query()
+            ->select(['id','no_mr','no_reg','nama_pasien','jaminan','tanggal','jam_input',
+                      'tgl_daftar','jam_daftar','status_ket',
+                      'petugas','status','status_ranap','edukasi_kamar','note',
+                      'keluarga_pasien','ttd_keluarga_pasien',
+                      'durasi_tunggu','created_at','updated_at'])
+            ->latest();
 
         if (! empty($filters['search'])) {
             $q = $filters['search'];
@@ -26,10 +32,15 @@ class QualityControlService
         if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
         if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
 
-        // Sembunyikan QC yang sudah masuk ke Edukasi Lanjutan
-        $query->whereDoesntHave('edukasiLanjutans');
+        // Sembunyikan QC yang sudah pindah ke Edukasi Lanjutan
+        $query->whereNotExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('qcw_edukasi_lanjutans')
+                ->whereColumn('qcw_edukasi_lanjutans.quality_control_id', 'qcw_quality_controls.id');
+        });
 
-        return $query->paginate($filters['per_page'] ?? 20);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 500);
+        return $query->paginate($perPage);
     }
 
     public function create(array $data): QualityControl

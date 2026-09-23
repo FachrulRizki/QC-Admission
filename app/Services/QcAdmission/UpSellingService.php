@@ -24,7 +24,8 @@ class UpSellingService
         if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
         if (! empty($filters['status']))    $query->where('status', $filters['status']);
 
-        return $query->paginate($filters['per_page'] ?? 10);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 500);
+        return $query->paginate($perPage);
     }
 
     public function create(array $data): UpSelling

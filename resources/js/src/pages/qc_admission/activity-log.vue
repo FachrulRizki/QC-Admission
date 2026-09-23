@@ -90,7 +90,7 @@ onMounted(load)
     <SummaryCards :cards="statCards" />
 
     <!-- Filter -->
-    <VCard elevation="0" border rounded="xl" class="mb-4">
+    <VCard elevation="0" border rounded="lg" class="mb-4">
       <VCardText class="pa-3">
         <VRow dense align="center">
           <VCol cols="12" sm="3">
@@ -126,7 +126,7 @@ onMounted(load)
     </div>
 
     <!-- Table -->
-    <VCard elevation="0" border rounded="xl">
+    <VCard elevation="0" border rounded="lg">
       <VDataTable :headers="headers" :items="records" :loading="loading" density="comfortable" hover
         :items-per-page="30" hide-default-footer class="activity-table">
         <template #item.created_at="{ item }">

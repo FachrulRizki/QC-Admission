@@ -4,6 +4,8 @@ import BatalRanapFormDialog from '@/views/qc-admission/batal-ranap/BatalRanapFor
 import BatalRanapDetailDialog from '@/views/qc-admission/batal-ranap/BatalRanapDetailDialog.vue'
 import SummaryCards from '@/components/SummaryCards.vue'
 import PageHero from '@/components/PageHero.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import { usePagination } from '@/composables/usePagination'
 
 const store = useBatalRanapStore()
 
@@ -117,6 +119,12 @@ async function load() {
   } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
+
+// ── Pagination — dua tab terpisah ─────────────────────────────────────────────
+const { page: pagePending, pageCount: pageCountPending, paginated: paginatedPending, setPage: setPagePending }
+  = usePagination(pendingRecords, 10)
+const { page: pageClosing, pageCount: pageCountClosing, paginated: paginatedClosing, setPage: setPageClosing }
+  = usePagination(closingRecords, 10)
 
 onMounted(load)
 </script>
@@ -240,7 +248,7 @@ onMounted(load)
       <!-- List -->
       <div v-else class="br-list">
         <div
-          v-for="item in pendingRecords"
+          v-for="item in paginatedPending"
           :key="item.id"
           class="br-row"
           @click="openRow(item)"
@@ -286,6 +294,8 @@ onMounted(load)
             <span class="br-row__tgl">{{ item.tanggal }}</span>
           </div>
         </div>
+        <PaginationBar :page="pagePending" :page-count="pageCountPending" :total="pendingRecords.length" :per-page="10"
+          @update:page="setPagePending" />
       </div>
     </div>
 
@@ -341,7 +351,7 @@ onMounted(load)
       <!-- List -->
       <div v-else class="br-list br-list--closing">
         <div
-          v-for="item in closingRecords"
+          v-for="item in paginatedClosing"
           :key="item.id"
           class="br-row br-row--closing"
           @click="openRow(item)"
@@ -383,6 +393,8 @@ onMounted(load)
             <span class="br-row__tgl">{{ item.tanggal }}</span>
           </div>
         </div>
+        <PaginationBar :page="pageClosing" :page-count="pageCountClosing" :total="closingRecords.length" :per-page="10"
+          @update:page="setPageClosing" />
       </div>
     </div>
 

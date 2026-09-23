@@ -106,6 +106,15 @@ class EdukasiLanjutanController extends Controller
         );
     }
 
+    public function split(Request $request): JsonResponse
+    {
+        $result = $this->service->allSplit($request->only(['date_from', 'date_to', 'per_page']));
+        return response()->json([
+            'active'      => $result['active'],
+            'transferred' => $result['transferred'],
+        ]);
+    }
+
     /** Sync status rawat inap dari SIMRS — implementasi setelah konfirmasi struktur tabel. */
     // public function syncRsus(): JsonResponse
     // {
