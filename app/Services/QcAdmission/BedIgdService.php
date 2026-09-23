@@ -33,9 +33,16 @@ class BedIgdService
                     if ($found) {
                         return $found['Kode_Bed'] ?? null;
                     }
+
+                    // API berhasil tapi tidak ada bed ditemukan — tidak perlu fallback ke RSUS
+                    return null;
                 }
             } catch (\Exception $e) {
-                Log::warning('BedIgdService::getKodeBedByNoReg API failed', ['error' => $e->getMessage()]);
+                // API timeout/tidak terjangkau
+                Log::warning('BedIgdService::getKodeBedByNoReg API failed', [
+                    'error'  => $e->getMessage(),
+                    'no_reg' => $noReg,
+                ]);
             }
         }
 
@@ -88,7 +95,11 @@ class BedIgdService
                     'source' => 'bed_igd_api',
                 ];
             } catch (\Exception $e) {
-                Log::warning('BedIgdService::getBedsByNoReg API failed', ['error' => $e->getMessage()]);
+                // API timeout/tidak terjangkau — lanjut ke fallback RSUS DB
+                Log::warning('BedIgdService::getBedsByNoReg API failed, falling back to RSUS DB', [
+                    'error'  => $e->getMessage(),
+                    'no_reg' => $noReg,
+                ]);
             }
         }
 
@@ -184,8 +195,12 @@ class BedIgdService
                     'data'     => $response->json(),
                 ];
             } catch (\Exception $e) {
-                Log::warning('BedIgdService::releaseBed API failed', ['error' => $e->getMessage()]);
-                return ['success' => false, 'source' => 'bed_igd_api', 'message' => $e->getMessage()];
+                // API gagal (timeout, connection refused, dll) — lanjut ke fallback RSUS DB
+                Log::warning('BedIgdService::releaseBed API failed, falling back to RSUS DB', [
+                    'error'    => $e->getMessage(),
+                    'kode_bed' => $kodeBed,
+                    'no_reg'   => $noReg,
+                ]);
             }
         }
 
