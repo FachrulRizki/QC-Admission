@@ -215,7 +215,7 @@ class BedIgdService
                 return ['success' => true, 'source' => 'rsus_db', 'kode_bed' => $kodeBed];
             } catch (\Exception $e) {
                 Log::warning('BedIgdService::releaseBed RSUS failed', ['error' => $e->getMessage()]);
-                return ['success' => false, 'source' => 'rsus_db', 'message' => $e->getMessage()];
+                return ['success' => false, 'source' => 'rsus_db', 'message' => 'Gagal update status bed via database.'];
             }
         }
 

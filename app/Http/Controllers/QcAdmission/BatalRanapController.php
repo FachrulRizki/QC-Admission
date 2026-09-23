@@ -164,6 +164,8 @@ class BatalRanapController extends Controller
                         'error'    => $bedUpdateResult['message'] ?? '-',
                         'source'   => $bedUpdateResult['source'] ?? '-',
                     ]);
+                    // Sanitize — jangan expose detail teknis ke response
+                    $bedUpdateResult['message'] = 'Bed IGD tidak dapat dibebaskan otomatis. Harap informasikan ke petugas IT.';
                 }
             }
         }

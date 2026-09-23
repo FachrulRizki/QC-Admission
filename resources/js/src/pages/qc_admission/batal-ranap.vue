@@ -101,7 +101,7 @@ async function onVerified(result) {
     // Pindah ke tab closing otomatis
     activeTab.value = 'closing'
   } else if (result?.bedTriggered === false) {
-    toast(`⚠️ Siap Closing tersimpan, tapi trigger Bed IGD gagal: ${result.bedError ?? 'cek log server'}`, 'warning')
+    toast('✅ Siap Closing tersimpan. Catatan: bed IGD belum dapat dibebaskan otomatis, harap informasikan ke petugas IT.', 'warning')
     activeTab.value = 'closing'
   } else if (result?.bedTriggered === null) {
     toast('✅ Siap Closing tersimpan. Pasien tidak memiliki bed IGD (menunggu di rumah).', 'success')

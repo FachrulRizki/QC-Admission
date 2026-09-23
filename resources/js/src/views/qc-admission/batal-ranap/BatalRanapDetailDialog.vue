@@ -115,9 +115,11 @@ async function saveClosing() {
         // Pasien tidak punya bed IGD — wajar, closing tetap sukses
         emit('verified', { bedTriggered: null })
       } else {
-        emit('verified', { bedTriggered: false, bedError: bedUpdate.message })
-        closingErrMsg.value = 'Sistem Bed IGD sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi atau hubungi petugas IT.'
-        savingClosing.value = false
+        // Bed gagal dibebaskan tapi closing tetap tersimpan (soft fail)
+        emit('verified', { bedTriggered: false })
+        closingErrMsg.value = ''
+        // tutup dialog, closing sudah sukses — petugas IT akan handle bed
+        close()
         return
       }
     } else {
