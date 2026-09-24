@@ -33,8 +33,6 @@ class BedIgdService
                     if ($found) {
                         return $found['Kode_Bed'] ?? null;
                     }
-
-                    // API berhasil tapi tidak ada bed ditemukan — tidak perlu fallback ke RSUS
                     return null;
                 }
             } catch (\Exception $e) {
@@ -334,10 +332,7 @@ class BedIgdService
     }
 
     /**
-     * KEYCLOAK CLIENT CREDENTIALS — service account aplikasi ini.
-     * Token di-cache otomatis, di-refresh saat mendekati expiry.
-     * Tidak bergantung pada user session — aman untuk background job dan
-     * proses apapun termasuk saat tidak ada user yang login.
+     * KEYCLOAK CLIENT CREDENTIALS
      */
     private function getKeycloakClientToken(): string
     {

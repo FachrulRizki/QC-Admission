@@ -88,8 +88,10 @@ class PasienController extends Controller
         }
         if ($search !== '') {
             $like = "%{$search}%";
+            // Batasi 7 hari terakhir agar tidak menarik seluruh histori pasien
             return [
-                'WHERE (L.No_Reg LIKE ? OR L.No_MR LIKE ? OR L.Nama_Pasien LIKE ?)',
+                'WHERE (L.No_Reg LIKE ? OR L.No_MR LIKE ? OR L.Nama_Pasien LIKE ?)
+                   AND CAST(L.Tgl_Daftar AS DATE) >= DATEADD(DAY, -7, GETDATE())',
                 [$like, $like, $like],
             ];
         }
