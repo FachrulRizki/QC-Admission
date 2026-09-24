@@ -129,7 +129,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
 </script>
 
 <template>
-<VDialog :model-value="modelValue" max-width="600" persistent scrollable @update:model-value="close">
+<VDialog :model-value="modelValue" max-width="600" persistent @update:model-value="close">
 <VCard rounded="xl" class="dlg-card overflow-hidden">
 
 <!-- ── Gradient Banner Header ───────────────────────────────────────── -->
@@ -153,7 +153,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
 </div>
 </div>
 
-<VCardText class="pa-0">
+<div class="dlg-body">
 
 <div v-if="errorMsg" class="px-5 pt-4">
 <VAlert type="error" variant="tonal" density="compact" closable @click:close="errorMsg=''">
@@ -326,7 +326,7 @@ class="mb-3" hide-details="auto"
 </div>
 
 </div>
-</VCardText>
+</div>
 
 <!-- ── Footer Actions ───────────────────────────────────────────────── -->
 <div class="dlg-footer">
@@ -348,7 +348,7 @@ prepend-icon="ri-save-line"
 <style scoped>
 /* ── Dialog card ── */
 .dlg-card { display: flex; flex-direction: column; max-height: 92dvh; }
-.v-card-text { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+.dlg-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
 
 /* ── Gradient Banner ── */
 .dlg-banner {

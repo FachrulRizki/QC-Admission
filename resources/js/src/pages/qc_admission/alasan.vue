@@ -587,8 +587,8 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
     <!-- ══════════════════════════════════════════════════════════════════
          MODAL DETAIL — sudah pernah isi
     ═══════════════════════════════════════════════════════════════════ -->
-    <VDialog v-model="dialogDetail" max-width="580" scrollable>
-      <VCard rounded="xl" class="overflow-hidden">
+    <VDialog v-model="dialogDetail" max-width="580">
+      <VCard rounded="xl" class="al-dlg-card overflow-hidden">
         <!-- Header pasien -->
         <div class="det-header">
           <div class="det-header__av">
@@ -609,7 +609,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
         </div>
 
         <!-- Daftar entri alasan -->
-        <VCardText class="pa-0">
+        <div class="al-det-body">
           <div class="det-entries">
             <div v-for="(rec, i) in detailRecords" :key="rec.id" class="det-entry">
               <!-- Nomor urut -->
@@ -649,7 +649,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
               </div>
             </div>
           </div>
-        </VCardText>
+        </div>
 
         <!-- Footer: tutup + isi lagi -->
         <div class="det-footer">
@@ -672,8 +672,8 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
     <!-- ══════════════════════════════════════════════════════════════════
          MODAL FORM — input / edit alasan
     ═══════════════════════════════════════════════════════════════════ -->
-    <VDialog v-model="dialogForm" max-width="540" persistent scrollable>
-      <VCard rounded="xl" class="overflow-hidden">
+    <VDialog v-model="dialogForm" max-width="540" persistent>
+      <VCard rounded="xl" class="al-dlg-card overflow-hidden">
         <!-- Banner -->
         <div class="frm-banner">
           <div class="frm-banner__icon">
@@ -708,7 +708,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
           </div>
         </div>
 
-        <VCardText class="pa-4">
+        <div class="al-frm-body">
           <VAlert v-if="formError" type="error" variant="tonal" density="compact" closable class="mb-3"
             @click:close="formError = ''">{{ formError }}</VAlert>
 
@@ -747,7 +747,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
               no-data-text="Memuat petugas..."
             />
           </div>
-        </VCardText>
+        </div>
 
         <div class="frm-footer">
           <VBtn variant="text" color="default" @click="dialogForm = false">Batal</VBtn>
@@ -1060,6 +1060,20 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
 /* ═══════════════════════════════════
    MODAL DETAIL
 ══════════════════════════════════ */
+/* Dialog card — flex column untuk sticky header + scrollable body + sticky footer */
+.al-dlg-card { display: flex; flex-direction: column; max-height: 92dvh; }
+.al-det-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.al-frm-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+}
+
 .det-header {
   display: flex; align-items: center; gap: 12px;
   padding: 18px 20px;
@@ -1164,6 +1178,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
   display: flex; gap: 8px; padding: 12px 16px;
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: #fff;
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════
@@ -1229,6 +1244,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
   display: flex; gap: 8px; padding: 12px 16px;
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: #fff;
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════

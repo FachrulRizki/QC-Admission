@@ -275,7 +275,8 @@ onMounted(load)
               </VChip>
             </div>
             <div class="br-row__meta">
-              <span>{{ item.no_reg }}</span>
+              <span>No.RM: {{ item.no_mr }}</span>
+              <span> No.Reg {{ item.no_reg }}</span>
               <span v-if="item.jaminan">{{ item.jaminan }}</span>
               <span v-if="item.keterangan_batal">
                 <VIcon icon="ri-error-warning-line" size="10" />{{ item.keterangan_batal }}

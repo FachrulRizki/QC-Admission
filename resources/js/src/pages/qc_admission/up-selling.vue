@@ -226,8 +226,8 @@ onMounted(load)
     <UpSellingFormDialog v-model="showForm" :edit-item="editItem" @saved="onSaved" />
 
     <!-- Detail Dialog -->
-    <VDialog v-model="showDetail" max-width="460" scrollable>
-      <VCard v-if="detailItem" rounded="lg" class="overflow-hidden">
+    <VDialog v-model="showDetail" max-width="460">
+      <VCard v-if="detailItem" rounded="lg" class="qc-dlg-card overflow-hidden">
 
         <!-- Banner header — sama dengan QC detail -->
         <div class="us-detail-header">
@@ -255,6 +255,7 @@ onMounted(load)
         </div>
 
         <!-- Info grid — sama persis dengan pola qc-info-grid -->
+        <div class="qc-dlg-body">
         <div class="qc-info-grid">
           <div class="qc-info-cell">
             <span class="qc-lbl">Tgl. Daftar</span>
@@ -295,6 +296,7 @@ onMounted(load)
         </div>
 
         <!-- Action bar — sama dengan QC -->
+        </div>
         <div class="qc-action-bar">
           <VBtn variant="outlined" rounded="lg" class="qc-action-btn" @click="showDetail = false">Tutup</VBtn>
           <VBtn color="primary" variant="tonal" rounded="lg" class="qc-action-btn qc-action-btn--grow"
@@ -340,6 +342,10 @@ onMounted(load)
 </template>
 
 <style scoped>
+/* ── Detail dialog card ── */
+.qc-dlg-card { display: flex; flex-direction: column; max-height: 92dvh; }
+.qc-dlg-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+
 /* ── Row list ── */
 .us-row {
   display: flex;

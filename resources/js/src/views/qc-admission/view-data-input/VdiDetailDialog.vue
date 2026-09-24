@@ -39,7 +39,7 @@ function fmtDate(d) {
 </script>
 
 <template>
-  <VDialog :model-value="modelValue" max-width="520" scrollable @update:model-value="close">
+  <VDialog :model-value="modelValue" max-width="520" @update:model-value="close">
     <VCard v-if="item" rounded="xl" class="vdd overflow-hidden">
 
       <!-- ── Banner ──────────────────────────────────────────────────────── -->
@@ -67,7 +67,7 @@ function fmtDate(d) {
       </div>
 
       <!-- ── Scrollable body ─────────────────────────────────────────────── -->
-      <VCardText class="pa-4">
+      <div class="vdd-body">
 
         <!-- ══════════════ SUMMARY ══════════════════════════════════════════ -->
         <template v-if="type === 'summary'">
@@ -260,11 +260,10 @@ function fmtDate(d) {
           </div>
         </template>
 
-      </VCardText>
+      </div>
 
       <!-- ── Footer ─────────────────────────────────────────────────────── -->
-      <VDivider />
-      <div class="d-flex px-4 py-3">
+      <div class="vdd-footer">
         <VBtn variant="outlined" rounded="lg" size="small" @click="close">Tutup</VBtn>
       </div>
 
@@ -274,6 +273,21 @@ function fmtDate(d) {
 
 <style scoped>
 .vdd { display: flex; flex-direction: column; max-height: 90dvh; }
+
+.vdd-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+}
+
+.vdd-footer {
+  flex-shrink: 0;
+  display: flex; gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface-variant), 0.25);
+}
 
 /* ── Banner ── */
 .vdd-banner {

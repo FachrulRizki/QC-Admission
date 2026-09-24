@@ -143,7 +143,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
 </script>
 
 <template>
-<VDialog :model-value="modelValue" max-width="560" persistent scrollable @update:model-value="close">
+<VDialog :model-value="modelValue" max-width="560" persistent @update:model-value="close">
 <VCard rounded="xl" class="dlg-card overflow-hidden">
 
 <!-- ── Gradient Banner Header ───────────────────────────────────────── -->
@@ -167,7 +167,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
 </div>
 </div>
 
-<VCardText class="pa-0">
+<div class="dlg-body">
 
 <!-- Error -->
 <div v-if="errorMsg" class="px-5 pt-4">
@@ -300,7 +300,7 @@ no-data-text="Memuat petugas..."
 </div>
 
 </div>
-</VCardText>
+</div>
 
 <!-- ── Footer Actions ───────────────────────────────────────────────── -->
 <div class="dlg-footer">
@@ -447,7 +447,7 @@ background: rgba(var(--v-theme-surface-variant), 0.25);
 }
 
 /* ── Scrollable card text ── */
-.v-card-text { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+.dlg-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
 
 /* ── Transitions ── */
 .slide-down-enter-active { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }

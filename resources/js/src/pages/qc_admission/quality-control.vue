@@ -321,8 +321,8 @@ watch([dateFrom, dateTo], () => load())
     <QCFormDialog v-model="showForm" :edit-item="editItem" @saved="onSaved" />
 
     <!-- ── Detail Dialog ──────────────────────────────────────────────────── -->
-    <VDialog v-model="showDetail" max-width="460" scrollable>
-      <VCard v-if="detailItem" rounded="xl" class="overflow-hidden">
+    <VDialog v-model="showDetail" max-width="460">
+      <VCard v-if="detailItem" rounded="xl" class="qc-dlg-card overflow-hidden">
 
         <!-- Banner header sesuai primary color -->
         <div class="qc-detail-header">
@@ -361,6 +361,7 @@ watch([dateFrom, dateTo], () => load())
         </div>
 
         <!-- Info grid -->
+        <div class="qc-dlg-body">
         <div class="qc-info-grid">
           <div class="qc-info-cell"><span class="qc-lbl">Tanggal</span><span class="qc-val">{{ detailItem.tanggal
               }}</span>
@@ -407,6 +408,7 @@ watch([dateFrom, dateTo], () => load())
         </div>
 
         <!-- ── Action buttons ─────────────────────────────────────────────── -->
+        </div>
         <div class="qc-action-bar">
           <VBtn variant="outlined" rounded="lg" class="qc-action-btn" @click="showDetail = false">Tutup</VBtn>
           <VBtn color="primary" variant="tonal" rounded="lg" class="qc-action-btn qc-action-btn--grow"
@@ -453,6 +455,10 @@ watch([dateFrom, dateTo], () => load())
 </template>
 
 <style scoped>
+/* ── Detail dialog card ── */
+.qc-dlg-card { display: flex; flex-direction: column; max-height: 92dvh; }
+.qc-dlg-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+
 /* ── Row list ──────────────────────────────────────────────────────────────── */
 .qc-row {
   display: flex;

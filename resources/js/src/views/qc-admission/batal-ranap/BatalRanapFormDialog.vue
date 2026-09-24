@@ -201,7 +201,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
 </script>
 
 <template>
-  <VDialog :model-value="modelValue" max-width="600" persistent scrollable @update:model-value="close">
+  <VDialog :model-value="modelValue" max-width="600" persistent @update:model-value="close">
     <VCard rounded="xl" class="dlg-card overflow-hidden">
 
       <!-- ── Gradient Banner Header ───────────────────────────────────────── -->
@@ -226,7 +226,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
         </div>
       </div>
 
-      <VCardText class="pa-0">
+      <div class="dlg-body">
         <div v-if="errorMsg" class="px-5 pt-4">
           <VAlert type="error" variant="tonal" density="compact" closable @click:close="errorMsg = ''">
             {{ errorMsg }}
@@ -421,7 +421,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
           </div>
 
         </div>
-      </VCardText>
+      </div>
 
       <div class="dlg-footer">
         <VBtn variant="outlined" rounded="lg" size="small" @click="close">Batal</VBtn>
@@ -442,7 +442,7 @@ const hasPasien = computed(() => !!form.value.no_reg && !!form.value.nama_pasien
   max-height: 92dvh;
 }
 
-.v-card-text {
+.dlg-body {
   flex: 1 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;

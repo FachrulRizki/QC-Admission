@@ -188,8 +188,8 @@ function close() { emit('update:modelValue', false) }
 </script>
 
 <template>
-  <VDialog :model-value="modelValue" max-width="500" scrollable @update:model-value="close">
-    <VCard v-if="item" rounded="xl" class="overflow-hidden">
+  <VDialog :model-value="modelValue" max-width="500" @update:model-value="close">
+    <VCard v-if="item" rounded="xl" class="dlg-card overflow-hidden">
 
       <!-- ── Banner ─────────────────────────────────────────────────────── -->
       <div class="modal-banner">
@@ -243,7 +243,7 @@ function close() { emit('update:modelValue', false) }
         </button>
       </div>
 
-      <VCardText class="pa-4">
+      <div class="dlg-body">
 
         <!-- ══ DETAIL ══════════════════════════════════════════════════════ -->
         <template v-if="tab==='detail'">
@@ -534,11 +534,11 @@ function close() { emit('update:modelValue', false) }
           </VAlert>
         </template>
 
-      </VCardText>
+      </div>
 
       <!-- ── Actions ────────────────────────────────────────────────────── -->
       <VDivider />
-      <div class="d-flex gap-2 px-4 py-3 flex-wrap">
+      <div class="dlg-footer">
         <VBtn variant="outlined" rounded="lg" size="small" @click="close">Tutup</VBtn>
 
         <template v-if="tab==='detail'">
@@ -583,6 +583,22 @@ function close() { emit('update:modelValue', false) }
 </template>
 
 <style scoped>
+/* ── Dialog card ── */
+.dlg-card { display: flex; flex-direction: column; max-height: 92dvh; }
+.dlg-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+}
+.dlg-footer {
+  flex-shrink: 0;
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface-variant), 0.25);
+}
+
 /* ── Banner ──────────────────────────────────────────────────────────── */
 .modal-banner {
   position: relative;
