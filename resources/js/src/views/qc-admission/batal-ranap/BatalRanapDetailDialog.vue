@@ -20,6 +20,7 @@ const closingStatus  = ref(null)
 const selectedBed    = ref(null) 
 const savingClosing  = ref(false)
 const closingErrMsg  = ref('')
+const closingResult  = ref(null) 
 
 // ── Verifikasi (status_ok) state ──────────────────────────────────────────────
 const statusOkVal    = ref(null)
@@ -51,6 +52,7 @@ watch(() => props.modelValue, async (open) => {
     statusOkVal.value   = props.item.status_ok      ?? null
     verifNote.value     = ''
     closingErrMsg.value = ''
+    closingResult.value = null
     verifErrMsg.value   = ''
     bedList.value       = []
     await fetchBedList()
@@ -93,20 +95,26 @@ async function fetchBedList() {
 
 // ── Save Closing ──────────────────────────────────────────────────────────────
 async function saveClosing() {
-  closingErrMsg.value = ''
+  closingErrMsg.value  = ''
+  closingResult.value  = null
   if (!closingStatus.value) { closingErrMsg.value = 'Pilih status closing.'; return }
 
   savingClosing.value = true
   try {
-    // Kirim tanpa kode_bed — backend auto-lookup dari No_Reg di BI_Bed_Igd
     const result = await store.konfirmasiClosing(props.item.id, closingStatus.value, null)
+
     if (!result?.success) {
-      // Tampilkan detail error bed_update jika ada
+      // 422 — bed gagal dibebaskan, simpan result untuk ditampilkan di UI
       const bedUpdate = result?.bed_update
+      closingResult.value = {
+        success:     false,
+        source:      bedUpdate?.source   ?? null,
+        kode_bed:    bedUpdate?.kode_bed ?? null,
+        message:     bedUpdate?.message  ?? result?.message ?? 'Gagal',
+        api_message: result?.message     ?? null,
+      }
       if (bedUpdate && !bedUpdate.success) {
-        const sourceLabel = bedUpdate.source === 'bed_igd_api' ? 'API Bed IGD'
-          : bedUpdate.source === 'rsus_db' ? 'Database RSUS'
-          : bedUpdate.source ?? '—'
+        const sourceLabel = { bed_igd_api: 'API Bed IGD', rsus_db: 'Database RSUS' }[bedUpdate.source] ?? (bedUpdate.source ?? '—')
         closingErrMsg.value = `${result?.message ?? 'Gagal menyimpan.'}\n\nDetail: [${sourceLabel}] ${bedUpdate.message ?? ''}`
       } else {
         closingErrMsg.value = result?.message ?? 'Gagal menyimpan.'
@@ -116,26 +124,36 @@ async function saveClosing() {
 
     const bedUpdate = result?.data?.bed_update
     if (closingStatus.value === 'Siap Closing' && bedUpdate) {
+      // Simpan hasil untuk ditampilkan sebelum dialog ditutup
+      closingResult.value = {
+        success:     bedUpdate.success,
+        source:      bedUpdate.source   ?? null,
+        kode_bed:    bedUpdate.kode_bed ?? null,
+        message:     result?.data?.message ?? null,
+        api_message: result?.data?.message ?? null,
+      }
+
       if (bedUpdate.success && bedUpdate.source !== 'none') {
+        // Tunjukkan hasil sukses sebentar, lalu tutup
+        await new Promise(r => setTimeout(r, 1800))
         emit('verified', {
           bedTriggered: true,
-          source: bedUpdate.source,
-          kodeBed: bedUpdate.kode_bed,
-          message: result?.data?.message,
+          source:   bedUpdate.source,
+          kodeBed:  bedUpdate.kode_bed,
+          message:  result?.data?.message,
         })
+        close()
       } else if (bedUpdate.success && bedUpdate.source === 'none') {
-        // Pasien tidak punya bed IGD — wajar, closing tetap sukses
+        await new Promise(r => setTimeout(r, 1200))
         emit('verified', { bedTriggered: null })
+        close()
       } else {
-        // Bed ada tapi gagal dibebaskan — backend sudah return 422, tangani di atas
         closingErrMsg.value = result?.data?.message ?? 'Sistem Bed IGD sedang tidak dapat dihubungi.'
-        savingClosing.value = false
-        return
       }
     } else {
       emit('verified')
+      close()
     }
-    close()
   } catch {
     closingErrMsg.value = 'Terjadi kesalahan jaringan. Silakan coba lagi.'
   } finally {
@@ -157,9 +175,14 @@ async function saveVerifikasi() {
   finally { savingVerif.value = false }
 }
 
-const statusOkColor = s => ({ Bedah: 'success', 'Non Bedah': 'info' }[s] ?? 'secondary')
-const closingColor  = s => s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
+const statusOkColor  = s => ({ Bedah: 'success', 'Non Bedah': 'info' }[s] ?? 'secondary')
+const closingColor   = s => s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
 const bedStatusColor = s => (s ?? '').toUpperCase() === 'KOSONG' ? 'success' : 'warning'
+
+const sourceLabel = computed(() => {
+  const map = { bed_igd_api: 'API Bed IGD', rsus_db: 'Database RSUS', mock: 'Mock', none: '—' }
+  return map[closingResult.value?.source] ?? (closingResult.value?.source ?? '—')
+})
 
 function close() { emit('update:modelValue', false) }
 </script>
@@ -335,6 +358,41 @@ function close() { emit('update:modelValue', false) }
           <VAlert v-if="closingErrMsg" type="error" variant="tonal" density="compact" class="mb-3" closable @click:close="closingErrMsg=''">
             <span style="white-space: pre-line">{{ closingErrMsg }}</span>
           </VAlert>
+
+          <!-- ── Hasil API Bed IGD ── -->
+          <div v-if="closingResult" class="api-result-box mb-3"
+            :class="closingResult.success ? 'api-result-box--success' : 'api-result-box--error'">
+            <div class="arb-header">
+              <VIcon
+                :icon="closingResult.success ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'"
+                :color="closingResult.success ? 'success' : 'error'"
+                size="16" class="me-1"
+              />
+              <span class="arb-title">
+                {{ closingResult.success ? 'Bed Berhasil Dibebaskan' : 'Gagal Membebaskan Bed' }}
+              </span>
+              <VChip
+                :color="closingResult.success ? 'success' : 'error'"
+                size="x-small" variant="tonal" class="ms-auto"
+              >
+                {{ sourceLabel }}
+              </VChip>
+            </div>
+            <div class="arb-body">
+              <div v-if="closingResult.kode_bed" class="arb-row">
+                <span class="arb-lbl">Kode Bed</span>
+                <span class="arb-val arb-val--mono">{{ closingResult.kode_bed }}</span>
+              </div>
+              <div class="arb-row">
+                <span class="arb-lbl">Sumber</span>
+                <span class="arb-val">{{ sourceLabel }}</span>
+              </div>
+              <div v-if="closingResult.message" class="arb-row arb-row--full">
+                <span class="arb-lbl">Keterangan</span>
+                <span class="arb-val">{{ closingResult.message }}</span>
+              </div>
+            </div>
+          </div>
 
           <!-- Info konteks status saat ini -->
           <VAlert
@@ -734,4 +792,51 @@ function close() { emit('update:modelValue', false) }
 .opt-icon-wrap--success { background: rgba(var(--v-theme-success), 0.12); color: rgb(var(--v-theme-success)); }
 .opt-icon-wrap--error   { background: rgba(var(--v-theme-error), 0.12);   color: rgb(var(--v-theme-error)); }
 .opt-icon-wrap--info    { background: rgba(var(--v-theme-info), 0.12);    color: rgb(var(--v-theme-info)); }
+
+/* ── API Result Box ──────────────────────────────────────────────────── */
+.api-result-box {
+  border-radius: 12px;
+  border: 1.5px solid;
+  overflow: hidden;
+}
+.api-result-box--success {
+  border-color: rgba(var(--v-theme-success), 0.35);
+  background: rgba(var(--v-theme-success), 0.05);
+}
+.api-result-box--error {
+  border-color: rgba(var(--v-theme-error), 0.35);
+  background: rgba(var(--v-theme-error), 0.05);
+}
+.arb-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.api-result-box--success .arb-header { background: rgba(var(--v-theme-success), 0.08); }
+.api-result-box--error   .arb-header { background: rgba(var(--v-theme-error),   0.08); }
+.arb-title {
+  font-size: 0.78rem; font-weight: 700;
+}
+.api-result-box--success .arb-title { color: rgb(var(--v-theme-success)); }
+.api-result-box--error   .arb-title { color: rgb(var(--v-theme-error)); }
+.arb-body {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px; background: rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.arb-row {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 12px;
+  background: rgb(var(--v-theme-surface));
+}
+.arb-row--full { grid-column: span 2; }
+.arb-lbl {
+  font-size: 0.58rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+.arb-val {
+  font-size: 0.82rem; font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+}
+.arb-val--mono { font-family: monospace; font-size: 0.78rem; letter-spacing: 0.03em; }
 </style>

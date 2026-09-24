@@ -168,7 +168,7 @@ class BatalRanapController extends Controller
                     return response()->json([
                         'data'       => $record->fresh(),
                         'message'    => 'Sistem Bed IGD sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi atau hubungi petugas IT.',
-                        'bed_update' => $bedUpdateResult,
+                        'bed_update' => $this->sanitizeBedUpdate($bedUpdateResult),
                     ], 422);
                 }
             }
@@ -192,7 +192,7 @@ class BatalRanapController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['message' => 'Gagal menyimpan data: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Gagal menyimpan data. Silakan coba lagi atau hubungi petugas IT.'], 500);
         }
 
         if ($validated['status_closing'] === 'Siap Closing') {
@@ -217,7 +217,7 @@ class BatalRanapController extends Controller
         return response()->json([
             'data'       => $record,
             'message'    => $message,
-            'bed_update' => $bedUpdateResult,
+            'bed_update' => $this->sanitizeBedUpdate($bedUpdateResult),
         ]);
     }
 
@@ -267,5 +267,36 @@ class BatalRanapController extends Controller
             kodeBed: $record->bed_id ?? '',
             noReg:   $record->no_reg ?? '',
         );
+    }
+
+    /**
+     * Sanitasi array bed_update sebelum dikirim ke response.
+     * Hanya field aman yang dikirim ke frontend — raw exception/SQL tidak pernah dikirim.
+     */
+    private function sanitizeBedUpdate(?array $result): ?array
+    {
+        if ($result === null) return null;
+
+        $safeMessages = [
+            'Kode_Bed tidak boleh kosong.',
+            'Gagal update status bed via database.',
+            'Pasien tidak memiliki bed IGD',
+        ];
+
+        $rawMessage = $result['message'] ?? null;
+
+        // Jika message adalah salah satu pesan aman, teruskan. Jika tidak, ganti dengan pesan generik.
+        $isSafe = $rawMessage === null || collect($safeMessages)->contains(
+            fn ($s) => str_contains($rawMessage, $s)
+        );
+
+        return [
+            'success'  => (bool) ($result['success']  ?? false),
+            'source'   => $result['source']   ?? null,
+            'kode_bed' => $result['kode_bed'] ?? null,
+            'message'  => $isSafe
+                ? $rawMessage
+                : 'Sistem Bed IGD tidak dapat diproses. Detail error telah dicatat.',
+        ];
     }
 }
