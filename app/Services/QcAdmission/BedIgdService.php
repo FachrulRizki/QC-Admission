@@ -182,6 +182,7 @@ class BedIgdService
 
         $updateMode = config('services.bed_igd.update_mode', 'direct');
         $updatePath = config('services.bed_igd.update_path', '/bed/release/trigger');
+        $apiFailMessage = null;
 
         if ($this->isApiEnabled()) {
             try {
@@ -230,9 +231,7 @@ class BedIgdService
                             'kode_bed' => $kodeBed,
                             'no_reg'   => $noReg,
                         ]);
-                        throw new \RuntimeException(
-                            "Bed IGD update gagal: HTTP {$response->status()} — {$response->body()}"
-                        );
+                        throw new \RuntimeException(self::classifyApiError($response));
                     }
                 }
 
@@ -255,6 +254,7 @@ class BedIgdService
                     'kode_bed' => $kodeBed,
                     'no_reg'   => $noReg,
                 ]);
+                $apiFailMessage = self::classifyConnectionError($e);
             }
         }
 
@@ -277,7 +277,7 @@ class BedIgdService
                     'kode_bed' => $kodeBed,
                     'no_reg'   => $noReg,
                 ]);
-                return ['success' => false, 'source' => 'rsus_db', 'message' => 'Gagal update status bed via database.'];
+                return ['success' => false, 'source' => 'rsus_db', 'message' => self::classifyDbError($e)];
             }
         }
 
@@ -508,6 +508,71 @@ class BedIgdService
     // Helpers───
 
     /**
+     * Klasifikasikan exception database menjadi pesan yang informatif tapi aman untuk ditampilkan ke UI.
+     * Detail teknis tetap ada di log, bukan di response.
+     */
+    private static function classifyDbError(\Exception $e): string
+    {
+        $msg = $e->getMessage();
+
+        // Permission / hak akses
+        if (str_contains($msg, 'permission was denied') || str_contains($msg, 'Permission denied')) {
+            return 'Akun database tidak punya hak akses UPDATE pada tabel BI_Bed_Igd. Hubungi DBA untuk grant permission.';
+        }
+
+        // Login / auth DB gagal
+        if (str_contains($msg, 'Login failed') || str_contains($msg, 'SQLSTATE[28000]')) {
+            return 'Login ke database RSUS gagal — cek kredensial DB di konfigurasi server.';
+        }
+
+        // Timeout / koneksi
+        if (str_contains($msg, 'timed out') || str_contains($msg, 'timeout') || str_contains($msg, 'Connection refused')) {
+            return 'Koneksi ke database RSUS timeout atau ditolak — server DB mungkin tidak aktif.';
+        }
+
+        // Host tidak ditemukan
+        if (str_contains($msg, 'Unable to open') || str_contains($msg, 'could not be resolved') || str_contains($msg, 'No such host')) {
+            return 'Host database RSUS tidak dapat dijangkau — periksa konfigurasi IP/hostname.';
+        }
+
+        // Tabel/objek tidak ada
+        if (str_contains($msg, 'Invalid object name') || str_contains($msg, "doesn't exist")) {
+            return 'Tabel BI_Bed_Igd tidak ditemukan di database RSUS — periksa nama database/schema.';
+        }
+
+        // Deadlock
+        if (str_contains($msg, 'deadlock') || str_contains($msg, 'Deadlock')) {
+            return 'Terjadi deadlock pada tabel BI_Bed_Igd — coba ulangi beberapa saat lagi.';
+        }
+
+        // Fallback generik
+        return 'Gagal update status bed di database RSUS. Detail error telah dicatat di log server.';
+    }
+
+    /**
+     * Klasifikasikan error dari HTTP response API Bed IGD menjadi pesan yang informatif.
+     */
+    private static function classifyApiError(\Illuminate\Http\Client\Response $response): string
+    {
+        $status = $response->status();
+        $body   = $response->json() ?? [];
+
+        // Coba ambil pesan dari body API dulu
+        $apiMsg = $body['message'] ?? $body['error'] ?? $body['msg'] ?? null;
+
+        return match (true) {
+            $status === 401  => 'Token autentikasi ditolak oleh API Bed IGD (401). Token sudah habis atau tidak valid.',
+            $status === 403  => 'Akses ditolak oleh API Bed IGD (403) — akun tidak punya hak untuk release bed.',
+            $status === 404  => 'Endpoint release bed tidak ditemukan di API Bed IGD (404) — periksa konfigurasi BED_IGD_UPDATE_PATH.',
+            $status === 422  => 'API Bed IGD menolak data yang dikirim (422)' . ($apiMsg ? ": {$apiMsg}" : '.'),
+            $status === 500  => 'API Bed IGD mengalami error internal (500)' . ($apiMsg ? ": {$apiMsg}" : '.'),
+            $status >= 500   => "API Bed IGD error server ({$status})" . ($apiMsg ? ": {$apiMsg}" : '.'),
+            $status >= 400   => "API Bed IGD menolak request ({$status})" . ($apiMsg ? ": {$apiMsg}" : '.'),
+            default          => 'API Bed IGD mengembalikan response tidak terduga' . ($apiMsg ? ": {$apiMsg}" : '.'),
+        };
+    }
+
+    /**
      * Log HTTP response dari API eksternal.
      * Hanya mencatat status, durasi, dan body ringkas — aman untuk production.
      */
@@ -547,6 +612,29 @@ class BedIgdService
         } else {
             Log::channel('api')->warning("BedIgdService API response gagal [{$method} {$url}]", $context);
         }
+    }
+
+    /**
+     * Klasifikasikan exception koneksi/timeout dari HTTP client.
+     */
+    private static function classifyConnectionError(\Exception $e): string
+    {
+        $msg = $e->getMessage();
+
+        if (str_contains($msg, 'timed out') || str_contains($msg, 'timeout')) {
+            return 'API Bed IGD tidak merespons dalam batas waktu (timeout). Server API mungkin sedang sibuk atau tidak aktif.';
+        }
+        if (str_contains($msg, 'Connection refused') || str_contains($msg, 'Failed to connect')) {
+            return 'Koneksi ke API Bed IGD ditolak — server API tidak aktif atau port salah.';
+        }
+        if (str_contains($msg, 'Could not resolve host') || str_contains($msg, 'cURL error 6')) {
+            return 'Host API Bed IGD tidak dapat dijangkau — periksa konfigurasi BED_IGD_API_URL.';
+        }
+        // Pesan sudah di-classify sebelumnya (dari classifyApiError via RuntimeException)
+        if (! str_contains($msg, 'SQLSTATE') && ! str_contains($msg, 'permission')) {
+            return $msg;
+        }
+        return 'API Bed IGD tidak dapat dihubungi. Detail error telah dicatat di log server.';
     }
 
     private function isApiEnabled(): bool

@@ -277,26 +277,25 @@ class BatalRanapController extends Controller
     {
         if ($result === null) return null;
 
-        $safeMessages = [
-            'Kode_Bed tidak boleh kosong.',
-            'Gagal update status bed via database.',
-            'Pasien tidak memiliki bed IGD',
-        ];
-
         $rawMessage = $result['message'] ?? null;
 
-        // Jika message adalah salah satu pesan aman, teruskan. Jika tidak, ganti dengan pesan generik.
-        $isSafe = $rawMessage === null || collect($safeMessages)->contains(
-            fn ($s) => str_contains($rawMessage, $s)
+        // Blokir pesan yang mengandung SQL teknis mentah
+        $hasSqlLeak = $rawMessage && (
+            str_contains($rawMessage, 'SQLSTATE') ||
+            str_contains($rawMessage, '[Microsoft]') ||
+            str_contains($rawMessage, '[ODBC') ||
+            str_contains($rawMessage, 'SQL Server') ||
+            str_contains($rawMessage, 'update [') ||
+            str_contains($rawMessage, 'Connection:')
         );
 
         return [
             'success'  => (bool) ($result['success']  ?? false),
             'source'   => $result['source']   ?? null,
             'kode_bed' => $result['kode_bed'] ?? null,
-            'message'  => $isSafe
-                ? $rawMessage
-                : 'Sistem Bed IGD tidak dapat diproses. Detail error telah dicatat.',
+            'message'  => $hasSqlLeak
+                ? 'Sistem Bed IGD tidak dapat diproses. Detail error telah dicatat di log server.'
+                : $rawMessage,
         ];
     }
 }
