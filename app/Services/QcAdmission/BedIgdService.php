@@ -58,8 +58,7 @@ class BedIgdService
             }
         }
 
-        // Coba via RSUS DB langsung
-        if ($this->isRsusEnabled()) {
+        else if ($this->isRsusEnabled()) {
             try {
                 $row = DB::connection('rsus')
                     ->table('BI_Bed_Igd')
