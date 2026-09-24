@@ -20,15 +20,30 @@ class BedIgdService
         if ($this->isApiEnabled()) {
             try {
                 $token    = $this->getToken();
+                $url      = config('services.bed_igd.base_url') . '/master-bed';
+
+                Log::info('BedIgdService::getKodeBedByNoReg API request', [
+                    'url'    => $url,
+                    'no_reg' => $noReg,
+                ]);
+
                 $response = Http::withToken($token)
                     ->timeout(5)
                     ->acceptJson()
-                    ->get(config('services.bed_igd.base_url') . '/master-bed');
+                    ->get($url);
+
+                $this->logApiResponse('getKodeBedByNoReg', 'GET', $url, $response);
 
                 if ($response->successful()) {
                     $found = collect($response->json()['data'] ?? [])
                         ->first(fn($b) => ($b['BedIgd']['No_Reg'] ?? null) === $noReg
                             && strtoupper($b['BedIgd']['Status'] ?? '') === 'TERISI');
+
+                    Log::info('BedIgdService::getKodeBedByNoReg API result', [
+                        'no_reg'   => $noReg,
+                        'kode_bed' => $found ? ($found['Kode_Bed'] ?? null) : null,
+                        'found'    => (bool) $found,
+                    ]);
 
                     if ($found) {
                         return $found['Kode_Bed'] ?? null;
@@ -72,11 +87,20 @@ class BedIgdService
     {
         if ($this->isApiEnabled()) {
             try {
-                $token    = $this->getToken();
+                $token = $this->getToken();
+                $url   = config('services.bed_igd.base_url') . '/master-bed';
+
+                Log::info('BedIgdService::getBedsByNoReg API request', [
+                    'url'    => $url,
+                    'no_reg' => $noReg,
+                ]);
+
                 $response = Http::withToken($token)
                     ->timeout(3)
                     ->acceptJson()
-                    ->get(config('services.bed_igd.base_url') . '/master-bed');
+                    ->get($url);
+
+                $this->logApiResponse('getBedsByNoReg', 'GET', $url, $response);
 
                 if (! $response->successful()) {
                     Cache::forget(self::TOKEN_CACHE_KEY);
@@ -87,6 +111,12 @@ class BedIgdService
                 $filtered = collect($allBeds)->filter(
                     fn($b) => ($b['BedIgd']['No_Reg'] ?? null) === $noReg
                 );
+
+                Log::info('BedIgdService::getBedsByNoReg API success', [
+                    'no_reg'      => $noReg,
+                    'total_beds'  => count($allBeds),
+                    'found_count' => $filtered->count(),
+                ]);
 
                 return [
                     'beds'   => $filtered->values()->map(fn($b) => $this->normalizeBed($b))->toArray(),
@@ -149,6 +179,7 @@ class BedIgdService
                     'url'      => $fullUrl,
                     'kode_bed' => $kodeBed,
                     'no_reg'   => $noReg,
+                    'payload'  => $payload,
                 ]);
 
                 // Kirim request dengan token — token dipilih sesuai BED_IGD_AUTH_MODE
@@ -157,6 +188,8 @@ class BedIgdService
                     ->timeout(10)
                     ->acceptJson()
                     ->post($fullUrl, $payload);
+
+                $this->logApiResponse('releaseBed', 'POST', $fullUrl, $response, $payload);
 
                 if (! $response->successful()) {
                     $errBody = $response->body();
@@ -169,6 +202,7 @@ class BedIgdService
                         Log::info('BedIgdService: token 401, retry dengan token baru.');
                         $token    = $this->getToken();
                         $response = Http::withToken($token)->timeout(10)->acceptJson()->post($fullUrl, $payload);
+                        $this->logApiResponse('releaseBed[retry]', 'POST', $fullUrl, $response, $payload);
                     }
 
                     if (! $response->successful()) {
@@ -439,6 +473,48 @@ class BedIgdService
     }
 
     // Helpers───
+
+    /**
+     * Log HTTP response dari API eksternal.
+     * Hanya mencatat status, durasi, dan body ringkas — aman untuk production.
+     */
+    private function logApiResponse(
+        string $caller,
+        string $method,
+        string $url,
+        \Illuminate\Http\Client\Response $response,
+        array $requestPayload = []
+    ): void {
+        $status     = $response->status();
+        $isSuccess  = $response->successful();
+        $body       = $response->body();
+
+        // Batasi body log agar tidak membanjiri log file (maks 2000 karakter)
+        $bodySnippet = mb_strlen($body) > 2000
+            ? mb_substr($body, 0, 2000) . '… [truncated]'
+            : $body;
+
+        $context = [
+            'caller'          => $caller,
+            'method'          => $method,
+            'url'             => $url,
+            'http_status'     => $status,
+            'success'         => $isSuccess,
+            'response_body'   => $bodySnippet,
+            'content_type'    => $response->header('Content-Type'),
+        ];
+
+        // Sertakan payload request (hilangkan field sensitif jika ada)
+        if (! empty($requestPayload)) {
+            $context['request_payload'] = $requestPayload;
+        }
+
+        if ($isSuccess) {
+            Log::channel('api')->info("BedIgdService API response [{$method} {$url}]", $context);
+        } else {
+            Log::channel('api')->warning("BedIgdService API response gagal [{$method} {$url}]", $context);
+        }
+    }
 
     private function isApiEnabled(): bool
     {

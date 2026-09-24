@@ -127,6 +127,19 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | API Response Log Channel
+        |----------------------------------------------------------------------
+        */
+        'api' => [
+            'driver'               => 'daily',
+            'path'                 => storage_path('logs/api.log'),
+            'level'                => env('LOG_API_LEVEL', 'info'),
+            'days'                 => env('LOG_API_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];
