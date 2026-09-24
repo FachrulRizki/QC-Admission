@@ -75,7 +75,13 @@ export const useBatalRanapStore = defineStore('batalRanap', {
         }
         return { success: true, data: response.data }
       } catch (err) {
-        return { success: false, message: err.response?.data?.message ?? 'Gagal konfirmasi closing' }
+        const errData = err.response?.data ?? {}
+        return {
+          success:    false,
+          message:    errData.message ?? 'Gagal konfirmasi closing',
+          bed_update: errData.bed_update ?? null,
+          data:       errData.data ?? null,
+        }
       }
     },
 

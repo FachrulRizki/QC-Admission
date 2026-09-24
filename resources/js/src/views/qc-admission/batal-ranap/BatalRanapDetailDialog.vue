@@ -100,7 +100,19 @@ async function saveClosing() {
   try {
     // Kirim tanpa kode_bed — backend auto-lookup dari No_Reg di BI_Bed_Igd
     const result = await store.konfirmasiClosing(props.item.id, closingStatus.value, null)
-    if (!result?.success) { closingErrMsg.value = result?.message ?? 'Gagal menyimpan.'; return }
+    if (!result?.success) {
+      // Tampilkan detail error bed_update jika ada
+      const bedUpdate = result?.bed_update
+      if (bedUpdate && !bedUpdate.success) {
+        const sourceLabel = bedUpdate.source === 'bed_igd_api' ? 'API Bed IGD'
+          : bedUpdate.source === 'rsus_db' ? 'Database RSUS'
+          : bedUpdate.source ?? '—'
+        closingErrMsg.value = `${result?.message ?? 'Gagal menyimpan.'}\n\nDetail: [${sourceLabel}] ${bedUpdate.message ?? ''}`
+      } else {
+        closingErrMsg.value = result?.message ?? 'Gagal menyimpan.'
+      }
+      return
+    }
 
     const bedUpdate = result?.data?.bed_update
     if (closingStatus.value === 'Siap Closing' && bedUpdate) {
@@ -115,8 +127,8 @@ async function saveClosing() {
         // Pasien tidak punya bed IGD — wajar, closing tetap sukses
         emit('verified', { bedTriggered: null })
       } else {
-        // Bed ada tapi gagal dibebaskan — backend sudah return 422, tangani di catch
-        closingErrMsg.value = 'Sistem Bed IGD sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi atau hubungi petugas IT.'
+        // Bed ada tapi gagal dibebaskan — backend sudah return 422, tangani di atas
+        closingErrMsg.value = result?.data?.message ?? 'Sistem Bed IGD sedang tidak dapat dihubungi.'
         savingClosing.value = false
         return
       }
@@ -124,8 +136,11 @@ async function saveClosing() {
       emit('verified')
     }
     close()
-  } catch { closingErrMsg.value = 'Terjadi kesalahan. Silakan coba lagi atau hubungi petugas IT.' }
-  finally { savingClosing.value = false }
+  } catch {
+    closingErrMsg.value = 'Terjadi kesalahan jaringan. Silakan coba lagi.'
+  } finally {
+    savingClosing.value = false
+  }
 }
 
 // ── Save Verifikasi (status_ok) ───────────────────────────────────────────────
@@ -318,7 +333,7 @@ function close() { emit('update:modelValue', false) }
         <!-- ══ UPDATE CLOSING ══════════════════════════════════════════════ -->
         <template v-else-if="tab==='closing'">
           <VAlert v-if="closingErrMsg" type="error" variant="tonal" density="compact" class="mb-3" closable @click:close="closingErrMsg=''">
-            {{ closingErrMsg }}
+            <span style="white-space: pre-line">{{ closingErrMsg }}</span>
           </VAlert>
 
           <!-- Info konteks status saat ini -->

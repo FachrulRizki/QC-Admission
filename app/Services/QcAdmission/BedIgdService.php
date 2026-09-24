@@ -22,7 +22,7 @@ class BedIgdService
                 $token    = $this->getToken();
                 $url      = config('services.bed_igd.base_url') . '/master-bed';
 
-                Log::info('BedIgdService::getKodeBedByNoReg API request', [
+                Log::channel('api')->info('BedIgdService::getKodeBedByNoReg request', [
                     'url'    => $url,
                     'no_reg' => $noReg,
                 ]);
@@ -39,7 +39,7 @@ class BedIgdService
                         ->first(fn($b) => ($b['BedIgd']['No_Reg'] ?? null) === $noReg
                             && strtoupper($b['BedIgd']['Status'] ?? '') === 'TERISI');
 
-                    Log::info('BedIgdService::getKodeBedByNoReg API result', [
+                    Log::channel('api')->info('BedIgdService::getKodeBedByNoReg result', [
                         'no_reg'   => $noReg,
                         'kode_bed' => $found ? ($found['Kode_Bed'] ?? null) : null,
                         'found'    => (bool) $found,
@@ -51,8 +51,7 @@ class BedIgdService
                     return null;
                 }
             } catch (\Exception $e) {
-                // API timeout/tidak terjangkau
-                Log::warning('BedIgdService::getKodeBedByNoReg API failed', [
+                Log::channel('api')->warning('BedIgdService::getKodeBedByNoReg API failed', [
                     'error'  => $e->getMessage(),
                     'no_reg' => $noReg,
                 ]);
@@ -70,9 +69,18 @@ class BedIgdService
                     ->orderByDesc('Tanggal')
                     ->first(['Kode_Bed']);
 
+                Log::channel('api')->info('BedIgdService::getKodeBedByNoReg RSUS result', [
+                    'no_reg'   => $noReg,
+                    'kode_bed' => $row?->Kode_Bed ?? null,
+                    'source'   => 'rsus_db',
+                ]);
+
                 return $row?->Kode_Bed ?? null;
             } catch (\Exception $e) {
-                Log::warning('BedIgdService::getKodeBedByNoReg RSUS failed', ['error' => $e->getMessage()]);
+                Log::channel('api')->warning('BedIgdService::getKodeBedByNoReg RSUS failed', [
+                    'error'  => $e->getMessage(),
+                    'no_reg' => $noReg,
+                ]);
             }
         }
 
@@ -90,7 +98,7 @@ class BedIgdService
                 $token = $this->getToken();
                 $url   = config('services.bed_igd.base_url') . '/master-bed';
 
-                Log::info('BedIgdService::getBedsByNoReg API request', [
+                Log::channel('api')->info('BedIgdService::getBedsByNoReg request', [
                     'url'    => $url,
                     'no_reg' => $noReg,
                 ]);
@@ -112,10 +120,11 @@ class BedIgdService
                     fn($b) => ($b['BedIgd']['No_Reg'] ?? null) === $noReg
                 );
 
-                Log::info('BedIgdService::getBedsByNoReg API success', [
+                Log::channel('api')->info('BedIgdService::getBedsByNoReg success', [
                     'no_reg'      => $noReg,
                     'total_beds'  => count($allBeds),
                     'found_count' => $filtered->count(),
+                    'source'      => 'bed_igd_api',
                 ]);
 
                 return [
@@ -124,7 +133,7 @@ class BedIgdService
                 ];
             } catch (\Exception $e) {
                 // API timeout/tidak terjangkau — lanjut ke fallback RSUS DB
-                Log::warning('BedIgdService::getBedsByNoReg API failed, falling back to RSUS DB', [
+                Log::channel('api')->warning('BedIgdService::getBedsByNoReg API failed, falling back to RSUS DB', [
                     'error'  => $e->getMessage(),
                     'no_reg' => $noReg,
                 ]);
@@ -140,12 +149,21 @@ class BedIgdService
                     ->limit(20)
                     ->get();
 
+                Log::channel('api')->info('BedIgdService::getBedsByNoReg RSUS result', [
+                    'no_reg'      => $noReg,
+                    'found_count' => $rows->count(),
+                    'source'      => 'rsus_db',
+                ]);
+
                 return [
                     'beds'   => $rows->map(fn($r) => $this->normalizeRow($r))->values()->toArray(),
                     'source' => 'rsus_db',
                 ];
             } catch (\Exception $e) {
-                Log::warning('BedIgdService::getBedsByNoReg RSUS failed', ['error' => $e->getMessage()]);
+                Log::channel('api')->warning('BedIgdService::getBedsByNoReg RSUS failed', [
+                    'error'  => $e->getMessage(),
+                    'no_reg' => $noReg,
+                ]);
             }
         }
 
@@ -175,7 +193,7 @@ class BedIgdService
                     'status'   => 'KOSONG',
                 ];
 
-                Log::info("BedIgdService: trigger release bed", [
+                Log::channel('api')->info('BedIgdService::releaseBed request', [
                     'url'      => $fullUrl,
                     'kode_bed' => $kodeBed,
                     'no_reg'   => $noReg,
@@ -199,16 +217,18 @@ class BedIgdService
 
                     // Jika 401 → token expired, coba sekali lagi dengan token baru
                     if ($response->status() === 401) {
-                        Log::info('BedIgdService: token 401, retry dengan token baru.');
+                        Log::channel('api')->info('BedIgdService::releaseBed token 401, retry dengan token baru.');
                         $token    = $this->getToken();
                         $response = Http::withToken($token)->timeout(10)->acceptJson()->post($fullUrl, $payload);
                         $this->logApiResponse('releaseBed[retry]', 'POST', $fullUrl, $response, $payload);
                     }
 
                     if (! $response->successful()) {
-                        Log::warning("BedIgdService: release bed gagal", [
-                            'status' => $response->status(),
-                            'body'   => $response->body(),
+                        Log::channel('api')->warning('BedIgdService::releaseBed API gagal setelah retry', [
+                            'status'   => $response->status(),
+                            'body'     => $response->body(),
+                            'kode_bed' => $kodeBed,
+                            'no_reg'   => $noReg,
                         ]);
                         throw new \RuntimeException(
                             "Bed IGD update gagal: HTTP {$response->status()} — {$response->body()}"
@@ -216,7 +236,9 @@ class BedIgdService
                     }
                 }
 
-                Log::info("BedIgdService: Kode_Bed={$kodeBed} No_Reg={$noReg} → KOSONG [API]", [
+                Log::channel('api')->info('BedIgdService::releaseBed success [API]', [
+                    'kode_bed' => $kodeBed,
+                    'no_reg'   => $noReg,
                     'response' => $response->json(),
                 ]);
 
@@ -228,7 +250,7 @@ class BedIgdService
                 ];
             } catch (\Exception $e) {
                 // API gagal (timeout, connection refused, dll) — lanjut ke fallback RSUS DB
-                Log::warning('BedIgdService::releaseBed API failed, falling back to RSUS DB', [
+                Log::channel('api')->warning('BedIgdService::releaseBed API failed, falling back to RSUS DB', [
                     'error'    => $e->getMessage(),
                     'kode_bed' => $kodeBed,
                     'no_reg'   => $noReg,
@@ -243,15 +265,26 @@ class BedIgdService
                     ->where('No_Reg',   $noReg)
                     ->update(['Status' => 'KOSONG', 'No_Reg' => null, 'update_at' => now()]);
 
-                Log::info("BedIgdService: Kode_Bed={$kodeBed} → KOSONG [RSUS DB]", ['affected' => $affected]);
+                Log::channel('api')->info('BedIgdService::releaseBed success [RSUS DB]', [
+                    'kode_bed' => $kodeBed,
+                    'no_reg'   => $noReg,
+                    'affected' => $affected,
+                ]);
                 return ['success' => true, 'source' => 'rsus_db', 'kode_bed' => $kodeBed];
             } catch (\Exception $e) {
-                Log::warning('BedIgdService::releaseBed RSUS failed', ['error' => $e->getMessage()]);
+                Log::channel('api')->warning('BedIgdService::releaseBed RSUS failed', [
+                    'error'    => $e->getMessage(),
+                    'kode_bed' => $kodeBed,
+                    'no_reg'   => $noReg,
+                ]);
                 return ['success' => false, 'source' => 'rsus_db', 'message' => 'Gagal update status bed via database.'];
             }
         }
 
-        Log::info("BedIgdService: mock — Kode_Bed={$kodeBed} No_Reg={$noReg} → KOSONG");
+        Log::channel('api')->info('BedIgdService::releaseBed mock', [
+            'kode_bed' => $kodeBed,
+            'no_reg'   => $noReg,
+        ]);
         return ['success' => true, 'source' => 'mock', 'kode_bed' => $kodeBed];
     }
 
@@ -292,8 +325,8 @@ class BedIgdService
 
             // Refresh jika token expired atau akan expired dalam 60 detik
             if ($exp > 0 && $exp < (time() + 60)) {
-                Log::info('BedIgdService[passthrough]: token mendekati/sudah expired, coba refresh.', [
-                    'exp' => date('Y-m-d H:i:s', $exp),
+                Log::channel('api')->info('BedIgdService[passthrough]: token mendekati/sudah expired, coba refresh.', [
+                    'exp'        => date('Y-m-d H:i:s', $exp),
                     'sisa_detik' => $exp - time(),
                 ]);
                 $token   = $this->tryRefreshKeycloakToken($token);
@@ -305,7 +338,7 @@ class BedIgdService
             }
         }
 
-        Log::info('BedIgdService[passthrough]: menggunakan token Keycloak user dari session.', [
+        Log::channel('api')->info('BedIgdService[passthrough]: menggunakan token Keycloak user dari session.', [
             'sub'      => $payload['sub']                ?? '?',
             'username' => $payload['preferred_username'] ?? '?',
             'exp'      => isset($payload['exp'])
@@ -360,7 +393,7 @@ class BedIgdService
             'keycloak_refresh_token' => $newRefreshToken,
         ]);
 
-        Log::info('BedIgdService[passthrough]: token berhasil di-refresh dari Keycloak.');
+        Log::channel('api')->info('BedIgdService[passthrough]: token berhasil di-refresh dari Keycloak.');
 
         return $newAccessToken;
     }
@@ -406,7 +439,7 @@ class BedIgdService
         $ttl = max(30, (int) ($body['expires_in'] ?? 300) - 60);
         Cache::put($cacheKey, $token, now()->addSeconds($ttl));
 
-        Log::info('BedIgdService[keycloak]: client_credentials token berhasil di-generate.', [
+        Log::channel('api')->info('BedIgdService[keycloak]: client_credentials token berhasil di-generate.', [
             'expires_in' => $body['expires_in'] ?? null,
             'cached_ttl' => $ttl,
         ]);
