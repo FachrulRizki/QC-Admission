@@ -327,6 +327,18 @@ function fmtDate(d) {
             <div class="vdd-cell"><span class="vdd-lbl">Petugas</span><span class="vdd-val">{{ item.petugas || '—' }}</span></div>
             <div class="vdd-cell"><span class="vdd-lbl">Tanggal</span><span class="vdd-val">{{ item.tanggal || '—' }}</span></div>
             <div class="vdd-cell"><span class="vdd-lbl">Ruangan</span><span class="vdd-val">{{ item.nama_bangsal || item.nama_ruang || '—' }}</span></div>
+            <div v-if="item.rekomendasi_karyawan_nama" class="vdd-cell vdd-cell--full">
+              <span class="vdd-lbl">Karyawan RS yang Merekomendasikan</span>
+              <div class="vdd-rek-card">
+                <div class="vdd-rek-av">{{ item.rekomendasi_karyawan_nama?.charAt(0) ?? '?' }}</div>
+                <div class="vdd-rek-info">
+                  <span class="vdd-val fw">{{ item.rekomendasi_karyawan_nama }}</span>
+                  <span v-if="item.rekomendasi_karyawan_nip" class="vdd-rek-nip">
+                    NIP: {{ item.rekomendasi_karyawan_nip }}
+                  </span>
+                </div>
+              </div>
+            </div>
             <div v-if="item.catatan" class="vdd-cell vdd-cell--full">
               <span class="vdd-lbl">Catatan</span>
               <span class="vdd-val" style="white-space:pre-wrap">{{ item.catatan }}</span>
@@ -730,4 +742,26 @@ function fmtDate(d) {
 .vdd-count--error    { background: rgba(var(--v-theme-error),   0.08); border-color: rgba(var(--v-theme-error),   0.2); color: rgb(var(--v-theme-error)); }
 .vdd-count--success  { background: rgba(var(--v-theme-success), 0.08); border-color: rgba(var(--v-theme-success), 0.2); color: rgb(var(--v-theme-success)); }
 .vdd-count--info     { background: rgba(var(--v-theme-info),    0.08); border-color: rgba(var(--v-theme-info),    0.2); color: rgb(var(--v-theme-info)); }
+
+/* ── Rekomendasi karyawan card ── */
+.vdd-rek-card {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 6px; padding: 8px 10px;
+  background: rgba(var(--v-theme-primary), 0.05);
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+  border-radius: 9px;
+}
+.vdd-rek-av {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: rgb(var(--v-theme-primary)); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 800;
+}
+.vdd-rek-info {
+  display: flex; flex-direction: column; min-width: 0;
+}
+.vdd-rek-nip {
+  font-size: 0.65rem; color: rgba(var(--v-theme-on-surface), 0.45);
+  margin-top: 1px;
+}
 </style>
