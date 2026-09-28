@@ -157,7 +157,7 @@ function fmtDate(d) {
                 <!-- Dot + line -->
                 <div class="vdd-tl-side">
                   <div class="vdd-tl-dot" :class="rec._type === 'awal' ? 'vdd-tl-dot--awal' : 'vdd-tl-dot--lanjutan'">
-                    <VIcon :icon="rec._type === 'awal' ? 'ri-shield-check-line' : 'ri-book-open-line'" size="11" />
+                    {{ allEdukasiTimeline.length - i }}
                   </div>
                   <div v-if="i < allEdukasiTimeline.length - 1" class="vdd-tl-line" />
                 </div>
@@ -628,6 +628,7 @@ function fmtDate(d) {
   width: 24px; height: 24px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; color: #fff;
+  font-size: 0.72rem; font-weight: 800; line-height: 1;
 }
 .vdd-tl-dot--awal     { background: rgb(var(--v-theme-primary)); }
 .vdd-tl-dot--lanjutan { background: rgb(var(--v-theme-warning)); }
