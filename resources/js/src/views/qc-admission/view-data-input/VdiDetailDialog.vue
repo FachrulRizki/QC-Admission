@@ -10,16 +10,45 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 function close() { emit('update:modelValue', false) }
 
+// Reset inner tab saat dialog dibuka
+const innerTab = ref('riwayat')
+watch(() => props.modelValue, (v) => { if (v) innerTab.value = 'riwayat' })
+
+// Gabungkan semua riwayat edukasi (awal + lanjutan) menjadi satu timeline terurut
+const allEdukasiTimeline = computed(() => {
+  if (!props.item) return []
+  const awal = (props.item.qc_records || []).map(r => ({ ...r, _type: 'awal' }))
+  const lanjutan = (props.item.edukasi_records || []).map(r => ({ ...r, _type: 'lanjutan' }))
+  // Gabung dan urutkan berdasarkan tanggal (terbaru dulu)
+  return [...awal, ...lanjutan].sort((a, b) => {
+    const da = a.tanggal || a.created_at || ''
+    const db = b.tanggal || b.created_at || ''
+    return db.localeCompare(da)
+  })
+})
+
 // ── Metadata per type ────────────────────────────────────────────────────────
 const META = {
   'summary':          { label: 'Summary Pasien',   icon: 'ri-bar-chart-box-line',   grad: ['#6366f1','#818cf8'] },
   'alasan':           { label: 'Alasan Kunjungan', icon: 'ri-question-answer-line', grad: ['#0369A1','#0EA5E9'] },
+  'edukasi-pasien':   { label: 'Edukasi Pasien',   icon: 'ri-user-heart-line',      grad: ['#7c3aed','#a78bfa'] },
+  'sudah-dapat-bed':  { label: 'Sudah Dapat Bed',  icon: 'ri-home-heart-line',      grad: ['#059669','#34d399'] },
   'quality-control':  { label: 'Edukasi Awal',     icon: 'ri-shield-check-line',    grad: ['#7c3aed','#a78bfa'] },
   'edukasi-lanjutan': { label: 'Edukasi Lanjutan', icon: 'ri-book-open-line',       grad: ['#059669','#34d399'] },
   'batal-ranap':      { label: 'Batal Ranap',       icon: 'ri-close-circle-line',    grad: ['#dc2626','#f87171'] },
   'up-selling':       { label: 'Up Selling',        icon: 'ri-arrow-up-circle-line', grad: ['#d97706','#fbbf24'] },
 }
 const meta = computed(() => META[props.type] ?? META['summary'])
+
+// ── Computed total sesi untuk edukasi-pasien / sudah-dapat-bed ───────────────
+const totalSesi = computed(() => {
+  if (!props.item) return 0
+  return (props.item.sesi_edukasi_awal || 0) + (props.item.sesi_edukasi_lanjutan || 0)
+})
+
+const isEdukasiMode = computed(() =>
+  props.type === 'edukasi-pasien' || props.type === 'sudah-dapat-bed'
+)
 
 // ── Color helpers ────────────────────────────────────────────────────────────
 function alasanColor(a) {
@@ -31,6 +60,9 @@ function statusColor(s) {
 function closingColor(s) {
   return s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
 }
+function ketColor(k) {
+  return k === 'Sudah Masuk Kamar' ? 'success' : k === 'Belum Diantar' ? 'orange' : 'info'
+}
 function fmtDate(d) {
   if (!d) return '—'
   try { return new Date(d).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) }
@@ -39,7 +71,7 @@ function fmtDate(d) {
 </script>
 
 <template>
-  <VDialog :model-value="modelValue" max-width="520" @update:model-value="close">
+  <VDialog :model-value="modelValue" max-width="560" @update:model-value="close">
     <VCard v-if="item" rounded="xl" class="vdd overflow-hidden">
 
       <!-- ── Banner ──────────────────────────────────────────────────────── -->
@@ -57,6 +89,10 @@ function fmtDate(d) {
             <p class="vdd-sub">
               {{ item.no_mr || item.no_reg || '—' }}
               <template v-if="item.jaminan"> · {{ item.jaminan }}</template>
+              <!-- Total sesi badge -->
+              <template v-if="isEdukasiMode && totalSesi">
+                &nbsp;·&nbsp;<VIcon icon="ri-repeat-line" size="10" />{{ totalSesi }} sesi
+              </template>
             </p>
           </div>
           <!-- Close -->
@@ -64,13 +100,191 @@ function fmtDate(d) {
             <VIcon icon="ri-close-line" size="16" />
           </button>
         </div>
+
+        <!-- Sesi counter pills (hanya untuk edukasi mode) -->
+        <div v-if="isEdukasiMode" class="vdd-sesi-pills">
+          <div v-if="item.sesi_edukasi_lanjutan" class="vdd-sesi-pill vdd-sesi-pill--lanjutan">
+            <VIcon icon="ri-book-open-line" size="12" />
+            <span>{{ item.sesi_edukasi_lanjutan }}</span>
+            <small>Edukasi Lanjutan</small>
+          </div>
+          <div class="vdd-sesi-pill vdd-sesi-pill--total">
+            <VIcon icon="ri-repeat-line" size="12" />
+            <span>{{ totalSesi }}</span>
+            <small>Total Sesi</small>
+          </div>
+        </div>
       </div>
 
       <!-- ── Scrollable body ─────────────────────────────────────────────── -->
       <div class="vdd-body">
 
+        <!-- ══════════════ EDUKASI PASIEN (gabungan awal+lanjutan) ══════════ -->
+        <template v-if="isEdukasiMode">
+          <!-- Inner tabs: hanya 2 tab -->
+          <div class="vdd-tab-bar">
+            <button
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'riwayat' }"
+              @click="innerTab = 'riwayat'"
+            >
+              <VIcon icon="ri-history-line" size="14" class="me-1" />
+              Riwayat Edukasi
+              <span v-if="allEdukasiTimeline.length" class="vdd-tab-badge">{{ allEdukasiTimeline.length }}</span>
+            </button>
+            <button
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'info-bed' }"
+              @click="innerTab = 'info-bed'"
+            >
+              <VIcon icon="ri-home-heart-line" size="14" class="me-1" />
+              Info Bed
+            </button>
+          </div>
+
+          <!-- ── Tab: Riwayat Edukasi (timeline gabungan) ── -->
+          <div v-if="innerTab === 'riwayat'">
+            <div v-if="!allEdukasiTimeline.length" class="vdd-empty">
+              <VIcon icon="ri-inbox-line" size="36" class="mb-2 opacity-30" />
+              <p class="text-caption">Belum ada riwayat edukasi</p>
+            </div>
+            <div v-else class="vdd-timeline">
+              <div
+                v-for="(rec, i) in allEdukasiTimeline"
+                :key="rec.id ?? i"
+                class="vdd-tl-item"
+              >
+                <!-- Dot + line -->
+                <div class="vdd-tl-side">
+                  <div class="vdd-tl-dot" :class="rec._type === 'awal' ? 'vdd-tl-dot--awal' : 'vdd-tl-dot--lanjutan'">
+                    <VIcon :icon="rec._type === 'awal' ? 'ri-shield-check-line' : 'ri-book-open-line'" size="11" />
+                  </div>
+                  <div v-if="i < allEdukasiTimeline.length - 1" class="vdd-tl-line" />
+                </div>
+
+                <!-- Content card -->
+                <div class="vdd-tl-card">
+                  <!-- Header -->
+                  <div class="vdd-tl-head">
+                    <VChip
+                      :color="rec._type === 'awal' ? 'primary' : 'warning'"
+                      size="x-small" variant="tonal"
+                    >
+                      {{ rec._type === 'awal' ? 'Edukasi Awal' : 'Edukasi Lanjutan' }}
+                    </VChip>
+                    <VChip v-if="rec.keterangan" :color="ketColor(rec.keterangan)" size="x-small" variant="tonal">
+                      {{ rec.keterangan }}
+                    </VChip>
+                    <VChip v-else-if="rec.status" :color="statusColor(rec.status)" size="x-small" variant="tonal">
+                      {{ rec.status }}
+                    </VChip>
+                    <span class="vdd-tl-date">{{ rec.tanggal || '—' }}</span>
+                  </div>
+
+                  <!-- Fields -->
+                  <div class="vdd-tl-fields">
+                    <div class="vdd-tl-field">
+                      <span class="vdd-lbl">Petugas</span>
+                      <span class="vdd-val">{{ rec.petugas || '—' }}</span>
+                    </div>
+                    <div v-if="rec._type === 'awal'" class="vdd-tl-field">
+                      <span class="vdd-lbl">Durasi Tunggu</span>
+                      <span class="vdd-val">{{ rec.durasi_tunggu || '—' }}</span>
+                    </div>
+                    <div v-if="rec._type === 'lanjutan' && rec.bulan" class="vdd-tl-field">
+                      <span class="vdd-lbl">Bulan</span>
+                      <span class="vdd-val">{{ rec.bulan }}</span>
+                    </div>
+                    <div v-if="rec.edukasi_kamar" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">Kamar / Ruangan</span>
+                      <span class="vdd-val" style="white-space:pre-wrap">{{ rec.edukasi_kamar }}</span>
+                    </div>
+                    <div v-if="rec.ketersediaan_kamar" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">Ketersediaan Kamar</span>
+                      <span class="vdd-val">{{ rec.ketersediaan_kamar }}</span>
+                    </div>
+                    <div v-if="rec.keluarga_pasien" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">Keluarga Pasien</span>
+                      <span class="vdd-val">{{ rec.keluarga_pasien }}</span>
+                    </div>
+                    <div v-if="rec.diagnosa" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">Diagnosa</span>
+                      <span class="vdd-val">{{ rec.diagnosa }}</span>
+                    </div>
+                    <div v-if="rec.note" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">Note</span>
+                      <span class="vdd-val" style="white-space:pre-wrap">{{ rec.note }}</span>
+                    </div>
+                    <div v-if="rec.ttd_keluarga_pasien" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">TTD Keluarga</span>
+                      <img :src="rec.ttd_keluarga_pasien" alt="TTD"
+                        style="height:36px;border:1px solid #eee;border-radius:6px;margin-top:4px" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Tab: Info Bed ── -->
+          <div v-else-if="innerTab === 'info-bed'">
+            <div v-if="!item.edukasi_records?.length && !item.keterangan" class="vdd-empty">
+              <VIcon icon="ri-inbox-line" size="36" class="mb-2 opacity-30" />
+              <p class="text-caption">Belum ada informasi bed</p>
+            </div>
+            <div v-else>
+              <!-- Status highlight -->
+              <div class="vdd-highlight mb-3"
+                :class="item.keterangan === 'Sudah Masuk Kamar' ? 'vdd-highlight--success'
+                  : item.keterangan === 'Belum Diantar' ? 'vdd-highlight--warning'
+                  : 'vdd-highlight--info'">
+                <VIcon
+                  :icon="item.keterangan === 'Sudah Masuk Kamar' ? 'ri-home-heart-line' : 'ri-walk-line'"
+                  size="20"
+                />
+                <div>
+                  <p class="vdd-lbl mb-0">Status Bed Pasien</p>
+                  <p class="vdd-val fw mb-0">{{ item.keterangan || 'Menunggu Bed' }}</p>
+                </div>
+              </div>
+
+              <div class="vdd-grid">
+                <div class="vdd-cell vdd-cell--full">
+                  <span class="vdd-lbl">No. MR</span>
+                  <span class="vdd-val mono">{{ item.no_mr || '—' }}</span>
+                </div>
+                <div class="vdd-cell vdd-cell--full">
+                  <span class="vdd-lbl">No. Reg</span>
+                  <span class="vdd-val mono">{{ item.no_reg || item.edukasi_records?.[0]?.no_reg || '—' }}</span>
+                </div>
+                <template v-if="item.edukasi_records?.length">
+                  <div v-if="item.edukasi_records.at(-1)?.edukasi_kamar" class="vdd-cell vdd-cell--full">
+                    <span class="vdd-lbl">Kamar / Ruangan Terakhir</span>
+                    <span class="vdd-val" style="white-space:pre-wrap">{{ item.edukasi_records.at(-1).edukasi_kamar }}</span>
+                  </div>
+                  <div v-if="item.edukasi_records.at(-1)?.status_ranap" class="vdd-cell vdd-cell--full">
+                    <span class="vdd-lbl">Status Rawat Inap</span>
+                    <VChip color="purple" variant="tonal" size="small" class="mt-1">
+                      <VIcon icon="ri-hospital-fill" size="12" class="me-1" />
+                      {{ item.edukasi_records.at(-1).status_ranap }}
+                    </VChip>
+                  </div>
+                  <div class="vdd-cell">
+                    <span class="vdd-lbl">Update Terakhir</span>
+                    <span class="vdd-val">{{ fmtDate(item.edukasi_records.at(-1)?.updated_at) }}</span>
+                  </div>
+                  <div class="vdd-cell">
+                    <span class="vdd-lbl">Total Sesi Edukasi</span>
+                    <span class="vdd-val">{{ item.edukasi_records.length }}× pertemuan</span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+
         <!-- ══════════════ SUMMARY ══════════════════════════════════════════ -->
-        <template v-if="type === 'summary'">
+        <template v-else-if="type === 'summary'">
           <!-- Count chips -->
           <div class="vdd-count-row mb-4">
             <div v-if="item.qc"     class="vdd-count vdd-count--primary">
@@ -327,6 +541,130 @@ function fmtDate(d) {
 }
 .vdd-close:hover { background: rgba(255,255,255,0.35); }
 
+/* ── Sesi pills di banner ── */
+.vdd-sesi-pills {
+  position: relative; z-index: 2;
+  display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+}
+
+.vdd-sesi-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 99px;
+  background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3);
+  color: #fff; font-size: 0.65rem; font-weight: 600;
+}
+.vdd-sesi-pill span { font-size: 0.82rem; font-weight: 800; }
+.vdd-sesi-pill small { font-size: 0.58rem; opacity: 0.82; font-weight: 500; }
+
+/* ── Custom 2-tab bar ── */
+.vdd-tab-bar {
+  display: flex;
+  border-bottom: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  margin: 0 -16px 16px;
+  padding: 0 16px;
+  gap: 0;
+}
+
+.vdd-tab-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 9px 14px;
+  font-size: 0.8rem; font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  background: none; border: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.vdd-tab-btn:hover {
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.vdd-tab-btn--active {
+  color: rgb(var(--v-theme-primary));
+  border-bottom-color: rgb(var(--v-theme-primary));
+}
+
+.vdd-tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 99px; font-size: 0.62rem; font-weight: 700;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.vdd-tab-btn--active .vdd-tab-badge {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+/* ── Timeline ── */
+.vdd-timeline {
+  display: flex; flex-direction: column; gap: 0;
+}
+
+.vdd-tl-item {
+  display: flex; gap: 12px;
+}
+
+.vdd-tl-side {
+  display: flex; flex-direction: column; align-items: center;
+  flex-shrink: 0; width: 24px;
+}
+
+.vdd-tl-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: #fff;
+}
+.vdd-tl-dot--awal     { background: rgb(var(--v-theme-primary)); }
+.vdd-tl-dot--lanjutan { background: rgb(var(--v-theme-warning)); }
+
+.vdd-tl-line {
+  width: 2px; flex: 1;
+  background: rgba(var(--v-border-color), var(--v-border-opacity));
+  margin: 4px 0;
+  min-height: 12px;
+}
+
+.vdd-tl-card {
+  flex: 1; min-width: 0;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px; overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.vdd-tl-head {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-surface), 1);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.vdd-tl-date {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: rgba(var(--v-theme-on-surface), 0.42);
+  white-space: nowrap;
+}
+
+.vdd-tl-fields {
+  display: grid; grid-template-columns: 1fr 1fr;
+  padding: 0;
+}
+
+.vdd-tl-field {
+  display: flex; flex-direction: column;
+  padding: 8px 12px;
+  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.vdd-tl-field:nth-child(even) { border-right: none; }
+.vdd-tl-field:last-child,
+.vdd-tl-field:nth-last-child(2):nth-child(odd):not(.vdd-tl-field--full) { border-bottom: none; }
+.vdd-tl-field--full { grid-column: span 2; border-right: none; }
+.vdd-tl-field--full:last-child { border-bottom: none; }
+
 /* ── Info grid ── */
 .vdd-grid {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -352,6 +690,13 @@ function fmtDate(d) {
 .vdd-val { font-size: 0.84rem; font-weight: 500; color: rgba(var(--v-theme-on-surface), 0.87); }
 .vdd-val.fw { font-weight: 700; }
 .vdd-val.mono { font-family: monospace; font-size: 0.82rem; }
+
+/* ── Empty state ── */
+.vdd-empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 0; color: rgba(var(--v-theme-on-surface), 0.4);
+  text-align: center;
+}
 
 /* ── Highlight box ── */
 .vdd-highlight {
