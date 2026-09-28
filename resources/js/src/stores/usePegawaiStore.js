@@ -3,19 +3,25 @@ import axios from 'axios'
 
 /**
  * usePegawaiStore
- * Ambil daftar petugas dari KPI API (via Laravel backend).
- * Di-cache di store — satu kali fetch per session.
+ * - fetch()      → pegawai Customer Care (untuk field "Petugas")
+ * - fetchSemua() → SEMUA pegawai RS tanpa filter departemen (untuk "Rekomendasi Karyawan RS")
  */
 export const usePegawaiStore = defineStore('pegawai', {
   state: () => ({
-    items:   [],   // [{ id, nama, nip, jabatan }]
-    loading: false,
-    source:  null, // 'kpi_api' | 'fallback'
-    fetched: false,
+    // Field Petugas — Customer Care only
+    items:        [],
+    loading:      false,
+    source:       null,
+    fetched:      false,
+
+    // Field Rekomendasi Karyawan RS — semua departemen
+    semuaItems:   [],
+    semuaLoading: false,
+    semuaFetched: false,
   }),
 
   getters: {
-    // Array nama saja — untuk VAutocomplete :items="namaList"
+    // Array nama saja — untuk field Petugas
     namaList: (state) => state.items.filter(Boolean).map(p => p.nama),
 
     optionList: (state) => state.items.filter(Boolean).map(p => ({
@@ -26,6 +32,7 @@ export const usePegawaiStore = defineStore('pegawai', {
   },
 
   actions: {
+    // ── Fetch pegawai Customer Care (field Petugas) ────────────────────────
     async fetch(force = false) {
       if (this.fetched && !force) return
 
@@ -37,7 +44,6 @@ export const usePegawaiStore = defineStore('pegawai', {
         this.fetched = true
       } catch (err) {
         console.warn('[usePegawaiStore] Gagal fetch pegawai:', err.message)
-        // fallback lokal
         this.items = [
           { id: 1, nama: 'Nurul',           nip: null, jabatan: 'Customer Care' },
           { id: 2, nama: 'AYU Putri Anisa', nip: null, jabatan: 'Customer Care' },
@@ -52,10 +58,31 @@ export const usePegawaiStore = defineStore('pegawai', {
       }
     },
 
+    // ── Fetch SEMUA pegawai RS (field Rekomendasi Karyawan) ───────────────
+    async fetchSemua(force = false) {
+      if (this.semuaFetched && !force) return
+
+      this.semuaLoading = true
+      try {
+        const { data } = await axios.get('/api/pegawai/semua')
+        this.semuaItems   = data.data ?? []
+        this.semuaFetched = true
+      } catch (err) {
+        console.warn('[usePegawaiStore] Gagal fetch semua pegawai:', err.message)
+        // fallback: pakai items Customer Care kalau ada, atau kosong
+        this.semuaItems   = this.items.length ? this.items : []
+        this.semuaFetched = true
+      } finally {
+        this.semuaLoading = false
+      }
+    },
+
     reset() {
-      this.items   = []
-      this.fetched = false
-      this.source  = null
+      this.items        = []
+      this.fetched      = false
+      this.source       = null
+      this.semuaItems   = []
+      this.semuaFetched = false
     },
   },
 })

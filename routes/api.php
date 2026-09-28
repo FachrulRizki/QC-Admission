@@ -17,9 +17,11 @@ use App\Http\Controllers\QcAdmission\AlasanController;
 Route::middleware(['keycloak.auth'])->group(function () {
 
     // Read-only — semua role yang sudah terautentikasi 
-    Route::get('/master-data', [MasterDataController::class, 'index']);
-    Route::get('/pegawai',     [PegawaiController::class,    'index']);
-    Route::get('/pasien',      [PasienController::class,     'index']);
+    Route::get('/master-data',     [MasterDataController::class, 'index']);
+    Route::get('/pegawai',         [PegawaiController::class,    'index']);   // Customer Care only (field Petugas)
+    Route::get('/pegawai/semua',   [PegawaiController::class,    'semua']);   // Semua pegawai (field Rekomendasi Karyawan)
+    Route::get('/pegawai/search',  [PegawaiController::class,    'search']);  // Search semua pegawai
+    Route::get('/pasien',          [PasienController::class,     'index']);
 
     // Batal Ranap view — kasir, qc_admission, admin
     Route::get('batal-ranap',      [BatalRanapController::class, 'index']);

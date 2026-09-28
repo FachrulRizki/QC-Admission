@@ -25,5 +25,8 @@ class Alasan extends Model
         'alasan',
         'catatan',
         'petugas',
+        'rekomendasi_karyawan_id',
+        'rekomendasi_karyawan_nip',
+        'rekomendasi_karyawan_nama',
     ];
 }

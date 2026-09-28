@@ -82,6 +82,7 @@ return [
         'password'            => env('KPI_PASSWORD', ''),
         'departemen'          => env('KPI_DEPARTEMEN', 'Customer Care'),
         'token_cache_minutes' => (int) env('KPI_TOKEN_CACHE_MINUTES', 55),
+        'cache_ttl'           => (int) env('KPI_CACHE_TTL', 300),
     ],
 
     /*

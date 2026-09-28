@@ -12,28 +12,92 @@ class PegawaiController extends Controller
 {
     /**
      * Ambil semua petugas dari KPI API departemen Customer Care.
-     * Alur: cek cache token → POST login → GET /pegawai tanpa limit paginasi.
+     * Digunakan untuk field "Petugas" di semua form.
      */
     public function index(): JsonResponse
     {
-        try {
-            $token   = $this->getKpiToken();
-            $petugas = $this->fetchPegawai($token);
+        $cacheKey = 'kpi_pegawai_customer_care';
+        $cacheTtl = (int) config('services.kpi_api.cache_ttl', 300);
 
-            return response()->json([
-                'data'   => $petugas,
-                'total'  => count($petugas),
-                'source' => 'kpi_api',
-            ]);
-        } catch (\Exception $e) {
-            Log::warning('KPI API gagal, fallback hardcoded.', ['error' => $e->getMessage()]);
+        $data = Cache::remember($cacheKey, $cacheTtl, function () {
+            try {
+                $token = $this->getKpiToken();
+                return [
+                    'data'   => $this->fetchPegawaiByDepartemen($token, config('services.kpi_api.departemen', 'Customer Care')),
+                    'source' => 'kpi_api',
+                ];
+            } catch (\Exception $e) {
+                Log::warning('KPI API gagal, fallback hardcoded.', ['error' => $e->getMessage()]);
+                return ['data' => $this->fallbackPetugas(), 'source' => 'fallback'];
+            }
+        });
 
-            return response()->json([
-                'data'   => $this->fallbackPetugas(),
-                'total'  => count($this->fallbackPetugas()),
-                'source' => 'fallback',
-            ]);
+        return response()->json([
+            'data'   => $data['data'],
+            'total'  => count($data['data']),
+            'source' => $data['source'],
+        ]);
+    }
+
+    /**
+     * GET /api/pegawai/semua
+     * Ambil SEMUA pegawai RS tanpa filter departemen — untuk field "Rekomendasi Karyawan RS".
+     */
+    public function semua(): JsonResponse
+    {
+        $cacheKey = 'kpi_pegawai_semua';
+        $cacheTtl = (int) config('services.kpi_api.cache_ttl', 300);
+
+        $data = Cache::remember($cacheKey, $cacheTtl, function () {
+            try {
+                $token = $this->getKpiToken();
+                return [
+                    'data'   => $this->fetchPegawaiByDepartemen($token, null),
+                    'source' => 'kpi_api',
+                ];
+            } catch (\Exception $e) {
+                Log::warning('KPI /semua gagal.', ['error' => $e->getMessage()]);
+                return ['data' => $this->fallbackPetugas(), 'source' => 'fallback'];
+            }
+        });
+
+        return response()->json([
+            'data'   => $data['data'],
+            'total'  => count($data['data']),
+            'source' => $data['source'],
+        ]);
+    }
+
+    /**
+     * GET /api/pegawai/search?q=keyword
+     */
+    public function search(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $q = trim($request->query('q', ''));
+
+        if ($q === '') {
+            return response()->json(['data' => [], 'total' => 0]);
         }
+
+        $cacheTtl = (int) config('services.kpi_api.cache_ttl', 300);
+        $cacheKey = 'kpi_pegawai_search_' . md5(strtolower($q));
+
+        $results = Cache::remember($cacheKey, $cacheTtl, function () use ($q) {
+            try {
+                $token = $this->getKpiToken();
+                return $this->fetchPegawaiByDepartemen($token, null, $q);
+            } catch (\Exception $e) {
+                Log::warning('KPI search gagal.', ['q' => $q, 'error' => $e->getMessage()]);
+                $lower = strtolower($q);
+                return array_values(array_filter(
+                    $this->fallbackPetugas(),
+                    fn($p) => str_contains(strtolower($p['nama']), $lower)
+                        || str_contains(strtolower((string) ($p['nip'] ?? '')), $lower)
+                ));
+            }
+        });
+
+        return response()->json(['data' => $results, 'total' => count($results)]);
     }
 
     /**
@@ -73,33 +137,48 @@ class PegawaiController extends Controller
     }
 
     /**
-     * Fetch semua pegawai Customer Care — limit=9999 agar tidak ada paginasi.
+     * Fetch pegawai dari KPI API.
+     * - $departemen = null  → semua pegawai (tanpa filter departemen)
+     * - $departemen = 'X'   → hanya departemen X
+     * - $search diisi       → filter lokal berdasarkan nama/NIP
      */
-    private function fetchPegawai(string $token): array
+    private function fetchPegawaiByDepartemen(string $token, ?string $departemen, string $search = ''): array
     {
+        $params = ['limit' => 9999, 'page' => 1];
+        if ($departemen !== null) {
+            $params['departemen'] = $departemen;
+        }
+
         $response = Http::timeout(20)
             ->withToken($token)
             ->acceptJson()
-            ->get(config('services.kpi_api.base_url') . '/pegawai', [
-                'departemen' => config('services.kpi_api.departemen', 'Customer Care'),
-                'limit'      => 9999,
-                'page'       => 1,
-            ]);
+            ->get(config('services.kpi_api.base_url') . '/pegawai', $params);
 
         if (! $response->successful()) {
-            Cache::forget('kpi_api_token'); // hapus token supaya next request re-login
+            Cache::forget('kpi_api_token');
             throw new \RuntimeException("KPI /pegawai gagal: HTTP {$response->status()}");
         }
 
         $body  = $response->json();
         $items = $body['data'] ?? $body['pegawai'] ?? $body['items'] ?? (isset($body[0]) ? $body : []);
 
-        return collect($items)->map(fn($p) => [
-            'id'      => $p['id']      ?? $p['nip']    ?? null,
-            'nama'    => $p['nama']    ?? $p['name']   ?? $p['nama_pegawai'] ?? '—',
-            'nip'     => $p['nip']     ?? $p['nik']    ?? null,
-            'jabatan' => $p['jabatan'] ?? $p['posisi'] ?? null,
-        ])->values()->toArray();
+        $mapped = collect($items)->map(fn($p) => [
+            'id'         => $p['id']         ?? $p['nip']    ?? null,
+            'nama'       => $p['nama']        ?? $p['name']   ?? $p['nama_pegawai'] ?? '—',
+            'nip'        => $p['nip']         ?? $p['nik']    ?? null,
+            'jabatan'    => $p['jabatan']     ?? $p['posisi'] ?? null,
+            'departemen' => $p['departemen']  ?? $p['bagian'] ?? null,
+        ])->values();
+
+        if ($search !== '') {
+            $lower  = strtolower($search);
+            $mapped = $mapped->filter(fn($p) =>
+                str_contains(strtolower($p['nama']), $lower) ||
+                str_contains(strtolower((string) ($p['nip'] ?? '')), $lower)
+            )->values();
+        }
+
+        return $mapped->toArray();
     }
 
     /** Fallback jika KPI API tidak bisa dijangkau (offline / bukan jaringan RS). */

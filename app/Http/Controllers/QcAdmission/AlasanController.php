@@ -125,19 +125,22 @@ class AlasanController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'tanggal'      => 'required|string',
-            'jam_input'    => 'required|string',
-            'no_reg'       => 'required|string|max:20',
-            'no_mr'        => 'nullable|string|max:20',
-            'nama_pasien'  => 'nullable|string|max:100',
-            'jaminan'      => 'nullable|string|max:50',
-            'tgl_daftar'   => 'nullable|string',
-            'jam_daftar'   => 'nullable|string',
-            'nama_ruang'   => 'nullable|string|max:100',
-            'nama_bangsal' => 'nullable|string|max:100',
-            'alasan'       => 'required|string|max:100',
-            'catatan'      => 'nullable|string|max:2000',
-            'petugas'      => 'nullable|string|max:100',
+            'tanggal'                   => 'required|string',
+            'jam_input'                 => 'required|string',
+            'no_reg'                    => 'required|string|max:20',
+            'no_mr'                     => 'nullable|string|max:20',
+            'nama_pasien'               => 'nullable|string|max:100',
+            'jaminan'                   => 'nullable|string|max:50',
+            'tgl_daftar'                => 'nullable|string',
+            'jam_daftar'                => 'nullable|string',
+            'nama_ruang'                => 'nullable|string|max:100',
+            'nama_bangsal'              => 'nullable|string|max:100',
+            'alasan'                    => 'required|string|max:100',
+            'catatan'                   => 'nullable|string|max:2000',
+            'petugas'                   => 'nullable|string|max:100',
+            'rekomendasi_karyawan_id'   => 'nullable|string|max:50',
+            'rekomendasi_karyawan_nip'  => 'nullable|string|max:50',
+            'rekomendasi_karyawan_nama' => 'nullable|string|max:150',
         ]);
 
         $record = $this->service->create($validated);
@@ -156,9 +159,12 @@ class AlasanController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'alasan'  => 'sometimes|string|max:100',
-            'catatan' => 'nullable|string|max:2000',
-            'petugas' => 'sometimes|string|max:100',
+            'alasan'                    => 'sometimes|string|max:100',
+            'catatan'                   => 'nullable|string|max:2000',
+            'petugas'                   => 'sometimes|string|max:100',
+            'rekomendasi_karyawan_id'   => 'nullable|string|max:50',
+            'rekomendasi_karyawan_nip'  => 'nullable|string|max:50',
+            'rekomendasi_karyawan_nama' => 'nullable|string|max:150',
         ]);
 
         $record = $this->service->update($id, $validated);

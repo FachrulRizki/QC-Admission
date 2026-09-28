@@ -46,6 +46,32 @@ const formError      = ref('')
 const saving         = ref(false)
 const editItem       = ref(null)
 
+// ── Rekomendasi Karyawan RS ─────────────────────────────────────────────────
+const ALASAN_REKOMENDASI = 'Rekomendasi Karyawan RS'
+const isRekomendasiKaryawan = computed(() => formAlasan.value === ALASAN_REKOMENDASI)
+
+const formRekKaryawan = ref(null)   // object { id, nip, nama } yang dipilih
+const searchKaryawan  = ref('')     // keyword untuk filter lokal
+
+// Semua pegawai RS (tanpa filter departemen) difilter lokal berdasarkan keyword
+const filteredKaryawanList = computed(() => {
+  const all = pegawaiStore.semuaItems.filter(Boolean)
+  const q   = searchKaryawan.value.trim().toLowerCase()
+  if (!q) return all
+  return all.filter(p =>
+    p.nama?.toLowerCase().includes(q) ||
+    String(p.nip ?? '').toLowerCase().includes(q)
+  )
+})
+
+// Reset rekomendasi ketika alasan berubah ke selain Rekomendasi Karyawan RS
+watch(formAlasan, (val) => {
+  if (val !== ALASAN_REKOMENDASI) {
+    formRekKaryawan.value = null
+    searchKaryawan.value  = ''
+  }
+})
+
 // ── Fetch pendaftaran ───────────────────────────────────────────────────────
 async function fetchPendaftaranAktif() {
   loadingPasien.value = true
@@ -83,15 +109,18 @@ function handleRowClick(pasien) {
 
 // ── Buka form baru (dari baris kosong atau tombol "Isi Lagi" di detail) ─────
 function openFormNew(pasien) {
-  formPasien.value  = pasien
-  formAlasan.value  = ''
-  formCatatan.value = ''
-  formPetugas.value = auth.user?.preferred_username ?? auth.user?.name ?? ''
-  formError.value   = ''
-  editItem.value    = null
-  dialogForm.value  = true
+  formPasien.value      = pasien
+  formAlasan.value      = ''
+  formCatatan.value     = ''
+  formPetugas.value     = auth.user?.preferred_username ?? auth.user?.name ?? ''
+  formRekKaryawan.value = null
+  searchKaryawan.value  = ''
+  formError.value       = ''
+  editItem.value        = null
+  dialogForm.value      = true
   masterStore.fetch()
   pegawaiStore.fetch()
+  pegawaiStore.fetchSemua()
 }
 
 // Dari tombol "Isi Lagi" di detail modal
@@ -117,12 +146,22 @@ function openEditDialog(item) {
   formAlasan.value  = item.alasan  ?? ''
   formCatatan.value = item.catatan ?? ''
   formPetugas.value = item.petugas ?? ''
-  formError.value   = ''
-  dialogDetail.value = false
+  // Restore rekomendasi karyawan jika ada
+  formRekKaryawan.value = (item.rekomendasi_karyawan_id || item.rekomendasi_karyawan_nama)
+    ? {
+        id:   item.rekomendasi_karyawan_id   ?? null,
+        nip:  item.rekomendasi_karyawan_nip  ?? null,
+        nama: item.rekomendasi_karyawan_nama ?? '',
+      }
+    : null
+  searchKaryawan.value = ''
+  formError.value      = ''
+  dialogDetail.value   = false
   nextTick(() => {
     dialogForm.value = true
     masterStore.fetch()
     pegawaiStore.fetch()
+    pegawaiStore.fetchSemua()
   })
 }
 
@@ -130,12 +169,28 @@ function openEditDialog(item) {
 async function handleSave() {
   formError.value = ''
   if (!formAlasan.value) { formError.value = 'Alasan wajib dipilih.'; return }
+  if (isRekomendasiKaryawan.value && !formRekKaryawan.value) {
+    formError.value = 'Pilih karyawan RS yang merekomendasikan.'
+    return
+  }
 
   saving.value = true
   const now = new Date()
   const z   = n => String(n).padStart(2, '0')
   const jam = `${z(now.getHours())}.${z(now.getMinutes())}.${z(now.getSeconds())}`
   const tgl = `${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}, ${jam}`
+
+  const rekData = isRekomendasiKaryawan.value && formRekKaryawan.value
+    ? {
+        rekomendasi_karyawan_id:   formRekKaryawan.value.id   ?? null,
+        rekomendasi_karyawan_nip:  formRekKaryawan.value.nip  ?? null,
+        rekomendasi_karyawan_nama: formRekKaryawan.value.nama ?? null,
+      }
+    : {
+        rekomendasi_karyawan_id:   null,
+        rekomendasi_karyawan_nip:  null,
+        rekomendasi_karyawan_nama: null,
+      }
 
   const payload = {
     tanggal:      tgl,
@@ -151,10 +206,16 @@ async function handleSave() {
     alasan:       formAlasan.value,
     catatan:      formCatatan.value,
     petugas:      formPetugas.value,
+    ...rekData,
   }
 
   const result = editItem.value
-    ? await store.update(editItem.value.id, { alasan: payload.alasan, catatan: payload.catatan, petugas: payload.petugas })
+    ? await store.update(editItem.value.id, {
+        alasan:  payload.alasan,
+        catatan: payload.catatan,
+        petugas: payload.petugas,
+        ...rekData,
+      })
     : await store.store(payload)
 
   saving.value = false
@@ -558,6 +619,11 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
               <span v-if="item.catatan" style="word-break:break-word;white-space:normal;max-width:260px;color:rgba(var(--v-theme-on-surface),.55)">
                 <VIcon icon="ri-chat-3-line" size="10" />"{{ item.catatan }}"
               </span>
+              <span v-if="item.rekomendasi_karyawan_nama" class="al-chip al-chip--violet" style="margin-top:2px">
+                <VIcon icon="ri-user-star-line" size="10" />
+                {{ item.rekomendasi_karyawan_nama }}
+                <template v-if="item.rekomendasi_karyawan_nip"> · {{ item.rekomendasi_karyawan_nip }}</template>
+              </span>
             </div>
           </div>
 
@@ -629,6 +695,16 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
                   <VIcon icon="ri-double-quotes-l" size="11" class="det-entry__quote" />
                   {{ rec.catatan }}
                 </p>
+                <!-- Rekomendasi karyawan -->
+                <div v-if="rec.rekomendasi_karyawan_nama" class="det-entry__rek-karyawan">
+                  <VIcon icon="ri-user-star-line" size="12" style="opacity:.55;flex-shrink:0" />
+                  <span>
+                    {{ rec.rekomendasi_karyawan_nama }}
+                    <template v-if="rec.rekomendasi_karyawan_nip">
+                      <span style="opacity:.5"> · NIP {{ rec.rekomendasi_karyawan_nip }}</span>
+                    </template>
+                  </span>
+                </div>
                 <!-- Meta: petugas + waktu -->
                 <div class="det-entry__meta">
                   <span><VIcon icon="ri-user-3-line" size="11" />{{ rec.petugas || '—' }}</span>
@@ -723,6 +799,80 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
               clearable
               hide-details="auto"
             />
+
+            <!-- ── Rekomendasi Karyawan RS — muncul hanya saat alasan sesuai ── -->
+            <Transition name="fade-slide">
+              <div v-if="isRekomendasiKaryawan" class="rek-karyawan-wrap">
+                <div class="rek-karyawan-label">
+                  <VIcon icon="ri-user-star-line" size="13" style="opacity:.6" />
+                  Karyawan RS yang merekomendasikan *
+                </div>
+
+                <!-- Tampilkan chip karyawan terpilih -->
+                <div v-if="formRekKaryawan" class="rek-karyawan-selected">
+                  <div class="rek-karyawan-selected__av">
+                    {{ formRekKaryawan.nama?.charAt(0) ?? '?' }}
+                  </div>
+                  <div class="rek-karyawan-selected__info">
+                    <span class="rek-karyawan-selected__nama">{{ formRekKaryawan.nama }}</span>
+                    <span v-if="formRekKaryawan.nip" class="rek-karyawan-selected__nip">
+                      NIP: {{ formRekKaryawan.nip }}
+                    </span>
+                  </div>
+                  <button class="rek-karyawan-selected__clear" @click="formRekKaryawan = null; searchKaryawan = ''">
+                    <VIcon icon="ri-close-circle-fill" size="18" />
+                  </button>
+                </div>
+
+                <!-- Search input ketika belum ada yang dipilih -->
+                <div v-else class="rek-karyawan-search">
+                  <div class="rek-search-input-wrap">
+                    <VIcon icon="ri-search-line" size="15" class="rek-search-icon" />
+                    <input
+                      v-model="searchKaryawan"
+                      class="rek-search-input"
+                      placeholder="Cari nama atau NIP karyawan..."
+                      autocomplete="off"
+                    />
+                    <VProgressCircular
+                      v-if="pegawaiStore.semuaLoading"
+                      indeterminate
+                      size="14"
+                      width="2"
+                      color="primary"
+                      class="rek-search-loader"
+                    />
+                  </div>
+
+                  <!-- Dropdown — tampil semua, filter saat mengetik -->
+                  <div v-if="!formRekKaryawan" class="rek-search-dropdown">
+                    <div v-if="pegawaiStore.semuaLoading" class="rek-search-state">
+                      <VProgressCircular indeterminate size="18" width="2" color="primary" />
+                      <span>Memuat data karyawan...</span>
+                    </div>
+                    <div v-else-if="!filteredKaryawanList.length" class="rek-search-state">
+                      <VIcon icon="ri-user-search-line" size="20" style="opacity:.3" />
+                      <span>Tidak ditemukan</span>
+                    </div>
+                    <button
+                      v-for="p in filteredKaryawanList"
+                      :key="p.id ?? p.nip ?? p.nama"
+                      class="rek-search-item"
+                      @click="formRekKaryawan = p; searchKaryawan = ''"
+                    >
+                      <div class="rek-search-item__av">{{ p.nama?.charAt(0) ?? '?' }}</div>
+                      <div class="rek-search-item__info">
+                        <span class="rek-search-item__nama">{{ p.nama }}</span>
+                        <span v-if="p.nip" class="rek-search-item__nip">NIP: {{ p.nip }}</span>
+                        <span v-if="p.jabatan" class="rek-search-item__jabatan">{{ p.jabatan }}</span>
+                      </div>
+                      <VIcon icon="ri-add-circle-line" size="16" color="primary" style="opacity:.6;flex-shrink:0" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+
             <VTextarea
               v-model="formCatatan"
               label="Catatan (opsional)"
@@ -1466,5 +1616,175 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
 
 @media (max-width: 500px) {
   .al-rw-sum__label { min-width: 100px; }
+}
+
+/* ── Rekomendasi Karyawan RS ──────────────────────────────────────────────── */
+.rek-karyawan-wrap {
+  border: 1.5px solid rgba(var(--v-theme-primary), .25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-primary), .03);
+}
+
+.rek-karyawan-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), .55);
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+/* Chip karyawan yang sudah dipilih */
+.rek-karyawan-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(var(--v-theme-primary), .07);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.rek-karyawan-selected__av {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-primary));
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.rek-karyawan-selected__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.rek-karyawan-selected__nama {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rek-karyawan-selected__nip {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), .5);
+}
+.rek-karyawan-selected__clear {
+  background: none; border: none; cursor: pointer; padding: 2px;
+  color: rgba(var(--v-theme-on-surface), .35);
+  display: flex; align-items: center;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.rek-karyawan-selected__clear:hover { color: rgb(var(--v-theme-error)); }
+
+/* Search input */
+.rek-karyawan-search { position: relative; }
+.rek-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(var(--v-theme-surface), 1);
+  border: 1.5px solid rgba(var(--v-theme-on-surface), .15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  transition: border-color .2s;
+}
+.rek-search-input-wrap:focus-within {
+  border-color: rgb(var(--v-theme-primary));
+}
+.rek-search-icon { opacity: .4; flex-shrink: 0; }
+.rek-search-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+.rek-search-input::placeholder { color: rgba(var(--v-theme-on-surface), .35); }
+.rek-search-loader { flex-shrink: 0; }
+
+/* Dropdown results */
+.rek-search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: rgb(var(--v-theme-surface));
+  border: 1.5px solid rgba(var(--v-theme-on-surface), .1);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 99;
+}
+.rek-search-state {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 16px;
+  font-size: 0.8rem; color: rgba(var(--v-theme-on-surface), .45);
+}
+.rek-search-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  background: none; border: none; cursor: pointer;
+  padding: 10px 12px;
+  transition: background .15s;
+}
+.rek-search-item:hover { background: rgba(var(--v-theme-primary), .06); }
+.rek-search-item + .rek-search-item {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), .06);
+}
+.rek-search-item__av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-primary), .15);
+  color: rgb(var(--v-theme-primary));
+  font-size: 0.75rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.rek-search-item__info {
+  flex: 1; display: flex; flex-direction: column; gap: 1px;
+  min-width: 0; text-align: left;
+}
+.rek-search-item__nama {
+  font-size: 0.83rem; font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rek-search-item__nip,
+.rek-search-item__jabatan {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), .45);
+}
+
+/* Chip violet untuk tampilan di riwayat */
+.al-chip--violet {
+  background: rgba(139, 92, 246, .1);
+  color: #7c3aed;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+/* Detail dialog — rekomendasi karyawan */
+.det-entry__rek-karyawan {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), .65);
+  margin-top: 4px;
+}
+
+/* Transition fade-slide untuk field rekomendasi */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity .2s ease, transform .2s ease;
+}
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>
