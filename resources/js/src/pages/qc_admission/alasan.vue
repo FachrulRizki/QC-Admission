@@ -384,7 +384,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
       icon="ri-question-answer-line"
       badge="Alasan Kunjungan"
       title="Alasan Kunjungan"
-      subtitle="Input alasan pasien memilih RS · data pendaftaran aktif"
+      subtitle="Input alasan pasien memilih Ruangan · data pendaftaran aktif"
       color-from="#0369A1"
       color-to="#0EA5E9"
       :pills="[
@@ -792,7 +792,7 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
             <VSelect
               v-model="formAlasan"
               :items="masterStore.alasanPilihList"
-              label="Alasan Memilih RS *"
+              label="Alasan Memilih Ruangan *"
               variant="outlined"
               density="compact"
               prepend-inner-icon="ri-question-answer-line"
@@ -882,7 +882,6 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
               auto-grow
               prepend-inner-icon="ri-chat-3-line"
               hide-details="auto"
-              placeholder="Keterangan tambahan..."
             />
             <VAutocomplete
               v-model="formPetugas"
