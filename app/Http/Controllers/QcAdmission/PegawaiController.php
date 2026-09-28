@@ -185,11 +185,11 @@ class PegawaiController extends Controller
     private function fallbackPetugas(): array
     {
         return [
-            ['id' => 1, 'nama' => 'Nurul',           'nip' => null, 'jabatan' => 'Customer Care'],
-            ['id' => 2, 'nama' => 'AYU Putri Anisa', 'nip' => null, 'jabatan' => 'Customer Care'],
-            ['id' => 3, 'nama' => 'Reskim',          'nip' => null, 'jabatan' => 'Customer Care'],
-            ['id' => 4, 'nama' => 'Mulbagus Koyum',  'nip' => null, 'jabatan' => 'Customer Care'],
-            ['id' => 5, 'nama' => 'Abdul Hayyi',     'nip' => null, 'jabatan' => 'Customer Care'],
+            ['id' => '1', 'nama' => 'Nurul',           'nip' => null, 'jabatan' => 'Customer Care'],
+            ['id' => '2', 'nama' => 'AYU Putri Anisa', 'nip' => null, 'jabatan' => 'Customer Care'],
+            ['id' => '3', 'nama' => 'Reskim',          'nip' => null, 'jabatan' => 'Customer Care'],
+            ['id' => '4', 'nama' => 'Mulbagus Koyum',  'nip' => null, 'jabatan' => 'Customer Care'],
+            ['id' => '5', 'nama' => 'Abdul Hayyi',     'nip' => null, 'jabatan' => 'Customer Care'],
         ];
     }
 }

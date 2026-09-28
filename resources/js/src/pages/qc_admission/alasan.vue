@@ -182,8 +182,8 @@ async function handleSave() {
 
   const rekData = isRekomendasiKaryawan.value && formRekKaryawan.value
     ? {
-        rekomendasi_karyawan_id:   formRekKaryawan.value.id   ?? null,
-        rekomendasi_karyawan_nip:  formRekKaryawan.value.nip  ?? null,
+        rekomendasi_karyawan_id:   formRekKaryawan.value.id   != null ? String(formRekKaryawan.value.id)  : null,
+        rekomendasi_karyawan_nip:  formRekKaryawan.value.nip  != null ? String(formRekKaryawan.value.nip) : null,
         rekomendasi_karyawan_nama: formRekKaryawan.value.nama ?? null,
       }
     : {
