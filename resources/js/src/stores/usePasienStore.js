@@ -13,9 +13,9 @@ export const usePasienStore = defineStore('pasien', {
   }),
 
   getters: {
-    // Format untuk VAutocomplete :items
+    // Title menyertakan no_mr agar search by no MR bisa match di filter client-side
     optionList: (state) => (state.results ?? []).filter(Boolean).map(p => ({
-      title: (p.no_reg ?? '') + ' — ' + (p.nama_pasien ?? ''),
+      title: (p.no_reg ?? '') + ' — ' + (p.no_mr ?? '') + ' — ' + (p.nama_pasien ?? ''),
       value: p.no_reg,
       data:  p,
     })),

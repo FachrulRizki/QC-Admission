@@ -205,12 +205,14 @@ class="mb-3" hide-details="auto"
 </VAvatar>
 </template>
 <VListItemTitle class="text-body-2 font-weight-semibold">
-{{ item.raw?.data?.nama_pasien }}
+{{ item.raw?.data?.no_reg }} — {{ item.raw?.data?.nama_pasien }}
 </VListItemTitle>
 <VListItemSubtitle class="d-flex flex-wrap gap-1 mt-1">
-<VChip size="x-small" color="primary" variant="tonal" label>{{ item.raw?.data?.no_reg }}</VChip>
+<VChip size="x-small" color="info" variant="tonal" label prepend-icon="ri-id-card-line">
+  No. MR: {{ item.raw?.data?.no_mr }}
+</VChip>
 <VChip size="x-small" color="secondary" variant="tonal" label>{{ item.raw?.data?.ket_bayar }}</VChip>
-<span class="text-caption text-medium-emphasis">{{ item.raw?.data?.nama_bangsal }}</span>
+<span v-if="item.raw?.data?.nama_bangsal" class="text-caption text-medium-emphasis">{{ item.raw?.data?.nama_bangsal }}</span>
 </VListItemSubtitle>
 </VListItem>
 </template>
