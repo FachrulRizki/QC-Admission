@@ -3,11 +3,9 @@ import NavItems from '@/layouts/components/NavItems.vue'
 import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, router as inertiaRouter } from '@inertiajs/vue3'
 import { useUpSellingStore } from '@/stores/useUpSellingStore'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
 const upSellingStore = useUpSellingStore()
 
 // Fetch alert saat layout mount — berjalan di semua halaman
@@ -22,7 +20,7 @@ const showNotifPanel = ref(false)
 
 function goToUpSelling() {
   showNotifPanel.value = false
-  router.push('/up-selling')
+  inertiaRouter.visit('/up-selling')
 }
 
 // Current date for navbar display

@@ -31,6 +31,7 @@ const search = ref('')
 const dateFrom = ref(todayStr())
 const dateTo = ref(todayStr())
 const filterAlasan = ref('')
+const filterCard = ref(null)  // null | 'Naik Kelas' | 'Perubahan Jaminan' | 'belum-ket-ok'
 
 const records = computed(() => store.records ?? [])
 
@@ -38,11 +39,21 @@ const stats = computed(() => ({
   total: records.value.length,
   naikKelas: records.value.filter(r => r.alasan === 'Naik Kelas').length,
   perubahan: records.value.filter(r => r.alasan === 'Perubahan Jaminan').length,
+  belumKetOk: records.value.filter(r => r.status_ok === 'Bedah' && !r.keterangan_ok).length,
 }))
 
 const filtered = computed(() => {
   let d = records.value
-  if (filterAlasan.value) d = d.filter(r => r.alasan === filterAlasan.value)
+  // Filter dari card aktif
+  if (filterCard.value === 'belum-ket-ok') {
+    d = d.filter(r => r.status_ok === 'Bedah' && !r.keterangan_ok)
+  } else if (filterCard.value) {
+    d = d.filter(r => r.alasan === filterCard.value)
+  }
+  // Filter dari dropdown keterangan (hanya kalau tidak ada card filter aktif)
+  if (!filterCard.value && filterAlasan.value) {
+    d = d.filter(r => r.alasan === filterAlasan.value)
+  }
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r =>
@@ -80,6 +91,7 @@ async function doDel() {
 function resetFilter() {
   search.value = ''
   filterAlasan.value = ''
+  filterCard.value = null
   dateFrom.value = todayStr()
   dateTo.value = todayStr()
   load()
@@ -174,11 +186,15 @@ onMounted(() => { load(); store.fetchAlertBedah() })
     </Transition>
 
     <!-- Stats -->
-    <SummaryCards :cards="[
-      { value: stats.total,     label: 'Total Up Selling',    color: 'primary', icon: 'ri-arrow-up-circle-line' },
-      { value: stats.naikKelas, label: 'Naik Kelas',          color: 'success', icon: 'ri-building-line' },
-      { value: stats.perubahan, label: 'Perubahan Jaminan',   color: 'info',    icon: 'ri-exchange-line' },
-    ]" />
+    <SummaryCards
+      v-model="filterCard"
+      :cards="[
+        { value: stats.total,      label: 'Total Up Selling',        color: 'primary', icon: 'ri-arrow-up-circle-line' },
+        { value: stats.naikKelas,  label: 'Naik Kelas',              color: 'success', icon: 'ri-building-line',       filterValue: 'Naik Kelas' },
+        { value: stats.perubahan,  label: 'Perubahan Jaminan',       color: 'info',    icon: 'ri-exchange-line',        filterValue: 'Perubahan Jaminan' },
+        { value: stats.belumKetOk, label: 'Belum ada keterangan OK', color: 'warning', icon: 'ri-alarm-warning-line',   filterValue: 'belum-ket-ok' },
+      ]"
+    />
 
     <!-- Filter -->
     <VCard elevation="0" border rounded="lg" class="mb-4">
@@ -212,9 +228,23 @@ onMounted(() => { load(); store.fetchAlertBedah() })
     </VCard>
 
     <!-- Count -->
-    <div class="d-flex align-center gap-3 mb-4">
+    <div class="d-flex align-center gap-3 mb-4 flex-wrap">
       <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ filtered.length }} data</VChip>
-      <span class="text-caption" style="color:var(--qc-text-2)">Klik baris untuk detail & edit</span>
+      <VChip
+        v-if="filterCard === 'belum-ket-ok'"
+        size="small" color="warning" variant="tonal" rounded="pill" closable
+        @click:close="filterCard = null"
+      >
+        <VIcon icon="ri-alarm-warning-line" size="12" class="me-1" />Belum ada keterangan OK
+      </VChip>
+      <VChip
+        v-else-if="filterCard"
+        size="small" color="primary" variant="tonal" rounded="pill" closable
+        @click:close="filterCard = null"
+      >
+        {{ filterCard }}
+      </VChip>
+      <span v-else class="text-caption" style="color:var(--qc-text-2)">Klik baris untuk detail & edit</span>
     </div>
 
     <!-- List -->

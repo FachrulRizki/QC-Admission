@@ -1,8 +1,10 @@
 <script setup>
 import VerticalNavLink from '@layouts/components/VerticalNavLink.vue'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useUpSellingStore } from '@/stores/useUpSellingStore'
 
 const auth = useAuthStore()
+const upSellingStore = useUpSellingStore()
 </script>
 
 <template>
@@ -39,7 +41,13 @@ const auth = useAuthStore()
   <!-- Up Selling -->
   <VerticalNavLink
     v-if="auth.hasPermission('up-selling:view')"
-    :item="{ title: 'Up Selling', icon: 'ri-arrow-up-circle-line', to: '/up-selling' }"
+    :item="{
+      title: 'Up Selling',
+      icon: 'ri-arrow-up-circle-line',
+      to: '/up-selling',
+      badgeContent: upSellingStore.alertBedahCount || undefined,
+      badgeClass: 'nav-badge-error',
+    }"
   />
 
   <!-- View Data Input — semua yang sudah login -->

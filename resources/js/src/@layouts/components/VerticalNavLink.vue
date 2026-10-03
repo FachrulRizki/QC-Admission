@@ -51,10 +51,23 @@ const isActive = computed(() => page.url === props.item.to)
     }
   }
 
-  .nav-item-icon {
-    flex-shrink: 0;
-    font-size: 1.375rem;
-    color: rgba(var(--v-theme-on-surface), 0.7);
+  .nav-item-badge {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 0 5px;
+    line-height: 1;
+  }
+
+  .nav-badge-error {
+    background: rgb(var(--v-theme-error));
+    color: #fff;
   }
 
   .nav-link>.router-link-exact-active,
