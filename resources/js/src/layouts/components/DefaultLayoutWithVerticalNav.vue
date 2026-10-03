@@ -4,6 +4,26 @@ import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
 import { Link } from '@inertiajs/vue3'
+import { useUpSellingStore } from '@/stores/useUpSellingStore'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const upSellingStore = useUpSellingStore()
+
+// Fetch alert saat layout mount — berjalan di semua halaman
+onMounted(() => upSellingStore.fetchAlertBedah())
+
+// Refresh setiap 2 menit
+let alertTimer = null
+onMounted(() => { alertTimer = setInterval(() => upSellingStore.fetchAlertBedah(), 120_000) })
+onUnmounted(() => clearInterval(alertTimer))
+
+const showNotifPanel = ref(false)
+
+function goToUpSelling() {
+  showNotifPanel.value = false
+  router.push('/up-selling')
+}
 
 // Current date for navbar display
 const today = new Date().toLocaleDateString('id-ID', {
@@ -32,15 +52,71 @@ const today = new Date().toLocaleDateString('id-ID', {
 
         <VSpacer />
 
-        <!-- Notification -->
-        <!-- <IconBtn class="me-1">
-          <VIcon icon="ri-notification-3-line" />
-          <VBadge
-            color="error"
-            content="3"
-            floating
-          />
-        </IconBtn> -->
+        <!-- Notification Bell — Alert Bedah Up Selling -->
+        <VMenu v-model="showNotifPanel" location="bottom end" :close-on-content-click="false" max-width="340">
+          <template #activator="{ props: menuProps }">
+            <IconBtn v-bind="menuProps" class="me-1" style="position:relative">
+              <VIcon icon="ri-notification-3-line" />
+              <span
+                v-if="upSellingStore.alertBedahCount"
+                class="notif-badge"
+              >{{ upSellingStore.alertBedahCount > 9 ? '9+' : upSellingStore.alertBedahCount }}</span>
+            </IconBtn>
+          </template>
+
+          <VCard rounded="lg" elevation="4" class="notif-panel overflow-hidden">
+            <!-- Header -->
+            <div class="notif-header">
+              <div class="d-flex align-center gap-2">
+                <VAvatar color="error" variant="tonal" size="32" rounded="lg">
+                  <VIcon icon="ri-alarm-warning-line" size="16" />
+                </VAvatar>
+                <div>
+                  <p class="notif-title mb-0">Perlu Perhatian</p>
+                  <p class="notif-sub mb-0">Pasien Bedah belum ada keterangan tindakan</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div v-if="!upSellingStore.alertBedahCount" class="notif-empty">
+              <VIcon icon="ri-checkbox-circle-line" size="32" color="success" class="mb-2" />
+              <p class="text-body-2 font-weight-semibold mb-0">Semua sudah lengkap</p>
+              <p class="text-caption text-medium-emphasis">Tidak ada data yang perlu diperbarui</p>
+            </div>
+
+            <!-- List -->
+            <div v-else class="notif-list">
+              <div
+                v-for="item in upSellingStore.alertBedah.slice(0, 5)"
+                :key="item.id"
+                class="notif-row"
+                @click="goToUpSelling"
+              >
+                <VAvatar color="error" variant="tonal" size="32" rounded="lg" class="flex-shrink-0">
+                  <VIcon icon="ri-surgical-mask-line" size="14" />
+                </VAvatar>
+                <div class="flex-grow-1 min-width-0">
+                  <p class="notif-pasien text-truncate mb-0">{{ item.nama_pasien }}</p>
+                  <p class="notif-reg mb-0">{{ item.no_reg }} · {{ item.petugas }}</p>
+                </div>
+                <VIcon icon="ri-arrow-right-s-line" size="16" color="error" class="flex-shrink-0" />
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div v-if="upSellingStore.alertBedahCount" class="notif-footer">
+              <VBtn
+                block variant="tonal" color="error" rounded="lg" size="small"
+                @click="goToUpSelling"
+              >
+                <VIcon icon="ri-arrow-up-circle-line" size="15" class="me-1" />
+                Lihat Semua di Up Selling
+                <VChip size="x-small" color="error" class="ms-2">{{ upSellingStore.alertBedahCount }}</VChip>
+              </VBtn>
+            </div>
+          </VCard>
+        </VMenu>
 
         <!-- Theme switcher -->
         <NavbarThemeSwitcher class="me-2" />
@@ -105,5 +181,68 @@ const today = new Date().toLocaleDateString('id-ID', {
   font-size: 0.6875rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
   line-height: 1.2;
+}
+
+/* ── Notification Bell ── */
+.notif-badge {
+  position: absolute;
+  top: 4px; right: 4px;
+  min-width: 16px; height: 16px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-error));
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── Notification Panel ── */
+.notif-panel { min-width: 300px; }
+
+.notif-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-error), 0.04);
+}
+.notif-title {
+  font-size: 0.82rem; font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+}
+.notif-sub {
+  font-size: 0.68rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.notif-empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px; text-align: center;
+}
+
+.notif-list { max-height: 240px; overflow-y: auto; }
+.notif-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.notif-row:last-child { border-bottom: none; }
+.notif-row:hover { background: rgba(var(--v-theme-error), 0.04); }
+.notif-pasien {
+  font-size: 0.82rem; font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+.notif-reg {
+  font-size: 0.68rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.notif-footer {
+  padding: 10px 12px;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface-variant), 0.3);
 }
 </style>

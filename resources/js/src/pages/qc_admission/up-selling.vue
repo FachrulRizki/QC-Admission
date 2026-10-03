@@ -16,6 +16,7 @@ const showDel = ref(false)
 const delTarget = ref(null)
 const loading = ref(false)
 const snackbar = ref({ show: false, msg: '', color: 'success' })
+const showAlertPanel = ref(true)  // expand/collapse alert bedah
 
 function todayStr() {
   const d = new Date(), p = n => String(n).padStart(2, '0')
@@ -62,7 +63,7 @@ function openEdit(item) { editItem.value = { ...item }; showDetail.value = false
 
 function toast(msg, color = 'success') { snackbar.value = { show: true, msg, color } }
 
-async function onSaved() { showForm.value = false; toast('Data disimpan.'); await load() }
+async function onSaved() { showForm.value = false; toast('Data disimpan.'); await load(); await store.fetchAlertBedah() }
 
 async function doDel() {
   if (!delTarget.value) return
@@ -106,7 +107,7 @@ watch([dateFrom, dateTo], () => {
 // ── Pagination ────────────────────────────────────────────────────────────────
 const { page, pageCount, paginated: paginatedFiltered, setPage } = usePagination(filtered, 10)
 
-onMounted(load)
+onMounted(() => { load(); store.fetchAlertBedah() })
 </script>
 
 <template>
@@ -124,6 +125,53 @@ onMounted(load)
         </VBtn>
       </template>
     </PageHero>
+
+    <!-- Alert Bedah — pasien Bedah+Closing belum ada keterangan tindakan -->
+    <Transition name="alert-fade">
+      <VCard
+        v-if="store.alertBedah.length && showAlertPanel"
+        elevation="0"
+        rounded="lg"
+        class="mb-4 bedah-alert-card"
+      >
+        <div class="bedah-alert-header" @click="showAlertPanel = !showAlertPanel">
+          <div class="d-flex align-center gap-2">
+            <div class="bedah-alert-icon">
+              <VIcon icon="ri-alarm-warning-line" size="18" color="white" />
+            </div>
+            <div>
+              <p class="bedah-alert-title mb-0">
+                {{ store.alertBedah.length }} Pasien Bedah Butuh Keterangan Tindakan
+              </p>
+              <p class="bedah-alert-sub mb-0">Keterangan tindakan belum diisi</p>
+            </div>
+          </div>
+          <VIcon icon="ri-close-line" size="18" color="white" class="ms-auto cursor-pointer"
+            @click.stop="showAlertPanel = false" />
+        </div>
+        <div class="bedah-alert-list">
+          <div
+            v-for="item in store.alertBedah"
+            :key="item.id"
+            class="bedah-alert-row"
+            @click="editItem = { ...records.find(r => r.id === item.id) ?? item }; showForm = true"
+          >
+            <VAvatar color="error" variant="tonal" size="34" rounded="lg" class="flex-shrink-0">
+              <VIcon icon="ri-surgical-mask-line" size="16" />
+            </VAvatar>
+            <div class="flex-grow-1 min-width-0">
+              <p class="font-weight-semibold mb-0 text-truncate" style="font-size:0.85rem">
+                {{ item.nama_pasien }}
+              </p>
+              <p class="text-caption mb-0" style="color:var(--qc-text-2)">
+                {{ item.no_reg }} · {{ item.petugas }}
+              </p>
+            </div>
+            <VChip size="x-small" color="error" variant="tonal" rounded="pill">Isi Keterangan</VChip>
+          </div>
+        </div>
+      </VCard>
+    </Transition>
 
     <!-- Stats -->
     <SummaryCards :cards="[
@@ -197,6 +245,20 @@ onMounted(load)
                 {{ item.nama_pasien }}
               </span>
               <VChip :color="ketColor(item.alasan)" size="x-small" variant="tonal">{{ item.alasan || '—' }}</VChip>
+              <VChip
+                v-if="item.status_ok"
+                :color="item.status_ok === 'Bedah' ? 'error' : 'success'"
+                size="x-small" variant="tonal"
+              >
+                <VIcon :icon="item.status_ok === 'Bedah' ? 'ri-surgical-mask-line' : 'ri-heart-pulse-line'" size="10" class="me-1" />
+                {{ item.status_ok }}
+              </VChip>
+              <VChip
+                v-if="item.status_ok === 'Bedah' && !item.keterangan_ok"
+                color="warning" size="x-small" variant="tonal"
+              >
+                <VIcon icon="ri-alarm-warning-line" size="10" class="me-1" />Belum ada keterangan
+              </VChip>
             </div>
             <div class="d-flex align-center gap-3 mt-1 flex-wrap">
               <span class="text-caption" style="color:var(--qc-text-2)">
@@ -251,6 +313,11 @@ onMounted(load)
             <span v-if="detailItem.kelas" class="us-pill us-pill--neutral">
               <VIcon icon="ri-hotel-bed-line" size="12" class="me-1" />{{ detailItem.kelas }}
             </span>
+            <span v-if="detailItem.status_ok" class="us-pill"
+              :class="detailItem.status_ok === 'Bedah' ? 'us-pill--bedah' : 'us-pill--nonbedah'">
+              <VIcon :icon="detailItem.status_ok === 'Bedah' ? 'ri-surgical-mask-line' : 'ri-heart-pulse-line'" size="12" class="me-1" />
+              {{ detailItem.status_ok }}
+            </span>
           </div>
         </div>
 
@@ -288,6 +355,28 @@ onMounted(load)
           <div class="qc-info-cell">
             <span class="qc-lbl">Keterangan</span>
             <span class="qc-val">{{ detailItem.alasan || '—' }}</span>
+          </div>
+          <div class="qc-info-cell">
+            <span class="qc-lbl">Status Pasien</span>
+            <span class="qc-val">
+              <span v-if="detailItem.status_ok" class="us-badge"
+                :class="detailItem.status_ok === 'Bedah' ? 'us-badge--bedah' : 'us-badge--nonbedah'">
+                {{ detailItem.status_ok }}
+              </span>
+              <span v-else>—</span>
+            </span>
+          </div>
+          <div class="qc-info-cell">
+            <span class="qc-lbl">Tanggal Input</span>
+            <span class="qc-val">{{ detailItem.tanggal || '—' }}</span>
+          </div>
+          <div class="qc-info-cell qc-info-cell--full">
+            <span class="qc-lbl">
+              <VIcon icon="ri-surgical-mask-line" size="11" class="me-1" />Keterangan Tindakan
+              <span v-if="detailItem.status_ok === 'Bedah' && !detailItem.keterangan_ok"
+                class="ms-1" style="color:rgb(var(--v-theme-warning));font-size:0.6rem">⚠ Belum diisi</span>
+            </span>
+            <span class="qc-val" style="white-space:pre-wrap">{{ detailItem.keterangan_ok || '—' }}</span>
           </div>
           <div class="qc-info-cell qc-info-cell--full">
             <span class="qc-lbl">Catatan</span>
@@ -447,4 +536,62 @@ onMounted(load)
   .qc-action-bar { flex-direction: column; }
   .qc-action-btn { width: 100%; }
 }
+
+/* ── Alert Bedah banner ── */
+.bedah-alert-card {
+  border: 1.5px solid rgba(var(--v-theme-error), 0.3);
+  overflow: hidden;
+}
+.bedah-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  cursor: pointer;
+  user-select: none;
+}
+.bedah-alert-icon {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.2);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.bedah-alert-title {
+  font-size: 0.82rem; font-weight: 700; color: #fff;
+}
+.bedah-alert-sub {
+  font-size: 0.68rem; color: rgba(255,255,255,0.78);
+}
+.bedah-alert-list { padding: 6px 0; }
+.bedah-alert-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
+}
+.bedah-alert-row:last-child { border-bottom: none; }
+.bedah-alert-row:hover { background: rgba(239,68,68,0.05); }
+
+/* ── Transition alert ── */
+.alert-fade-enter-active { transition: all 0.3s ease; }
+.alert-fade-leave-active { transition: all 0.2s ease; }
+.alert-fade-enter-from, .alert-fade-leave-to { opacity: 0; transform: translateY(-8px); }
+
+/* ── Badge status pasien di detail dialog ── */
+.us-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 9px; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 700;
+}
+.us-badge--bedah    { background: rgba(239,68,68,0.12);  color: rgb(220,38,38); }
+.us-badge--nonbedah { background: rgba(34,197,94,0.12);  color: rgb(22,163,74); }
+.us-badge--closing  { background: rgba(234,179,8,0.15);  color: rgb(161,98,7); }
+
+/* ── Extra pills in detail banner ── */
+.us-pill--bedah    { background: rgba(239,68,68,0.28);   color: #fecaca; }
+.us-pill--nonbedah { background: rgba(34,197,94,0.28);   color: #bbf7d0; }
+.us-pill--closing  { background: rgba(250,204,21,0.28);  color: #fef08a; }
 </style>

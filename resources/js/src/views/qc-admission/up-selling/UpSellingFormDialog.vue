@@ -43,19 +43,36 @@ noRegLoading.value = false
 }, 300)
 })
 
+// ── Auto-cek status bedah & closing saat no_reg dipilih ─────────────────────
+const cekBedahLoading = ref(false)
+
 watch(() => form.value.no_reg, async (val) => {
 if (!val) return
+
+// 1. Isi data pasien dulu (tidak menunggu cek bedah)
 const hit = pasienStore.results.find(p => p.no_reg === val)
 ?? await pasienStore.lookup(val)
 if (hit) {
-form.value.no_mr = hit.no_mr ?? ''
-form.value.nama_pasien = hit.nama_pasien ?? ''
-form.value.ket_bayar = hit.ket_bayar ?? ''
-form.value.nama_ruang = hit.nama_ruang ?? ''
-form.value.nama_bangsal = hit.nama_bangsal ?? ''
-form.value.kelas = hit.nama_kelas ?? ''
-form.value.tgl_daftar = hit.tgl_daftar ?? ''
+form.value.no_mr       = hit.no_mr       ?? ''
+form.value.nama_pasien = hit.nama_pasien  ?? ''
+form.value.ket_bayar   = hit.ket_bayar    ?? ''
+form.value.nama_ruang  = hit.nama_ruang   ?? ''
+form.value.nama_bangsal= hit.nama_bangsal ?? ''
+form.value.kelas       = hit.nama_kelas   ?? ''
+form.value.tgl_daftar  = hit.tgl_daftar   ?? ''
 }
+
+// 2. Cek bedah secara paralel — tidak block tampilan pasien
+cekBedahLoading.value = true
+store.checkPasien(val).then(info => {
+form.value.status_ok = info.status_ok ?? 'NonBedah'
+// Pre-fill keterangan dari JADWAL_OPERASI jika belum diisi user
+if (info.status_ok === 'Bedah' && info.keterangan_jadwal && !form.value.keterangan_ok) {
+  form.value.keterangan_ok = info.keterangan_jadwal
+}
+}).finally(() => {
+cekBedahLoading.value = false
+})
 })
 
 watch(() => props.modelValue, (open) => {
@@ -86,6 +103,8 @@ tgl_daftar: '',
 ket_up_selling: null,
 notes: '',
 nama_petugas: null,
+status_ok: 'NonBedah',
+keterangan_ok: '',
 }
 }
 
@@ -118,6 +137,8 @@ alasan: form.value.ket_up_selling,
 petugas: form.value.nama_petugas,
 note: form.value.notes,
 status: 'Pending',
+status_ok: form.value.status_ok,
+keterangan_ok: form.value.keterangan_ok || null,
 }
 
 const result = props.editItem
@@ -250,6 +271,65 @@ class="mb-3" hide-details="auto"
 <div v-if="!hasPasien" class="empty-pasien">
 <VIcon icon="ri-user-search-line" size="28" class="mb-1 opacity-30" />
 <p class="text-caption text-disabled mb-0">Cari pasien untuk mengisi data otomatis</p>
+</div>
+</div>
+
+<!-- ── SECTION: Status Pasien ────────────────────────────────── -->
+<div class="form-section form-section--bedah">
+<div class="fs-header fs-header--bedah">
+<VIcon icon="ri-surgical-mask-line" size="14" />
+<span>Status Pasien</span>
+<span v-if="cekBedahLoading" class="ms-auto">
+<VProgressCircular indeterminate size="12" width="2" color="warning" />
+</span>
+</div>
+<div class="px-3 py-3 d-flex flex-column gap-3">
+<!-- Status Bedah / NonBedah toggle chips -->
+<div>
+<p class="text-caption text-medium-emphasis mb-2" style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.07em;font-weight:600">
+Status Operasi
+</p>
+<div class="d-flex gap-2">
+<button
+type="button"
+class="status-chip"
+:class="form.status_ok === 'Bedah' ? 'status-chip--bedah active' : 'status-chip--bedah'"
+@click="form.status_ok = 'Bedah'"
+>
+<VIcon icon="ri-surgical-mask-line" size="13" class="me-1" />
+Bedah
+</button>
+<button
+type="button"
+class="status-chip"
+:class="form.status_ok === 'NonBedah' ? 'status-chip--nonbedah active' : 'status-chip--nonbedah'"
+@click="form.status_ok = 'NonBedah'; form.keterangan_ok = ''"
+>
+<VIcon icon="ri-heart-pulse-line" size="13" class="me-1" />
+Non Bedah
+</button>
+</div>
+</div>
+
+<!-- Keterangan Tindakan — hanya muncul jika Bedah -->
+<Transition name="slide-down">
+<div v-if="form.status_ok === 'Bedah'">
+<VTextarea
+v-model="form.keterangan_ok"
+label="Keterangan Tindakan *"
+variant="outlined"
+density="compact"
+rows="2"
+auto-grow
+prepend-inner-icon="ri-stethoscope-line"
+hide-details="auto"
+/>
+<p class="mt-1 mb-0" style="font-size:0.7rem;color:rgba(var(--v-theme-on-surface),0.5)">
+<VIcon icon="ri-information-line" size="12" class="me-1" />
+Keterangan tindakan operasi dari jadwal, bisa diedit sesuai kondisi aktual.
+</p>
+</div>
+</Transition>
 </div>
 </div>
 
@@ -454,4 +534,34 @@ background: rgba(var(--v-theme-surface-variant), 0.25);
 .slide-down-leave-active { transition: all 0.18s ease; }
 .slide-down-enter-from { opacity: 0; transform: translateY(-8px); }
 .slide-down-leave-to { opacity: 0; transform: translateY(-4px); }
+
+/* ── Section Bedah ── */
+.form-section--bedah:focus-within { box-shadow: 0 0 0 3px rgba(var(--v-theme-warning), 0.12); }
+.fs-header--bedah {
+background: rgba(var(--v-theme-warning), 0.07);
+color: rgb(var(--v-theme-warning));
+}
+
+/* ── Status chips ── */
+.status-chip {
+display: inline-flex; align-items: center;
+padding: 6px 14px; border-radius: 20px;
+font-size: 0.75rem; font-weight: 700;
+border: 1.5px solid transparent;
+cursor: pointer; transition: all 0.15s;
+background: rgba(var(--v-theme-on-surface), 0.05);
+color: rgba(var(--v-theme-on-surface), 0.6);
+}
+.status-chip--bedah:hover { border-color: rgb(var(--v-theme-error)); color: rgb(var(--v-theme-error)); }
+.status-chip--bedah.active {
+background: rgba(var(--v-theme-error), 0.12);
+border-color: rgb(var(--v-theme-error));
+color: rgb(var(--v-theme-error));
+}
+.status-chip--nonbedah:hover { border-color: rgb(var(--v-theme-success)); color: rgb(var(--v-theme-success)); }
+.status-chip--nonbedah.active {
+background: rgba(var(--v-theme-success), 0.12);
+border-color: rgb(var(--v-theme-success));
+color: rgb(var(--v-theme-success));
+}
 </style>

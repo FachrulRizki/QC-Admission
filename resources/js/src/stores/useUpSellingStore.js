@@ -8,10 +8,13 @@ export const useUpSellingStore = defineStore('upSelling', {
     error: null,
     pagination: { page: 1, perPage: 10, total: 0 },
     filters: { search: '', dateFrom: null, dateTo: null },
+    alertBedah: [],  
+    alertLoading: false,
   }),
 
   getters: {
     totalRecords: (state) => state.pagination.total,
+    alertBedahCount: (state) => state.alertBedah.length,
   },
 
   actions: {
@@ -28,6 +31,28 @@ export const useUpSellingStore = defineStore('upSelling', {
         this.error = err.response?.data?.message ?? 'Gagal memuat data Up Selling'
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchAlertBedah() {
+      this.alertLoading = true
+      try {
+        const res = await axios.get('/api/up-selling/alert-bedah')
+        this.alertBedah = res.data.data ?? []
+      } catch {
+        this.alertBedah = []
+      } finally {
+        this.alertLoading = false
+      }
+    },
+
+    /** Cek status bedah dari RSUS saat no_reg dipilih di form */
+    async checkPasien(noReg) {
+      try {
+        const res = await axios.get('/api/up-selling/check-pasien', { params: { no_reg: noReg } })
+        return res.data
+      } catch {
+        return { status_ok: 'NonBedah', keterangan_jadwal: null }
       }
     },
 

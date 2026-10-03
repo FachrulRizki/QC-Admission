@@ -24,9 +24,11 @@ class UpSelling extends Model
         'kelas',
         'rekomendasi_kelas',
         'kelas_diambil',
-        'alasan',          // Ket_Up_Selling: Naik Kelas / Perubahan Jaminan
+        'alasan',        
         'petugas',
         'status',
-        'note',            // notes — keterangan bebas
+        'note',            
+        'status_ok',       
+        'keterangan_ok',   
     ];
 }

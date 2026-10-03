@@ -23,6 +23,46 @@ class UpSellingController extends Controller
         return response()->json($data);
     }
 
+    /**
+     * Cek status bedah & closing pasien dari RSUS
+     */
+    public function checkPasien(Request $request): JsonResponse
+    {
+        $noReg = trim($request->query('no_reg', ''));
+        if (! $noReg) {
+            return response()->json(['error' => 'no_reg wajib diisi.'], 422);
+        }
+
+        try {
+            $bedah = $this->service->cekStatusBedah($noReg);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('checkPasien: RSUS error', ['error' => $e->getMessage()]);
+            $bedah = ['status_ok' => 'NonBedah', 'keterangan_jadwal' => null];
+        }
+
+        return response()->json([
+            'status_ok'         => $bedah['status_ok'],
+            'keterangan_jadwal' => $bedah['keterangan_jadwal'],
+        ]);
+    }
+
+    /**
+     * Daftar pasien Bedah yang sudah Closing tapi keterangan_ok masih kosong
+     */
+    public function alertBedah(): JsonResponse
+    {
+        try {
+            $data = $this->service->alertBedahBelumKeterangan();
+            return response()->json(['data' => $data, 'total' => count($data)]);
+        } catch (\Exception $e) {
+            // Kolom belum ada di DB — return kosong agar tidak ganggu UI
+            \Illuminate\Support\Facades\Log::warning('alertBedah: kolom belum ada atau error DB', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['data' => [], 'total' => 0]);
+        }
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -42,6 +82,8 @@ class UpSellingController extends Controller
             'petugas'            => 'required|string|max:100',
             'status'             => 'nullable|in:Berhasil,Tidak Berhasil,Pending',
             'note'               => 'nullable|string|max:1000',
+            'status_ok'          => 'nullable|in:Bedah,NonBedah',
+            'keterangan_ok'      => 'nullable|string',
         ]);
 
         $record = $this->service->create($validated);
@@ -66,6 +108,8 @@ class UpSellingController extends Controller
             'petugas'           => 'sometimes|string|max:100',
             'status'            => 'nullable|in:Berhasil,Tidak Berhasil,Pending',
             'note'              => 'nullable|string|max:255',
+            'status_ok'         => 'nullable|in:Bedah,NonBedah',
+            'keterangan_ok'     => 'nullable|string',
         ]);
 
         $record = $this->service->update($id, $validated);

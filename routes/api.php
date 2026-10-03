@@ -90,8 +90,10 @@ Route::middleware(['keycloak.auth'])->group(function () {
 
     // Butuh permission up-selling:view 
     Route::middleware(['keycloak.role:up-selling:view'])->group(function () {
-        Route::get('up-selling',      [UpSellingController::class, 'index']);
-        Route::get('up-selling/{id}', [UpSellingController::class, 'show']);
+        Route::get('up-selling/alert-bedah',  [UpSellingController::class, 'alertBedah']);
+        Route::get('up-selling/check-pasien', [UpSellingController::class, 'checkPasien']);
+        Route::get('up-selling',              [UpSellingController::class, 'index']);
+        Route::get('up-selling/{id}',         [UpSellingController::class, 'show']);
     });
 
     // Butuh permission up-selling:write 
