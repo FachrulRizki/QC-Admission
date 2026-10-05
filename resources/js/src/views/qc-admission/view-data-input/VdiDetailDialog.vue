@@ -10,16 +10,59 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 function close() { emit('update:modelValue', false) }
 
-// Reset inner tab saat dialog dibuka
-const innerTab = ref('riwayat')
-watch(() => props.modelValue, (v) => { if (v) innerTab.value = 'riwayat' })
+// ── Inner tab untuk history-pasien & edukasi mode ────────────────────────────
+const innerTab = ref('semua')
+watch(() => props.modelValue, (v) => {
+  if (v) innerTab.value = props.type === 'history-pasien' ? 'semua' : 'riwayat'
+})
 
-// Gabungkan semua riwayat edukasi (awal + lanjutan) menjadi satu timeline terurut
+// ── Helper tanggal untuk sort ─────────────────────────────────────────────────
+function parseTgl(r) {
+  return r.tanggal || r.tgl_daftar || r.created_at || ''
+}
+
+// ── History Pasien: semua events terurut waktu terbaru ────────────────────────
+const allEvents = computed(() => {
+  if (!props.item?._events) return []
+  return [...props.item._events].sort((a, b) => parseTgl(b).localeCompare(parseTgl(a)))
+})
+
+const evEdukasiAwal = computed(() =>
+  allEvents.value.filter(e => e._module === 'edukasi-awal')
+)
+const evEdukasiLanjutan = computed(() =>
+  allEvents.value.filter(e => e._module === 'edukasi-lanjutan' || e._module === 'sudah-dapat-bed')
+)
+const evBatalRanap = computed(() =>
+  allEvents.value.filter(e => e._module === 'batal-ranap')
+)
+const evUpSelling = computed(() =>
+  allEvents.value.filter(e => e._module === 'up-selling')
+)
+
+// Tab counts untuk badge
+const tabCounts = computed(() => ({
+  semua:             allEvents.value.length,
+  'edukasi-awal':    evEdukasiAwal.value.length,
+  'edukasi-lanjutan': evEdukasiLanjutan.value.length,
+  'batal-ranap':     evBatalRanap.value.length,
+  'up-selling':      evUpSelling.value.length,
+}))
+
+// Data yang tampil sesuai inner tab
+const activeEvents = computed(() => ({
+  semua:              allEvents.value,
+  'edukasi-awal':     evEdukasiAwal.value,
+  'edukasi-lanjutan': evEdukasiLanjutan.value,
+  'batal-ranap':      evBatalRanap.value,
+  'up-selling':       evUpSelling.value,
+})[innerTab.value] ?? allEvents.value)
+
+// ── Edukasi mode (tipe lama, masih dipakai dari tab summary/alasan) ───────────
 const allEdukasiTimeline = computed(() => {
   if (!props.item) return []
   const awal = (props.item.qc_records || []).map(r => ({ ...r, _type: 'awal' }))
   const lanjutan = (props.item.edukasi_records || []).map(r => ({ ...r, _type: 'lanjutan' }))
-  // Gabung dan urutkan berdasarkan tanggal (terbaru dulu)
   return [...awal, ...lanjutan].sort((a, b) => {
     const da = a.tanggal || a.created_at || ''
     const db = b.tanggal || b.created_at || ''
@@ -29,16 +72,29 @@ const allEdukasiTimeline = computed(() => {
 
 // ── Metadata per type ────────────────────────────────────────────────────────
 const META = {
-  'summary':          { label: 'Summary Pasien',   icon: 'ri-bar-chart-box-line',   grad: ['#6366f1','#818cf8'] },
-  'alasan':           { label: 'Alasan Kunjungan', icon: 'ri-question-answer-line', grad: ['#0369A1','#0EA5E9'] },
-  'edukasi-pasien':   { label: 'Edukasi Pasien',   icon: 'ri-user-heart-line',      grad: ['#7c3aed','#a78bfa'] },
-  'sudah-dapat-bed':  { label: 'Sudah Dapat Bed',  icon: 'ri-home-heart-line',      grad: ['#059669','#34d399'] },
-  'quality-control':  { label: 'Edukasi Awal',     icon: 'ri-shield-check-line',    grad: ['#7c3aed','#a78bfa'] },
-  'edukasi-lanjutan': { label: 'Edukasi Lanjutan', icon: 'ri-book-open-line',       grad: ['#059669','#34d399'] },
-  'batal-ranap':      { label: 'Batal Ranap',       icon: 'ri-close-circle-line',    grad: ['#dc2626','#f87171'] },
-  'up-selling':       { label: 'Up Selling',        icon: 'ri-arrow-up-circle-line', grad: ['#d97706','#fbbf24'] },
+  'summary':          { label: 'Summary Pasien',    icon: 'ri-bar-chart-box-line',   grad: ['#6366f1','#818cf8'] },
+  'alasan':           { label: 'Alasan Kunjungan',  icon: 'ri-question-answer-line', grad: ['#0369A1','#0EA5E9'] },
+  'history-pasien':   { label: 'History Pasien',    icon: 'ri-time-line',            grad: ['#7c3aed','#a78bfa'] },
+  'edukasi-pasien':   { label: 'Edukasi Pasien',    icon: 'ri-user-heart-line',      grad: ['#7c3aed','#a78bfa'] },
+  'sudah-dapat-bed':  { label: 'Sudah Dapat Bed',   icon: 'ri-home-heart-line',      grad: ['#059669','#34d399'] },
+  'quality-control':  { label: 'Edukasi Awal',      icon: 'ri-shield-check-line',    grad: ['#7c3aed','#a78bfa'] },
+  'edukasi-awal':     { label: 'Edukasi Awal',      icon: 'ri-shield-check-line',    grad: ['#7c3aed','#a78bfa'] },
+  'edukasi-lanjutan': { label: 'Edukasi Lanjutan',  icon: 'ri-book-open-line',       grad: ['#059669','#34d399'] },
+  'batal-ranap':      { label: 'Batal Ranap',        icon: 'ri-close-circle-line',    grad: ['#dc2626','#f87171'] },
+  'up-selling':       { label: 'Up Selling',         icon: 'ri-arrow-up-circle-line', grad: ['#d97706','#fbbf24'] },
 }
 const meta = computed(() => META[props.type] ?? META['summary'])
+
+const MODULE_META = {
+  'edukasi-awal':     { color: 'primary',  icon: 'ri-shield-check-line',    border: '#6366f1', label: 'Edukasi Awal' },
+  'edukasi-lanjutan': { color: 'warning',  icon: 'ri-book-open-line',       border: '#f59e0b', label: 'Edukasi Lanjutan' },
+  'sudah-dapat-bed':  { color: 'success',  icon: 'ri-home-heart-line',      border: '#22c55e', label: 'Sudah Dapat Bed' },
+  'batal-ranap':      { color: 'error',    icon: 'ri-close-circle-line',    border: '#ef4444', label: 'Batal Ranap' },
+  'up-selling':       { color: 'orange',   icon: 'ri-arrow-up-circle-line', border: '#f97316', label: 'Up Selling' },
+}
+function modMeta(mod) {
+  return MODULE_META[mod] ?? { color: 'secondary', icon: 'ri-file-list-line', border: '#94a3b8', label: mod }
+}
 
 // ── Computed total sesi untuk edukasi-pasien / sudah-dapat-bed ───────────────
 const totalSesi = computed(() => {
@@ -119,8 +175,175 @@ function fmtDate(d) {
       <!-- ── Scrollable body ─────────────────────────────────────────────── -->
       <div class="vdd-body">
 
-        <!-- ══════════════ EDUKASI PASIEN (gabungan awal+lanjutan) ══════════ -->
-        <template v-if="isEdukasiMode">
+        <!-- ══════════════ HISTORY PASIEN — inner tabs per modul ════════════ -->
+        <template v-if="type === 'history-pasien'">
+          <!-- Info pasien singkat -->
+          <div class="vdd-patient-meta mb-3">
+            <div class="vdd-pm-item">
+              <span class="vdd-lbl">No. MR</span>
+              <span class="vdd-val mono">{{ item.no_mr || item.no_reg || '—' }}</span>
+            </div>
+            <div class="vdd-pm-item">
+              <span class="vdd-lbl">Jaminan</span>
+              <span class="vdd-val">{{ item.jaminan || '—' }}</span>
+            </div>
+            <div class="vdd-pm-item">
+              <span class="vdd-lbl">Total Aktivitas</span>
+              <span class="vdd-val font-weight-bold">{{ allEvents.length }}×</span>
+            </div>
+          </div>
+
+          <!-- Inner tab bar — DIPINDAH KE SINI (dalam body tapi overflow terpisah) -->
+          <div class="vdd-tab-bar-wrap">
+            <div class="vdd-tab-bar">
+            <button
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'semua' }"
+              @click="innerTab = 'semua'"
+            >
+              <VIcon icon="ri-list-check" size="13" class="me-1" />Semua
+              <span v-if="tabCounts.semua" class="vdd-tab-badge">{{ tabCounts.semua }}</span>
+            </button>
+            <button
+              v-if="tabCounts['edukasi-awal']"
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'edukasi-awal' }"
+              @click="innerTab = 'edukasi-awal'"
+            >
+              <VIcon icon="ri-shield-check-line" size="13" class="me-1" />Edukasi Awal
+              <span class="vdd-tab-badge vdd-tab-badge--primary">{{ tabCounts['edukasi-awal'] }}</span>
+            </button>
+            <button
+              v-if="tabCounts['edukasi-lanjutan']"
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'edukasi-lanjutan' }"
+              @click="innerTab = 'edukasi-lanjutan'"
+            >
+              <VIcon icon="ri-book-open-line" size="13" class="me-1" />Edukasi Lanjutan
+              <span class="vdd-tab-badge vdd-tab-badge--warning">{{ tabCounts['edukasi-lanjutan'] }}</span>
+            </button>
+            <button
+              v-if="tabCounts['batal-ranap']"
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'batal-ranap' }"
+              @click="innerTab = 'batal-ranap'"
+            >
+              <VIcon icon="ri-close-circle-line" size="13" class="me-1" />Batal Ranap
+              <span class="vdd-tab-badge vdd-tab-badge--error">{{ tabCounts['batal-ranap'] }}</span>
+            </button>
+            <button
+              v-if="tabCounts['up-selling']"
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'up-selling' }"
+              @click="innerTab = 'up-selling'"
+            >
+              <VIcon icon="ri-arrow-up-circle-line" size="13" class="me-1" />Up Selling
+              <span class="vdd-tab-badge vdd-tab-badge--orange">{{ tabCounts['up-selling'] }}</span>
+            </button>
+          </div>
+          </div><!-- /vdd-tab-bar-wrap -->
+
+          <!-- Timeline events -->
+          <div v-if="!activeEvents.length" class="vdd-empty">
+            <VIcon icon="ri-inbox-line" size="36" class="mb-2 opacity-30" />
+            <p class="text-caption">Belum ada aktivitas</p>
+          </div>
+          <div v-else class="vdd-timeline">
+            <div
+              v-for="(ev, i) in activeEvents"
+              :key="(ev.id ?? i) + ev._module"
+              class="vdd-tl-item"
+            >
+              <!-- Dot + line -->
+              <div class="vdd-tl-side">
+                <div
+                  class="vdd-tl-dot"
+                  :style="`background:${modMeta(ev._module).border}`"
+                >
+                  <!-- Nomor urut: 1 = terlama (paling bawah), terbesar = terbaru (paling atas) -->
+                  <span class="vdd-tl-num">{{ activeEvents.length - i }}</span>
+                </div>
+                <div v-if="i < activeEvents.length - 1" class="vdd-tl-line" />
+              </div>
+
+              <!-- Content card -->
+              <div class="vdd-tl-card" :style="`border-left: 3px solid ${modMeta(ev._module).border}`">
+                <!-- Header: modul badge + tanggal -->
+                <div class="vdd-tl-head">
+                  <VChip :color="modMeta(ev._module).color" size="x-small" variant="tonal" class="font-weight-bold">
+                    <VIcon :icon="modMeta(ev._module).icon" size="10" class="me-1" />
+                    {{ modMeta(ev._module).label }}
+                  </VChip>
+
+                  <!-- Status chips per modul -->
+                  <template v-if="ev._module === 'edukasi-awal'">
+                    <VChip v-if="ev.status" :color="statusColor(ev.status)" size="x-small" variant="tonal">{{ ev.status }}</VChip>
+                  </template>
+                  <template v-else-if="ev._module === 'edukasi-lanjutan'">
+                    <VChip v-if="ev.status" :color="statusColor(ev.status)" size="x-small" variant="tonal">{{ ev.status }}</VChip>
+                    <VChip v-if="ev.keterangan" :color="ketColor(ev.keterangan)" size="x-small" variant="tonal">{{ ev.keterangan }}</VChip>
+                  </template>
+                  <template v-else-if="ev._module === 'sudah-dapat-bed'">
+                    <VChip :color="ketColor(ev.keterangan)" size="x-small" variant="tonal">{{ ev.keterangan || 'Dapat Bed' }}</VChip>
+                    <VChip v-if="ev.status_ranap" color="purple" size="x-small" variant="tonal">{{ ev.status_ranap }}</VChip>
+                  </template>
+                  <template v-else-if="ev._module === 'batal-ranap'">
+                    <VChip v-if="ev.status_ok" :color="ev.status_ok === 'Bedah' ? 'success' : 'info'" size="x-small" variant="tonal">{{ ev.status_ok }}</VChip>
+                    <VChip v-if="ev.status_closing" :color="closingColor(ev.status_closing)" size="x-small" variant="tonal">{{ ev.status_closing }}</VChip>
+                    <VChip v-else color="secondary" size="x-small" variant="outlined">Belum Closing</VChip>
+                  </template>
+                  <template v-else-if="ev._module === 'up-selling'">
+                    <VChip v-if="ev.alasan" :color="ev.alasan === 'Naik Kelas' ? 'success' : 'info'" size="x-small" variant="tonal">{{ ev.alasan }}</VChip>
+                  </template>
+
+                  <span class="vdd-tl-date">{{ ev.tanggal || ev.tgl_daftar || '—' }}</span>
+                </div>
+
+                <!-- Fields -->
+                <div class="vdd-tl-fields">
+                  <div class="vdd-tl-field">
+                    <span class="vdd-lbl">Petugas</span>
+                    <span class="vdd-val">{{ ev.petugas || '—' }}</span>
+                  </div>
+                  <div v-if="ev._module === 'edukasi-awal'" class="vdd-tl-field">
+                    <span class="vdd-lbl">Durasi Tunggu</span>
+                    <span class="vdd-val">{{ ev.durasi_tunggu || '—' }}</span>
+                  </div>
+                  <div v-if="ev._module === 'edukasi-awal' && ev.ketersediaan_kamar" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Ketersediaan Kamar</span>
+                    <span class="vdd-val">{{ ev.ketersediaan_kamar }}</span>
+                  </div>
+                  <div v-if="(ev._module === 'edukasi-lanjutan' || ev._module === 'sudah-dapat-bed') && ev.edukasi_kamar" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Kamar / Ruangan</span>
+                    <span class="vdd-val" style="white-space:pre-wrap">{{ ev.edukasi_kamar }}</span>
+                  </div>
+                  <div v-if="ev._module === 'batal-ranap' && ev.keterangan_batal" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Keterangan Batal</span>
+                    <span class="vdd-val">{{ ev.keterangan_batal }}</span>
+                  </div>
+                  <div v-if="ev._module === 'up-selling' && ev.note" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Notes</span>
+                    <span class="vdd-val" style="white-space:pre-wrap">{{ ev.note }}</span>
+                  </div>
+                  <div v-if="ev.diagnosa" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Diagnosa</span>
+                    <span class="vdd-val">{{ ev.diagnosa }}</span>
+                  </div>
+                  <div v-if="ev.note && ev._module !== 'up-selling'" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Note</span>
+                    <span class="vdd-val" style="white-space:pre-wrap">{{ ev.note }}</span>
+                  </div>
+                  <div v-if="ev.ttd_keluarga_pasien" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">TTD Keluarga</span>
+                    <img :src="ev.ttd_keluarga_pasien" alt="TTD"
+                      style="height:36px;border:1px solid #eee;border-radius:6px;margin-top:4px" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="isEdukasiMode">
           <!-- Inner tabs: hanya 2 tab -->
           <div class="vdd-tab-bar">
             <button
@@ -346,8 +569,8 @@ function fmtDate(d) {
           </div>
         </template>
 
-        <!-- ══════════════ QUALITY CONTROL (EDUKASI AWAL) ═══════════════════ -->
-        <template v-else-if="type === 'quality-control'">
+        <!-- ══════════════ QUALITY CONTROL / EDUKASI AWAL ══════════════════ -->
+        <template v-else-if="type === 'quality-control' || type === 'edukasi-awal'">
           <div class="vdd-status-row mb-3">
             <VChip v-if="item.status" :color="statusColor(item.status)" variant="tonal" size="small">
               <VIcon icon="ri-shield-check-line" size="12" class="me-1" />{{ item.status }}
@@ -568,25 +791,35 @@ function fmtDate(d) {
 .vdd-sesi-pill span { font-size: 0.82rem; font-weight: 800; }
 .vdd-sesi-pill small { font-size: 0.58rem; opacity: 0.82; font-weight: 500; }
 
-/* ── Custom 2-tab bar ── */
-.vdd-tab-bar {
-  display: flex;
+/* ── Custom tab bar — scrollable, no horizontal overflow ── */
+.vdd-tab-bar-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   border-bottom: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  margin: 0 -16px 16px;
-  padding: 0 16px;
+  margin: 0 0 16px;
+}
+.vdd-tab-bar-wrap::-webkit-scrollbar { display: none; }
+
+.vdd-tab-bar {
+  display: inline-flex;
+  min-width: 100%;
+  padding: 0 0 0 0;
   gap: 0;
 }
 
 .vdd-tab-btn {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 9px 14px;
-  font-size: 0.8rem; font-weight: 600;
+  padding: 9px 12px;
+  font-size: 0.78rem; font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.5);
   background: none; border: none; cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .vdd-tab-btn:hover {
@@ -632,6 +865,14 @@ function fmtDate(d) {
 }
 .vdd-tl-dot--awal     { background: rgb(var(--v-theme-primary)); }
 .vdd-tl-dot--lanjutan { background: rgb(var(--v-theme-warning)); }
+
+.vdd-tl-num {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  user-select: none;
+}
 
 .vdd-tl-line {
   width: 2px; flex: 1;
@@ -765,4 +1006,23 @@ function fmtDate(d) {
   font-size: 0.65rem; color: rgba(var(--v-theme-on-surface), 0.45);
   margin-top: 1px;
 }
+
+/* ── Patient meta strip (history-pasien) ── */
+.vdd-patient-meta {
+  display: flex; gap: 0;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px; overflow: hidden;
+}
+.vdd-pm-item {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 8px 12px;
+  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.vdd-pm-item:last-child { border-right: none; }
+
+/* ── Tab badge variants (history-pasien) ── */
+.vdd-tab-badge--primary { background: rgba(var(--v-theme-primary), 0.12); color: rgb(var(--v-theme-primary)); }
+.vdd-tab-badge--warning { background: rgba(var(--v-theme-warning), 0.12); color: rgb(var(--v-theme-warning)); }
+.vdd-tab-badge--error   { background: rgba(var(--v-theme-error),   0.12); color: rgb(var(--v-theme-error)); }
+.vdd-tab-badge--orange  { background: rgba(230,100,20, 0.12); color: #e66414; }
 </style>

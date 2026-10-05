@@ -1,0 +1,276 @@
+[36mvite v5.4.19 [32mbuilding for development...[36m[39m
+transforming...
+node_modules/@vueuse/core/dist/index.js (3362:0): A comment
+
+"/* #__PURE__ */"
+
+in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/@vueuse/core/dist/index.js (5780:22): A comment
+
+"/* #__PURE__ */"
+
+in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+[32m✓[39m 1026 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mpublic/build/[22m[32mmanifest.json                                   [39m[1m[2m   14.43 kB[22m[1m[22m[2m │ gzip:   1.86 kB[22m
+[2mpublic/build/[22m[35massets/SignaturePad-CzwYiRi3.css                [39m[1m[2m    0.76 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[35massets/usePagination-BaaXmCpw.css               [39m[1m[2m    1.09 kB[22m[1m[22m[2m │ gzip:   0.47 kB[22m
+[2mpublic/build/[22m[35massets/SummaryCards-Bw0SO8ml.css                [39m[1m[2m    1.18 kB[22m[1m[22m[2m │ gzip:   0.46 kB[22m
+[2mpublic/build/[22m[35massets/akses-ditolak-D5ZOy9Ub.css               [39m[1m[2m    1.77 kB[22m[1m[22m[2m │ gzip:   0.67 kB[22m
+[2mpublic/build/[22m[35massets/VDialog-BRzUh5G-.css                     [39m[1m[2m    2.61 kB[22m[1m[22m[2m │ gzip:   0.61 kB[22m
+[2mpublic/build/[22m[35massets/VSnackbar-Dm9wakXF.css                   [39m[1m[2m    3.10 kB[22m[1m[22m[2m │ gzip:   1.01 kB[22m
+[2mpublic/build/[22m[35massets/VTextarea-CThA0dHF.css                   [39m[1m[2m    4.16 kB[22m[1m[22m[2m │ gzip:   1.10 kB[22m
+[2mpublic/build/[22m[35massets/login-C8rJA_qY.css                       [39m[1m[2m    4.17 kB[22m[1m[22m[2m │ gzip:   1.19 kB[22m
+[2mpublic/build/[22m[35massets/VAlert-qMWtJ2O0.css                      [39m[1m[2m    4.58 kB[22m[1m[22m[2m │ gzip:   1.24 kB[22m
+[2mpublic/build/[22m[35massets/VSelect-BV28dInO.css                     [39m[1m[2m    4.80 kB[22m[1m[22m[2m │ gzip:   1.27 kB[22m
+[2mpublic/build/[22m[35massets/PageHero-D96lEAAy.css                    [39m[1m[2m    5.27 kB[22m[1m[22m[2m │ gzip:   1.42 kB[22m
+[2mpublic/build/[22m[35massets/quality-control-B1QBW1y0.css             [39m[1m[2m    8.70 kB[22m[1m[22m[2m │ gzip:   2.01 kB[22m
+[2mpublic/build/[22m[35massets/VRow-MyJyfxIo.css                        [39m[1m[2m    9.13 kB[22m[1m[22m[2m │ gzip:   1.20 kB[22m
+[2mpublic/build/[22m[35massets/BatalRanapDetailDialog-JLj01XL-.css      [39m[1m[2m    9.91 kB[22m[1m[22m[2m │ gzip:   1.92 kB[22m
+[2mpublic/build/[22m[35massets/edukasi-lanjutan-C78556wM.css            [39m[1m[2m   10.42 kB[22m[1m[22m[2m │ gzip:   2.09 kB[22m
+[2mpublic/build/[22m[35massets/up-selling-BHWJSsWi.css                  [39m[1m[2m   11.04 kB[22m[1m[22m[2m │ gzip:   2.35 kB[22m
+[2mpublic/build/[22m[35massets/batal-ranap-DM-vd5Vc.css                 [39m[1m[2m   12.14 kB[22m[1m[22m[2m │ gzip:   2.47 kB[22m
+[2mpublic/build/[22m[35massets/VDataTable-CaIoQ8lr.css                  [39m[1m[2m   12.73 kB[22m[1m[22m[2m │ gzip:   2.01 kB[22m
+[2mpublic/build/[22m[35massets/view-data-input-C1lVnJ1a.css             [39m[1m[2m   20.23 kB[22m[1m[22m[2m │ gzip:   3.75 kB[22m
+[2mpublic/build/[22m[35massets/alasan-DnTmR6xv.css                      [39m[1m[2m   23.55 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+[2mpublic/build/[22m[35massets/VTextField-CmEWzoD-.css                  [39m[1m[2m   24.34 kB[22m[1m[22m[2m │ gzip:   3.81 kB[22m
+[2mpublic/build/[22m[35massets/dashboard-CMBXedTW.css                   [39m[1m[2m   28.59 kB[22m[1m[22m[2m │ gzip:   4.42 kB[22m
+[2mpublic/build/[22m[35massets/main-CPPxylue.css                        [39m[1m[2m  381.90 kB[22m[1m[22m[2m │ gzip:  46.18 kB[22m
+[2mpublic/build/[22m[36massets/404-Ccno-g1J.js                          [39m[1m[2m    0.75 kB[22m[1m[22m[2m │ gzip:   0.50 kB[22m
+[2mpublic/build/[22m[36massets/usePasienStore-CUPq0Cz8.js               [39m[1m[2m    0.79 kB[22m[1m[22m[2m │ gzip:   0.47 kB[22m
+[2mpublic/build/[22m[36massets/usePegawaiStore-BzGXVgA5.js              [39m[1m[2m    1.41 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/VDialog-gkB4a0wU.js                      [39m[1m[2m    1.68 kB[22m[1m[22m[2m │ gzip:   0.89 kB[22m
+[2mpublic/build/[22m[36massets/SummaryCards-gptTJZ4Z.js                 [39m[1m[2m    1.85 kB[22m[1m[22m[2m │ gzip:   0.93 kB[22m
+[2mpublic/build/[22m[36massets/usePagination-C2T05PhI.js                [39m[1m[2m    1.92 kB[22m[1m[22m[2m │ gzip:   0.99 kB[22m
+[2mpublic/build/[22m[36massets/PageHero-fqEmeE2V.js                     [39m[1m[2m    2.36 kB[22m[1m[22m[2m │ gzip:   0.90 kB[22m
+[2mpublic/build/[22m[36massets/akses-ditolak-DRgogdjG.js                [39m[1m[2m    2.78 kB[22m[1m[22m[2m │ gzip:   1.29 kB[22m
+[2mpublic/build/[22m[36massets/VRow-BvTEP8VE.js                         [39m[1m[2m    2.83 kB[22m[1m[22m[2m │ gzip:   1.09 kB[22m
+[2mpublic/build/[22m[36massets/VAlert-DhTHtqPC.js                       [39m[1m[2m    3.31 kB[22m[1m[22m[2m │ gzip:   1.49 kB[22m
+[2mpublic/build/[22m[36massets/VSnackbar-Cj_dQtbV.js                    [39m[1m[2m    3.35 kB[22m[1m[22m[2m │ gzip:   1.65 kB[22m
+[2mpublic/build/[22m[36massets/login-DNt9l6It.js                        [39m[1m[2m    5.75 kB[22m[1m[22m[2m │ gzip:   2.37 kB[22m
+[2mpublic/build/[22m[36massets/batal-ranap-view-KMJ2LSUX.js             [39m[1m[2m    6.59 kB[22m[1m[22m[2m │ gzip:   2.47 kB[22m
+[2mpublic/build/[22m[36massets/activity-log-Dgr0ovaK.js                 [39m[1m[2m    7.62 kB[22m[1m[22m[2m │ gzip:   2.69 kB[22m
+[2mpublic/build/[22m[36massets/webfontloader-C3uTKfJo.js                [39m[1m[2m   12.75 kB[22m[1m[22m[2m │ gzip:   5.17 kB[22m
+[2mpublic/build/[22m[36massets/master-data-BSpton3e.js                  [39m[1m[2m   17.49 kB[22m[1m[22m[2m │ gzip:   5.34 kB[22m
+[2mpublic/build/[22m[36massets/SignaturePad-C9ROqHWA.js                 [39m[1m[2m   17.58 kB[22m[1m[22m[2m │ gzip:   5.73 kB[22m
+[2mpublic/build/[22m[36massets/VTextField-B-fv0eNv.js                   [39m[1m[2m   18.52 kB[22m[1m[22m[2m │ gzip:   6.59 kB[22m
+[2mpublic/build/[22m[36massets/VTextarea-DOKuLCuL.js                    [39m[1m[2m   18.91 kB[22m[1m[22m[2m │ gzip:   7.30 kB[22m
+[2mpublic/build/[22m[36massets/BatalRanapDetailDialog-Dhh-0Ie2.js       [39m[1m[2m   23.87 kB[22m[1m[22m[2m │ gzip:   6.77 kB[22m
+[2mpublic/build/[22m[36massets/batal-ranap-BEBCPSdu.js                  [39m[1m[2m   25.32 kB[22m[1m[22m[2m │ gzip:   7.46 kB[22m
+[2mpublic/build/[22m[36massets/VSelect-C5K713f-.js                      [39m[1m[2m   26.35 kB[22m[1m[22m[2m │ gzip:   9.66 kB[22m
+[2mpublic/build/[22m[36massets/alasan-B_0ikXZI.js                       [39m[1m[2m   26.78 kB[22m[1m[22m[2m │ gzip:   8.25 kB[22m
+[2mpublic/build/[22m[36massets/quality-control-DpXKIqd0.js              [39m[1m[2m   28.99 kB[22m[1m[22m[2m │ gzip:   8.73 kB[22m
+[2mpublic/build/[22m[36massets/up-selling-ByRVm_Vo.js                   [39m[1m[2m   29.09 kB[22m[1m[22m[2m │ gzip:   8.41 kB[22m
+[2mpublic/build/[22m[36massets/dashboard-CskVg4na.js                    [39m[1m[2m   29.27 kB[22m[1m[22m[2m │ gzip:   8.87 kB[22m
+[2mpublic/build/[22m[36massets/edukasi-lanjutan-B9Xdi6Th.js             [39m[1m[2m   36.64 kB[22m[1m[22m[2m │ gzip:  10.43 kB[22m
+[2mpublic/build/[22m[36massets/VDataTable-CNfRNzJe.js                   [39m[1m[2m   39.98 kB[22m[1m[22m[2m │ gzip:  12.77 kB[22m
+[2mpublic/build/[22m[36massets/view-data-input-CqY25p20.js              [39m[1m[2m   63.46 kB[22m[1m[22m[2m │ gzip:  17.12 kB[22m
+[2mpublic/build/[22m[36massets/apexcharts.ssr.esm-fe46cd2d-9CakV-nF.js  [39m[1m[33m  518.27 kB[39m[22m[2m │ gzip: 140.34 kB[22m
+[2mpublic/build/[22m[36massets/main-B-BTICy1.js                         [39m[1m[33m1,131.60 kB[39m[22m[2m │ gzip: 346.59 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 21.96s[39m

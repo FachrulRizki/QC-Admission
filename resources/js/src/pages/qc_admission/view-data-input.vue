@@ -24,25 +24,16 @@ const todayFormatted = computed(() =>
 
 const dateFrom = ref(todayStr())
 const dateTo = ref(todayStr())
-const filterClosing = ref('')
 const filterAlasan = ref('')
-const activeTab = ref('batal-ranap')
-
-const CLOSING_OPTIONS = [
-  { title: 'Semua Status', value: '' },
-  { title: '👍 Siap Closing', value: 'Siap Closing' },
-  { title: '⏳ Belum Siap', value: 'Belum Siap Closing' },
-]
+const activeTab = ref('summary')
 
 const isKasir = computed(() => !auth.hasPermission('quality-control:view'))
 
+// ── Hanya 3 tab sekarang ──────────────────────────────────────────────────────
 const allTabs = [
-  { key: 'summary',          label: 'Summary',           shortLabel: 'Summary', icon: 'ri-bar-chart-box-line',    permission: 'quality-control:view' },
-  { key: 'alasan',           label: 'Alasan',            shortLabel: 'Alasan',  icon: 'ri-question-answer-line',  permission: 'alasan:view' },
-  { key: 'edukasi-pasien',   label: 'Edukasi Pasien',    shortLabel: 'Edukasi', icon: 'ri-user-heart-line',       permission: 'quality-control:view' },
-  { key: 'sudah-dapat-bed',  label: 'Sudah Dapat Bed',   shortLabel: 'Bed',     icon: 'ri-home-heart-line',       permission: 'edukasi-lanjutan:view' },
-  { key: 'batal-ranap',      label: 'Batal Ranap',       shortLabel: 'Batal',   icon: 'ri-close-circle-line',     permission: 'batal-ranap:view' },
-  { key: 'up-selling',       label: 'Up Selling',        shortLabel: 'Up Sell', icon: 'ri-arrow-up-circle-line',  permission: 'up-selling:view' },
+  { key: 'summary',         label: 'Summary',         shortLabel: 'Summary', icon: 'ri-bar-chart-box-line',   permission: 'quality-control:view' },
+  { key: 'alasan',          label: 'Alasan',           shortLabel: 'Alasan',  icon: 'ri-question-answer-line', permission: 'alasan:view' },
+  { key: 'history-pasien',  label: 'History Pasien',   shortLabel: 'History', icon: 'ri-time-line',            permission: 'quality-control:view' },
 ]
 
 const tabs = computed(() => allTabs.filter(t => auth.hasPermission(t.permission)))
@@ -72,7 +63,6 @@ async function loadAll() {
     if (isKasir.value) {
       batalData.value = await safeGet('/api/batal-ranap', { per_page: 300, ...dateParams })
     } else {
-      // Bangun promises — edukasi hanya 1x call via /split
       const promises = [
         safeGet('/api/quality-control', { per_page: 300, ...dateParams }),
         safeGet('/api/batal-ranap',     { per_page: 300, ...dateParams }),
@@ -85,116 +75,17 @@ async function loadAll() {
       }
 
       const [qc, batal, eduSplit, up, alasan] = await Promise.all(promises)
-      qcData.value             = qc
-      batalData.value          = batal
-      edukasiData.value        = eduSplit.active      ?? []
+      qcData.value              = qc
+      batalData.value           = batal
+      edukasiData.value         = eduSplit.active      ?? []
       edukasiTransferData.value = eduSplit.transferred ?? []
-      upData.value             = up
-      alasanData.value         = alasan ?? []
+      upData.value              = up
+      alasanData.value          = alasan ?? []
     }
   } finally { loading.value = false }
 }
 
-// ── Edukasi Pasien: gabungkan QC + Edukasi Lanjutan by no_mr ──────────────────
-const edukasiPasienData = computed(() => {
-  const map = {}
-
-  // Tambahkan data dari QC (edukasi awal)
-  for (const r of qcData.value) {
-    const key = r.no_mr || r.no_reg || r.id
-    if (!map[key]) {
-      map[key] = {
-        no_mr: r.no_mr,
-        no_reg: r.no_reg,
-        nama_pasien: r.nama_pasien,
-        jaminan: r.jaminan,
-        tanggal: r.tanggal,
-        sesi_edukasi_awal: 0,
-        sesi_edukasi_lanjutan: 0,
-        qc_records: [],
-        edukasi_records: [],
-        petugas: r.petugas,
-      }
-    }
-    map[key].sesi_edukasi_awal++
-    map[key].qc_records.push(r)
-    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
-  }
-
-  // Tambahkan data dari Edukasi Lanjutan (active = belum dapat bed)
-  for (const r of edukasiData.value) {
-    const key = r.no_mr || r.no_reg || r.id
-    if (!map[key]) {
-      map[key] = {
-        no_mr: r.no_mr,
-        no_reg: r.no_reg,
-        nama_pasien: r.nama_pasien,
-        jaminan: r.jaminan,
-        tanggal: r.tanggal,
-        sesi_edukasi_awal: 0,
-        sesi_edukasi_lanjutan: 0,
-        qc_records: [],
-        edukasi_records: [],
-        petugas: r.petugas,
-      }
-    }
-    map[key].sesi_edukasi_lanjutan++
-    map[key].edukasi_records.push(r)
-    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
-  }
-
-  return Object.values(map)
-})
-
-// ── Sudah Dapat Bed: pasien dari edukasi transferred ─────────────────────────
-const sudahDapatBedData = computed(() => {
-  const map = {}
-  for (const r of edukasiTransferData.value) {
-    const key = r.no_mr || r.no_reg || r.id
-    if (!map[key]) {
-      map[key] = {
-        no_mr: r.no_mr,
-        no_reg: r.no_reg,
-        nama_pasien: r.nama_pasien,
-        jaminan: r.jaminan,
-        tanggal: r.tanggal,
-        keterangan: r.keterangan,
-        edukasi_kamar: r.edukasi_kamar,
-        sesi_edukasi_awal: 0,
-        sesi_edukasi_lanjutan: 0,
-        qc_records: [],
-        edukasi_records: [],
-        petugas: r.petugas,
-      }
-    }
-    map[key].sesi_edukasi_lanjutan++
-    map[key].edukasi_records.push(r)
-    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
-  }
-
-  // Enrich dengan QC records yang matching
-  for (const r of qcData.value) {
-    const key = r.no_mr || r.no_reg
-    if (map[key]) {
-      map[key].sesi_edukasi_awal++
-      map[key].qc_records.push(r)
-    }
-  }
-
-  return Object.values(map)
-})
-
-const grandStats = computed(() => ({
-  qc: qcData.value.length,
-  batal: batalData.value.length,
-  edukasi: edukasiData.value.length,
-  edukasiTransfer: edukasiTransferData.value.length,
-  edukasiPasien: edukasiPasienData.value.length,
-  sudahDapatBed: sudahDapatBedData.value.length,
-  up: upData.value.length,
-  alasan: alasanData.value.length,
-}))
-
+// ── Summary per pasien (gabungan semua modul) ─────────────────────────────────
 const summaryData = computed(() => {
   const map = {}
   const merge = (list, countKey, tglKey = 'tanggal') => list.forEach(r => {
@@ -211,20 +102,84 @@ const summaryData = computed(() => {
   return Object.values(map)
 })
 
-// ── Summary alasan: hitung per kategori alasan memilih RS ──────────────────
-const alasanSummary = computed(() => {
+// ── History Pasien: gabungkan SEMUA modul per no_mr ───────────────────────────
+// Setiap pasien punya entry + array _events (seluruh aktivitas lintas modul)
+const historyPasienData = computed(() => {
   const map = {}
-  for (const r of alasanData.value) {
-    const key = r.alasan || 'Tidak Diketahui'
-    if (!map[key]) map[key] = { alasan: key, total: 0, bpjs: 0, umum: 0, asuransi: 0 }
-    map[key].total++
-    const jam = (r.jaminan || '').toLowerCase()
-    if (jam.includes('bpjs'))      map[key].bpjs++
-    else if (jam.includes('umum')) map[key].umum++
-    else if (jam.includes('asuransi') || jam.includes('jasa')) map[key].asuransi++
+
+  function ensurePatient(r, tglKey = 'tanggal') {
+    const key = r.no_mr || r.no_reg || r.id
+    if (!map[key]) {
+      map[key] = {
+        no_mr: r.no_mr || r.no_reg,
+        no_reg: r.no_reg,
+        nama_pasien: r.nama_pasien,
+        jaminan: r.jaminan,
+        tanggal: r[tglKey],
+        _events: [],
+      }
+    }
+    return key
   }
-  return Object.values(map).sort((a, b) => b.total - a.total)
+
+  // QC / Edukasi Awal
+  for (const r of qcData.value) {
+    const key = ensurePatient(r)
+    map[key]._events.push({ _module: 'edukasi-awal', _label: 'Edukasi Awal', ...r })
+    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
+  }
+
+  // Edukasi Lanjutan (active = belum dapat bed)
+  for (const r of edukasiData.value) {
+    const key = ensurePatient(r)
+    map[key]._events.push({ _module: 'edukasi-lanjutan', _label: 'Edukasi Lanjutan', ...r })
+    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
+  }
+
+  // Edukasi Lanjutan transferred (sudah dapat bed)
+  for (const r of edukasiTransferData.value) {
+    const key = ensurePatient(r)
+    map[key]._events.push({ _module: 'sudah-dapat-bed', _label: 'Sudah Dapat Bed', ...r })
+    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
+  }
+
+  // Batal Ranap
+  for (const r of batalData.value) {
+    const key = ensurePatient(r, 'tanggal')
+    map[key]._events.push({ _module: 'batal-ranap', _label: 'Batal Ranap', ...r })
+    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
+  }
+
+  // Up Selling
+  for (const r of upData.value) {
+    const key = ensurePatient(r, 'tgl_daftar')
+    map[key]._events.push({ _module: 'up-selling', _label: 'Up Selling', ...r })
+    const tgl = r.tgl_daftar || r.tanggal
+    if (tgl > (map[key].tanggal || '')) map[key].tanggal = tgl
+  }
+
+  // Urutkan events per pasien: terbaru dulu
+  for (const p of Object.values(map)) {
+    p._events.sort((a, b) => {
+      const da = a.tanggal || a.tgl_daftar || ''
+      const db = b.tanggal || b.tgl_daftar || ''
+      return db.localeCompare(da)
+    })
+  }
+
+  // Urutkan pasien: terbaru aktivitas dulu
+  return Object.values(map).sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''))
 })
+
+const grandStats = computed(() => ({
+  qc:             qcData.value.length,
+  batal:          batalData.value.length,
+  edukasi:        edukasiData.value.length,
+  edukasiTransfer: edukasiTransferData.value.length,
+  up:             upData.value.length,
+  alasan:         alasanData.value.length,
+  historyPasien:  historyPasienData.value.length,
+}))
 
 // Daftar unik alasan untuk dropdown filter
 const alasanOptions = computed(() => {
@@ -234,19 +189,15 @@ const alasanOptions = computed(() => {
 
 const activeData = computed(() => {
   const map = {
-    summary: summaryData.value,
-    alasan: alasanData.value,
-    'edukasi-pasien': edukasiPasienData.value,
-    'sudah-dapat-bed': sudahDapatBedData.value,
-    'batal-ranap': batalData.value,
-    'up-selling': upData.value,
+    summary:        summaryData.value,
+    alasan:         alasanData.value,
+    'history-pasien': historyPasienData.value,
   }
   return map[activeTab.value] ?? []
 })
 
 function parseTanggal(str) {
   if (!str) return null
-  // Format dd/mm/yyyy, HH.MM.SS
   const dmyMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
   if (dmyMatch) return new Date(`${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`)
   const d = new Date(str)
@@ -258,31 +209,32 @@ const filteredData = computed(() => {
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r => {
-      // Cek field-field flat (skip array nested)
       const flatMatch = Object.entries(r).some(([k, v]) => {
-        if (Array.isArray(v)) return false
+        if (Array.isArray(v) || typeof v === 'object') return false
         return String(v ?? '').toLowerCase().includes(q)
       })
+      // Juga cari dalam events history
+      if (!flatMatch && r._events) {
+        return r._events.some(ev =>
+          Object.entries(ev).some(([k, v]) => {
+            if (Array.isArray(v) || typeof v === 'object') return false
+            return String(v ?? '').toLowerCase().includes(q)
+          })
+        )
+      }
       return flatMatch
     })
   }
   if (dateFrom.value || dateTo.value) {
     const from = dateFrom.value ? new Date(dateFrom.value + 'T00:00:00') : null
-    const to = dateTo.value ? new Date(dateTo.value + 'T23:59:59') : null
+    const to   = dateTo.value   ? new Date(dateTo.value   + 'T23:59:59') : null
     d = d.filter(r => {
       const tgl = parseTanggal(r.tanggal || r.tgl_daftar || '')
       if (!tgl) return true
       if (from && tgl < from) return false
-      if (to && tgl > to) return false
+      if (to   && tgl > to)   return false
       return true
     })
-  }
-  if (activeTab.value === 'batal-ranap' && filterClosing.value !== '') {
-    if (filterClosing.value === null) {
-      d = d.filter(r => !r.status_closing)
-    } else {
-      d = d.filter(r => r.status_closing === filterClosing.value)
-    }
   }
   if (activeTab.value === 'alasan' && filterAlasan.value !== '') {
     d = d.filter(r => r.alasan === filterAlasan.value)
@@ -290,7 +242,7 @@ const filteredData = computed(() => {
   return d
 })
 
-// ── Summary alasan yang sudah difilter tanggal ──────────────────────────────
+// ── Alasan summary ring chart data ───────────────────────────────────────────
 const filteredAlasanSummary = computed(() => {
   const base = activeTab.value === 'alasan' ? filteredData.value : alasanData.value
   const map = {}
@@ -304,42 +256,35 @@ const filteredAlasanSummary = computed(() => {
   return Object.values(map).sort((a, b) => b.total - a.total)
 })
 
+// ── Color helpers ─────────────────────────────────────────────────────────────
 function alasanColor(a) {
-  const map = {
-    'Pelayanan':                 'primary',
-    'Kelengkapan Alat & Dokter': 'warning',
-    'Teman/Kerabat':             'info',
-    'Rujukan':                   'success',
-    'Marketing':                 'secondary',
-    'Sosial Media':              'info',
-  }
-  return map[a] ?? 'secondary'
+  return ({ 'Pelayanan': 'primary', 'Kelengkapan Alat & Dokter': 'warning', 'Teman/Kerabat': 'info', 'Rujukan': 'success', 'Marketing': 'secondary', 'Sosial Media': 'info' })[a] ?? 'secondary'
 }
 
 function statusColor(s) {
   return ({ 'Edukasi': 'success', 'Edukasi lanjutan': 'warning', 'Bedah': 'success', 'Non Bedah': 'info', 'Selesai': 'success', 'Menunggu': 'warning', 'Berhasil': 'success', 'Tidak Berhasil': 'error', 'Pending': 'warning' })[s] ?? 'secondary'
 }
 
-function closingColor(s) {
-  return s === 'Siap Closing' ? 'success' : s === 'Belum Siap Closing' ? 'error' : 'secondary'
+// Warna + config per modul untuk History Pasien
+const MODULE_META = {
+  'edukasi-awal':     { color: 'primary',   icon: 'ri-shield-check-line',    bg: 'rgba(99,102,241,0.10)',  border: '#6366f1' },
+  'edukasi-lanjutan': { color: 'warning',   icon: 'ri-book-open-line',       bg: 'rgba(245,158,11,0.10)', border: '#f59e0b' },
+  'sudah-dapat-bed':  { color: 'success',   icon: 'ri-home-heart-line',      bg: 'rgba(34,197,94,0.10)',  border: '#22c55e' },
+  'batal-ranap':      { color: 'error',     icon: 'ri-close-circle-line',    bg: 'rgba(239,68,68,0.10)',  border: '#ef4444' },
+  'up-selling':       { color: 'orange',    icon: 'ri-arrow-up-circle-line', bg: 'rgba(249,115,22,0.10)', border: '#f97316' },
+}
+
+function moduleMeta(mod) {
+  return MODULE_META[mod] ?? { color: 'secondary', icon: 'ri-file-list-line', bg: 'rgba(0,0,0,0.05)', border: '#94a3b8' }
 }
 
 const pageBannerColor = computed(() => ({
-  'summary': 'primary',
-  'edukasi-pasien': 'primary',
-  'sudah-dapat-bed': 'success',
-  'batal-ranap': 'error',
-  'up-selling': 'success',
+  summary:          'primary',
+  alasan:           'info',
+  'history-pasien': 'deep-purple',
 })[activeTab.value] ?? 'primary')
 
-function exportCSV() {
-  const cols = activeHeaders.value
-  const csv = [cols.map(h => h.title).join(','), ...filteredData.value.map(r => cols.map(h => `"${r[h.key] ?? ''}"`).join(','))].join('\n')
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv' }))
-  a.download = `view-${activeTab.value}-${new Date().toISOString().slice(0, 10)}.csv`; a.click()
-}
-
-// Header definitions (for CSV export only now)
+// CSV export
 const summaryHeaders = [
   { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' }, { title: 'Jaminan', key: 'jaminan' },
   { title: 'QC', key: 'qc' }, { title: 'Edukasi', key: 'edukasi' },
@@ -349,107 +294,108 @@ const alasanHeaders = [
   { title: 'Tanggal', key: 'tanggal' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
   { title: 'Alasan', key: 'alasan' }, { title: 'Jaminan', key: 'jaminan' }, { title: 'Catatan', key: 'catatan' }, { title: 'Petugas', key: 'petugas' },
 ]
-const edukasiPasienHeaders = [
-  { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' }, { title: 'Jaminan', key: 'jaminan' },
-  { title: 'Sesi Edukasi Awal', key: 'sesi_edukasi_awal' }, { title: 'Sesi Edukasi Lanjutan', key: 'sesi_edukasi_lanjutan' },
-  { title: 'Petugas', key: 'petugas' }, { title: 'Tanggal', key: 'tanggal' },
+const historyHeaders = [
+  { title: 'No. MR', key: 'no_mr' }, { title: 'Nama Pasien', key: 'nama_pasien' }, { title: 'Jaminan', key: 'jaminan' }, { title: 'Tanggal', key: 'tanggal' },
 ]
-const sudahDapatBedHeaders = [
-  { title: 'No. MR', key: 'no_mr' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
-  { title: 'Jaminan', key: 'jaminan' }, { title: 'Kamar', key: 'edukasi_kamar' }, { title: 'Keterangan', key: 'keterangan' },
-  { title: 'Sesi Edukasi', key: 'sesi_edukasi_lanjutan' }, { title: 'Tanggal', key: 'tanggal' },
-]
-const batalHeaders = [
-  { title: 'Tanggal', key: 'tanggal' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
-  { title: 'Ket. Batal', key: 'keterangan_batal' }, { title: 'Status OK', key: 'status_ok' },
-  { title: 'Closing', key: 'status_closing' }, { title: 'Petugas', key: 'petugas' },
-]
-const upHeaders = [
-  { title: 'Tgl Daftar', key: 'tgl_daftar' }, { title: 'No. Reg', key: 'no_reg' }, { title: 'Nama Pasien', key: 'nama_pasien' },
-  { title: 'Keterangan', key: 'alasan' }, { title: 'Notes', key: 'note' }, { title: 'Petugas', key: 'petugas' },
-]
-const activeHeaders = computed(() => ({
-  summary: summaryHeaders,
-  alasan: alasanHeaders,
-  'edukasi-pasien': edukasiPasienHeaders,
-  'sudah-dapat-bed': sudahDapatBedHeaders,
-  'batal-ranap': batalHeaders,
-  'up-selling': upHeaders,
-})[activeTab.value] ?? [])
+const activeHeaders = computed(() => ({ summary: summaryHeaders, alasan: alasanHeaders, 'history-pasien': historyHeaders })[activeTab.value] ?? [])
+
+function exportCSV() {
+  const cols = activeHeaders.value
+  const csv = [cols.map(h => h.title).join(','), ...filteredData.value.map(r => cols.map(h => `"${r[h.key] ?? ''}"`).join(','))].join('\n')
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv' }))
+  a.download = `view-${activeTab.value}-${new Date().toISOString().slice(0, 10)}.csv`; a.click()
+}
 
 let tabInitialized = false
 onMounted(() => {
   if (!tabInitialized) {
-    activeTab.value = auth.hasPermission('quality-control:view') ? 'summary' : 'batal-ranap'
+    activeTab.value = auth.hasPermission('quality-control:view') ? 'summary' : 'history-pasien'
     tabInitialized = true
   }
   loadAll()
 })
 
-// Reload saat tanggal berubah
 watch([dateFrom, dateTo], () => loadAll())
-
-// ── Detail dialog ─────────────────────────────────────────────────────────────
-const showDetail = ref(false)
-const detailItem = ref(null)
-
-function openDetail(item) {
-  detailItem.value = { ...item }
-  showDetail.value = true
-}
 
 watch(() => auth.permissions, (perms, prev) => {
   if (perms?.length && perms !== prev) {
     if (!tabInitialized) {
-      activeTab.value = auth.hasPermission('quality-control:view') ? 'summary' : 'batal-ranap'
+      activeTab.value = auth.hasPermission('quality-control:view') ? 'summary' : 'history-pasien'
       tabInitialized = true
     }
     loadAll()
   }
 })
 
-// ── Pagination — reset saat tab atau filter berubah ───────────────────────────
+// ── Detail dialog ─────────────────────────────────────────────────────────────
+const showDetail    = ref(false)
+const detailItem    = ref(null)
+const detailType    = ref('summary')
+
+function openDetail(item, type = activeTab.value) {
+  detailItem.value = { ...item }
+  detailType.value = type
+  showDetail.value = true
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────────
 const { page: vdiPage, pageCount: vdiPageCount, paginated: vdiPaginated, setPage: vdiSetPage }
   = usePagination(filteredData, 10)
 
-// Reset ke page 1 saat tab berubah
 watch(activeTab, () => { vdiPage.value = 1 })
 </script>
 
 <template>
   <div>
     <!-- Header -->
-    <PageHero icon="ri-table-line" badge="View Data Input" title="View Data Input"
-      :subtitle="isKasir ? 'Data batal ranap real-time' : 'Summary semua data input per modul'" color-from="#0EA5E9"
-      color-to="#0369A1" :pills="[
+    <PageHero
+      icon="ri-table-line"
+      badge="View Data Input"
+      title="View Data Input"
+      :subtitle="isKasir ? 'Data pasien real-time' : 'Summary semua data input per modul'"
+      color-from="#0EA5E9"
+      color-to="#0369A1"
+      :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },
         { icon: 'ri-database-line', text: `${filteredData.length} data` },
-      ]">
+      ]"
+    >
       <template #actions>
-        <VBtn v-if="!isKasir" color="white" variant="elevated" rounded="pill" size="small"
-          style="color:#0369A1;font-weight:700" @click="exportCSV">
+        <VBtn
+          v-if="!isKasir"
+          color="white" variant="elevated" rounded="pill" size="small"
+          style="color:#0369A1;font-weight:700"
+          @click="exportCSV"
+        >
           <VIcon icon="ri-download-line" size="15" class="me-1" />Export CSV
         </VBtn>
       </template>
     </PageHero>
 
-    <!-- Stats -->
-    <SummaryCards v-if="!isKasir" v-model="activeTab" :cards="[
-      { value: grandStats.alasan, label: 'Alasan Kunjungan', color: 'info', icon: 'ri-question-answer-line', filterValue: 'alasan' },
-      { value: grandStats.edukasiPasien, label: 'Edukasi Pasien', color: 'primary', icon: 'ri-user-heart-line', filterValue: 'edukasi-pasien' },
-      { value: grandStats.sudahDapatBed, label: 'Sudah Dapat Bed', color: 'success', icon: 'ri-home-heart-line', filterValue: 'sudah-dapat-bed' },
-      { value: grandStats.batal, label: 'Batal Ranap', color: 'error', icon: 'ri-close-circle-line', filterValue: 'batal-ranap' },
-      { value: grandStats.up, label: 'Up Selling', color: 'success', icon: 'ri-arrow-up-circle-line', filterValue: 'up-selling' },
-    ]" />
-    <SummaryCards v-else :cards="[
-      { value: batalData.length, label: 'Total', color: 'primary', icon: 'ri-close-circle-line' },
-      { value: batalData.filter(r => r.status_closing === 'Siap Closing').length, label: 'Siap Closing', color: 'success', icon: 'ri-checkbox-circle-line' },
-      { value: batalData.filter(r => !r.status_closing).length, label: 'Belum Closing', color: 'warning', icon: 'ri-time-line' },
-    ]" />
+    <!-- Summary Cards — klik untuk switch tab -->
+    <SummaryCards
+      v-if="!isKasir"
+      v-model="activeTab"
+      :cards="[
+        { value: grandStats.alasan,       label: 'Alasan Kunjungan', color: 'info',        icon: 'ri-question-answer-line', filterValue: 'alasan' },
+        { value: grandStats.edukasi,      label: 'Edukasi Lanjutan', color: 'warning',     icon: 'ri-book-open-line',       filterValue: 'history-pasien' },
+        { value: grandStats.edukasiTransfer, label: 'Sudah Dapat Bed', color: 'success',   icon: 'ri-home-heart-line',      filterValue: 'history-pasien' },
+        { value: grandStats.batal,        label: 'Batal Ranap',       color: 'error',       icon: 'ri-close-circle-line',    filterValue: 'history-pasien' },
+        { value: grandStats.up,           label: 'Up Selling',        color: 'orange',      icon: 'ri-arrow-up-circle-line', filterValue: 'history-pasien' },
+      ]"
+    />
+    <SummaryCards
+      v-else
+      :cards="[
+        { value: batalData.length,                                                          label: 'Total',         color: 'primary', icon: 'ri-close-circle-line' },
+        { value: batalData.filter(r => r.status_closing === 'Siap Closing').length,        label: 'Siap Closing',  color: 'success', icon: 'ri-checkbox-circle-line' },
+        { value: batalData.filter(r => !r.status_closing).length,                          label: 'Belum Closing', color: 'warning', icon: 'ri-time-line' },
+      ]"
+    />
 
-    <!-- Tabs + Filter dalam 1 card -->
+    <!-- Tabs + Filter -->
     <VCard elevation="0" border rounded="lg" class="mb-4">
-      <!-- Tabs — scrollable, short label on mobile -->
+      <!-- Tabs -->
       <VTabs v-model="activeTab" color="primary" show-arrows density="compact" class="vdi-tabs">
         <VTab v-for="t in tabs" :key="t.key" :value="t.key" class="vdi-tab">
           <VIcon :icon="t.icon" size="15" class="me-1" />
@@ -458,48 +404,41 @@ watch(activeTab, () => { vdiPage.value = 1 })
       </VTabs>
       <VDivider />
 
-      <!-- Penanda halaman aktif -->
+      <!-- Penanda tab aktif -->
       <div class="vdi-page-banner" :class="`vdi-page-banner--${activeTab}`">
         <VIcon :icon="tabs.find(t => t.key === activeTab)?.icon ?? 'ri-table-line'" size="14" class="me-1" />
-        <span>Anda sedang melihat: <strong>{{tabs.find(t => t.key === activeTab)?.label ?? activeTab}}</strong></span>
-        <VChip size="x-small" variant="tonal" :color="pageBannerColor" class="ms-2">{{ filteredData.length }} data
-        </VChip>
+        <span>Anda sedang melihat: <strong>{{ tabs.find(t => t.key === activeTab)?.label ?? activeTab }}</strong></span>
+        <VChip size="x-small" variant="tonal" :color="pageBannerColor" class="ms-2">{{ filteredData.length }} data</VChip>
       </div>
-
       <VDivider />
 
       <!-- Filter row -->
       <VCardText class="pa-3">
         <VRow dense align="center" class="g-2">
-          <!-- Search -->
           <VCol cols="12" sm="4" md="4">
-            <VTextField v-model="search" label="Cari..." prepend-inner-icon="ri-search-line" variant="outlined"
-              density="compact" hide-details clearable rounded="lg" />
+            <VTextField
+              v-model="search" label="Cari..."
+              prepend-inner-icon="ri-search-line" variant="outlined"
+              density="compact" hide-details clearable rounded="lg"
+            />
           </VCol>
-          <!-- Date From -->
           <VCol cols="6" sm="3" md="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details
-              rounded="lg" />
+            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <!-- Date To -->
           <VCol cols="6" sm="3" md="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details
-              rounded="lg" />
+            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
-          <!-- Filter Alasan (hanya tab alasan) -->
+          <!-- Filter alasan (hanya tab alasan) -->
           <VCol v-if="activeTab === 'alasan'" cols="12" sm="auto" md="3">
-            <VSelect v-model="filterAlasan" :items="alasanOptions" item-title="title" item-value="value"
-              label="Filter Alasan RS" variant="outlined" density="compact" hide-details rounded="lg" />
+            <VSelect
+              v-model="filterAlasan" :items="alasanOptions"
+              item-title="title" item-value="value"
+              label="Filter Alasan RS" variant="outlined" density="compact" hide-details rounded="lg"
+            />
           </VCol>
-          <!-- Status Closing dropdown (hanya batal-ranap) -->
-          <VCol v-if="activeTab === 'batal-ranap'" cols="12" sm="auto" md="3">
-            <VSelect v-model="filterClosing" :items="CLOSING_OPTIONS" item-title="title" item-value="value"
-              label="Status Closing" variant="outlined" density="compact" hide-details rounded="lg" />
-          </VCol>
-          <!-- Reset -->
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary"
-              @click="search = ''; dateFrom = todayStr(); dateTo = todayStr(); filterClosing = ''; filterAlasan = ''">
+              @click="search = ''; dateFrom = todayStr(); dateTo = todayStr(); filterAlasan = ''">
               Reset
             </VBtn>
           </VCol>
@@ -513,8 +452,9 @@ watch(activeTab, () => { vdiPage.value = 1 })
       <VProgressCircular v-if="loading" size="16" width="2" indeterminate color="primary" />
     </div>
 
-    <!-- ── LIST VIEW — responsif, no horizontal scroll ─── -->
+    <!-- ── List View ─────────────────────────────────────────────────────────── -->
     <VCard elevation="0" border rounded="lg" class="overflow-hidden">
+
       <!-- Loading -->
       <div v-if="loading" class="text-center py-12">
         <VProgressCircular indeterminate color="primary" size="32" />
@@ -528,129 +468,134 @@ watch(activeTab, () => { vdiPage.value = 1 })
 
       <!-- Items -->
       <div v-else>
-        <div v-for="(item, idx) in vdiPaginated" :key="item.id ?? idx" class="vdi-row cursor-pointer"
-          :class="{ 'vdi-row--bordered': idx < vdiPaginated.length - 1 }"
-          @click="openDetail(item)">
-          <!-- Avatar -->
-          <VAvatar color="primary" variant="tonal" size="38" rounded="md" class="flex-shrink-0">
-            <span style="font-size:12px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
-          </VAvatar>
 
-          <!-- Content -->
-          <div class="flex-grow-1 min-width-0">
-            <!-- Row 1: nama + chips status -->
-            <div class="d-flex align-center gap-2 flex-wrap mb-1">
-              <span class="font-weight-semibold text-truncate" style="font-size:0.875rem;color:var(--qc-text)">
-                {{ item.nama_pasien }}
-              </span>
+        <!-- ══ HISTORY PASIEN — list pasien sederhana, klik untuk detail ══ -->
+        <template v-if="activeTab === 'history-pasien'">
+          <div
+            v-for="(item, idx) in vdiPaginated"
+            :key="item.no_mr ?? idx"
+            class="vdi-row cursor-pointer"
+            @click="openDetail(item, 'history-pasien')"
+          >
+            <VAvatar color="deep-purple" variant="tonal" size="38" rounded="md" class="flex-shrink-0">
+              <span style="font-size:12px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
+            </VAvatar>
 
-              <!-- Summary tab: count chips -->
-              <template v-if="activeTab === 'summary'">
-                <VChip v-if="item.qc" size="x-small" color="primary" variant="tonal">QC {{ item.qc }}</VChip>
-                <VChip v-if="item.edukasi" size="x-small" color="warning" variant="tonal">Edu {{ item.edukasi }}</VChip>
-                <VChip v-if="item.batal" size="x-small" color="error" variant="tonal">Batal {{ item.batal }}</VChip>
-                <VChip v-if="item.up" size="x-small" color="success" variant="tonal">Up {{ item.up }}</VChip>
-              </template>
-
-              <!-- Alasan tab -->
-              <template v-else-if="activeTab === 'alasan'">
-                <VChip v-if="item.alasan" :color="alasanColor(item.alasan)" size="x-small" variant="tonal">
-                  <VIcon icon="ri-question-answer-line" size="10" class="me-1" />{{ item.alasan }}
-                </VChip>
-                <VChip v-if="item.jaminan" size="x-small" color="secondary" variant="tonal">{{ item.jaminan }}</VChip>
-              </template>
-
-              <!-- Edukasi Pasien tab (gabungan awal + lanjutan) -->
-              <template v-else-if="activeTab === 'edukasi-pasien'">
-                <VChip v-if="item.sesi_edukasi_awal" size="x-small" color="primary" variant="tonal">
-                  <VIcon icon="ri-shield-check-line" size="10" class="me-1" />{{ item.sesi_edukasi_awal }}x Awal
-                </VChip>
-                <VChip v-if="item.sesi_edukasi_lanjutan" size="x-small" color="warning" variant="tonal">
-                  <VIcon icon="ri-book-open-line" size="10" class="me-1" />{{ item.sesi_edukasi_lanjutan }}x Lanjutan
-                </VChip>
-                <VChip v-if="item.jaminan" size="x-small" color="secondary" variant="tonal">{{ item.jaminan }}</VChip>
-              </template>
-
-              <!-- Sudah Dapat Bed tab -->
-              <template v-else-if="activeTab === 'sudah-dapat-bed'">
-                <VChip v-if="item.keterangan === 'Sudah Masuk Kamar'" color="success" size="x-small" variant="tonal">
-                  <VIcon icon="ri-home-heart-line" size="10" class="me-1" />Sudah Masuk Kamar
-                </VChip>
-                <VChip v-else-if="item.keterangan === 'Belum Diantar'" color="orange" size="x-small" variant="tonal">
-                  <VIcon icon="ri-walk-line" size="10" class="me-1" />Dapat Kamar · Belum Diantar
-                </VChip>
-                <VChip v-else color="info" size="x-small" variant="tonal">
-                  <VIcon icon="ri-home-heart-line" size="10" class="me-1" />Dapat Bed
-                </VChip>
-                <VChip v-if="item.sesi_edukasi_lanjutan" size="x-small" color="warning" variant="tonal">
-                  {{ item.sesi_edukasi_lanjutan }}x Edukasi
-                </VChip>
-                <VChip v-if="item.jaminan" size="x-small" color="secondary" variant="tonal">{{ item.jaminan }}</VChip>
-              </template>
-
-              <!-- Batal Ranap tab -->
-              <template v-else-if="activeTab === 'batal-ranap'">
-                <VChip v-if="item.status_ok" :color="statusColor(item.status_ok)" size="x-small" variant="tonal">{{
-                  item.status_ok }}</VChip>
-                <VChip v-if="item.status_closing" :color="closingColor(item.status_closing)" size="x-small"
-                  variant="tonal">{{ item.status_closing }}</VChip>
-                <span v-else class="text-caption" style="color:var(--qc-text-2);font-size:0.7rem">Belum closing</span>
-              </template>
-
-              <!-- Up Selling tab -->
-              <template v-else-if="activeTab === 'up-selling'">
-                <VChip v-if="item.alasan" :color="item.alasan === 'Naik Kelas' ? 'success' : 'info'" size="x-small"
-                  variant="tonal">{{ item.alasan }}</VChip>
-              </template>
+            <div class="flex-grow-1 min-width-0">
+              <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                <span class="font-weight-semibold text-truncate" style="font-size:0.875rem;color:var(--qc-text)">
+                  {{ item.nama_pasien }}
+                </span>
+                <VChip size="x-small" color="secondary" variant="tonal">{{ item.jaminan || '—' }}</VChip>
+                <!-- Badge ringkas per modul yang ada -->
+                <template v-for="mod in ['edukasi-awal','edukasi-lanjutan','sudah-dapat-bed','batal-ranap','up-selling']" :key="mod">
+                  <VChip
+                    v-if="item._events.some(e => e._module === mod)"
+                    :color="moduleMeta(mod).color"
+                    size="x-small" variant="tonal"
+                  >
+                    <VIcon :icon="moduleMeta(mod).icon" size="10" class="me-1" />
+                    {{ { 'edukasi-awal': 'Edu Awal', 'edukasi-lanjutan': 'Edu Lanjut', 'sudah-dapat-bed': 'Dpt Bed', 'batal-ranap': 'Batal', 'up-selling': 'Up Sell' }[mod] }}
+                    {{ item._events.filter(e => e._module === mod).length > 1 ? item._events.filter(e => e._module === mod).length + 'x' : '' }}
+                  </VChip>
+                </template>
+              </div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-caption" style="color:var(--qc-text-2)">{{ item.no_mr || item.no_reg || '—' }}</span>
+                <span class="text-caption" style="color:var(--qc-text-2)">
+                  <VIcon icon="ri-history-line" size="10" class="me-1" />{{ item._events.length }} aktivitas
+                </span>
+              </div>
             </div>
 
-            <!-- Row 2: meta info -->
-            <div class="d-flex align-center gap-3 flex-wrap">
-              <span class="text-caption" style="color:var(--qc-text-2)">
-                {{ item.no_mr || item.no_reg || '—' }}
-              </span>
-              <span v-if="activeTab === 'summary' && item.jaminan" class="text-caption"
-                style="color:var(--qc-text-2)">{{ item.jaminan }}</span>
-              <span v-if="activeTab === 'alasan' && item.catatan" class="text-caption text-truncate"
-                style="color:var(--qc-text-2);max-width:200px">
-                <VIcon icon="ri-chat-3-line" size="10" class="me-1" />"{{ item.catatan }}"
-              </span>
-              <span v-if="activeTab === 'edukasi-pasien'" class="text-caption"
-                style="color:var(--qc-text-2)">
-                <VIcon icon="ri-hospital-line" size="10" class="me-1" />
-                Total sesi: {{ (item.sesi_edukasi_awal || 0) + (item.sesi_edukasi_lanjutan || 0) }}
-              </span>
-              <span v-if="activeTab === 'sudah-dapat-bed' && item.edukasi_kamar" class="text-caption text-truncate"
-                style="color:var(--qc-text-2);max-width:200px">
-                <VIcon icon="ri-hospital-line" size="10" class="me-1" />{{ item.edukasi_kamar }}
-              </span>
-              <span v-if="activeTab === 'batal-ranap' && item.keterangan_batal" class="text-caption text-truncate"
-                style="color:var(--qc-text-2);max-width:160px">
-                <VIcon icon="ri-error-warning-line" size="10" class="me-1" />{{ item.keterangan_batal }}
-              </span>
-              <span v-if="activeTab === 'up-selling' && item.note" class="text-caption text-truncate"
-                style="color:var(--qc-text-2);max-width:140px">{{ item.note }}</span>
+            <div class="text-end flex-shrink-0 vdi-right">
+              <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ item.tanggal || '—' }}</p>
+              <p class="text-caption mb-0" style="color:var(--qc-text-2);font-size:0.65rem">
+                <VIcon icon="ri-arrow-right-s-line" size="12" />
+              </p>
             </div>
           </div>
+        </template>
 
-          <!-- Right: petugas + tanggal -->
-          <div class="text-end flex-shrink-0 vdi-right">
-            <p class="text-caption mb-0 font-weight-medium" style="color:var(--qc-text)">{{ item.petugas || '—' }}</p>
-            <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ item.tanggal || item.tgl_daftar || '—' }}</p>
+        <!-- ══ SUMMARY & ALASAN — tampilan list biasa ══ -->
+        <template v-else>
+          <div
+            v-for="(item, idx) in vdiPaginated"
+            :key="item.id ?? idx"
+            class="vdi-row cursor-pointer"
+            @click="openDetail(item)"
+          >
+            <!-- Avatar -->
+            <VAvatar color="primary" variant="tonal" size="38" rounded="md" class="flex-shrink-0">
+              <span style="font-size:12px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
+            </VAvatar>
+
+            <!-- Content -->
+            <div class="flex-grow-1 min-width-0">
+              <!-- Row 1: nama + chips -->
+              <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                <span class="font-weight-semibold text-truncate" style="font-size:0.875rem;color:var(--qc-text)">
+                  {{ item.nama_pasien }}
+                </span>
+
+                <!-- Summary: count chips per modul -->
+                <template v-if="activeTab === 'summary'">
+                  <VChip v-if="item.qc"     size="x-small" color="primary" variant="tonal">
+                    <VIcon icon="ri-shield-check-line" size="9" class="me-1" />Edu {{ item.qc }}
+                  </VChip>
+                  <VChip v-if="item.edukasi" size="x-small" color="warning" variant="tonal">
+                    <VIcon icon="ri-book-open-line" size="9" class="me-1" />Lanjutan {{ item.edukasi }}
+                  </VChip>
+                  <VChip v-if="item.batal"  size="x-small" color="error" variant="tonal">
+                    <VIcon icon="ri-close-circle-line" size="9" class="me-1" />Batal {{ item.batal }}
+                  </VChip>
+                  <VChip v-if="item.up"     size="x-small" color="success" variant="tonal">
+                    <VIcon icon="ri-arrow-up-circle-line" size="9" class="me-1" />Up {{ item.up }}
+                  </VChip>
+                </template>
+
+                <!-- Alasan -->
+                <template v-else-if="activeTab === 'alasan'">
+                  <VChip v-if="item.alasan" :color="alasanColor(item.alasan)" size="x-small" variant="tonal">
+                    <VIcon icon="ri-question-answer-line" size="10" class="me-1" />{{ item.alasan }}
+                  </VChip>
+                  <VChip v-if="item.jaminan" size="x-small" color="secondary" variant="tonal">{{ item.jaminan }}</VChip>
+                </template>
+              </div>
+
+              <!-- Row 2: meta -->
+              <div class="d-flex align-center gap-3 flex-wrap">
+                <span class="text-caption" style="color:var(--qc-text-2)">{{ item.no_mr || item.no_reg || '—' }}</span>
+                <span v-if="activeTab === 'summary' && item.jaminan" class="text-caption" style="color:var(--qc-text-2)">{{ item.jaminan }}</span>
+                <span v-if="activeTab === 'alasan' && item.catatan" class="text-caption text-truncate" style="color:var(--qc-text-2);max-width:200px">
+                  <VIcon icon="ri-chat-3-line" size="10" class="me-1" />"{{ item.catatan }}"
+                </span>
+              </div>
+            </div>
+
+            <!-- Right -->
+            <div class="text-end flex-shrink-0 vdi-right">
+              <p class="text-caption mb-0 font-weight-medium" style="color:var(--qc-text)">{{ item.petugas || '—' }}</p>
+              <p class="text-caption mb-0" style="color:var(--qc-text-2)">{{ item.tanggal || item.tgl_daftar || '—' }}</p>
+            </div>
           </div>
-        </div>
-        <PaginationBar :page="vdiPage" :page-count="vdiPageCount" :total="filteredData.length" :per-page="10"
-          @update:page="vdiSetPage" />
+        </template>
+
+        <PaginationBar
+          :page="vdiPage" :page-count="vdiPageCount"
+          :total="filteredData.length" :per-page="10"
+          @update:page="vdiSetPage"
+        />
       </div>
     </VCard>
 
     <!-- Detail Dialog -->
-    <VdiDetailDialog v-model="showDetail" :item="detailItem" :type="activeTab" />
+    <VdiDetailDialog v-model="showDetail" :item="detailItem" :type="detailType" />
   </div>
 </template>
 
 <style scoped>
-/* ── List row ── */
+/* ── List row (summary & alasan) ── */
 .vdi-row {
   display: flex;
   align-items: center;
@@ -659,17 +604,9 @@ watch(activeTab, () => { vdiPage.value = 1 })
   transition: background 0.12s;
   border-bottom: 1px solid var(--qc-border, rgba(0, 0, 0, 0.07));
 }
-
-.vdi-row:last-child {
-  border-bottom: none;
-}
-
+.vdi-row:last-child { border-bottom: none; }
 .vdi-row:hover {
   background: rgba(14, 165, 233, 0.04);
-}
-
-/* Subtle left accent on hover */
-.vdi-row:hover {
   border-left: 3px solid rgba(14, 165, 233, 0.4);
   padding-left: 13px;
 }
@@ -685,230 +622,111 @@ watch(activeTab, () => { vdiPage.value = 1 })
 }
 
 @media (max-width: 480px) {
-  .vdi-right {
-    display: none;
-  }
-
-  .vdi-row {
-    padding: 12px 12px;
-  }
+  .vdi-right { display: none; }
+  .vdi-row   { padding: 12px 12px; }
 }
 
-/* ── Page banner (penanda halaman aktif) ── */
+/* ── Page banner ── */
 .vdi-page-banner {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
   padding: 7px 16px;
   font-size: 0.78rem;
   color: var(--qc-text-2, #64748b);
   background: rgba(14, 165, 233, 0.04);
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s;
 }
+.vdi-page-banner strong { color: var(--qc-text, #1e293b); }
+.vdi-page-banner--summary        { background: rgba(14, 165, 233, 0.06); }
+.vdi-page-banner--alasan         { background: rgba(14, 165, 233, 0.06); }
+.vdi-page-banner--history-pasien { background: rgba(109, 40, 217, 0.05); }
 
-.vdi-page-banner strong {
-  color: var(--qc-text, #1e293b);
-}
-
-.vdi-page-banner--quality-control {
-  background: rgba(99, 102, 241, 0.06);
-}
-
-.vdi-page-banner--edukasi-pasien {
-  background: rgba(99, 102, 241, 0.06);
-}
-
-.vdi-page-banner--sudah-dapat-bed {
-  background: rgba(34, 197, 94, 0.06);
-}
-
-.vdi-page-banner--alasan {
-  background: rgba(14, 165, 233, 0.06);
-}
-
-.vdi-page-banner--batal-ranap {
-  background: rgba(239, 68, 68, 0.06);
-}
-
-.vdi-page-banner--edukasi-lanjutan {
-  background: rgba(34, 197, 94, 0.06);
-}
-
-.vdi-page-banner--up-selling {
-  background: rgba(34, 197, 94, 0.06);
-}
-
-.vdi-page-banner--summary {
-  background: rgba(14, 165, 233, 0.06);
-}
-
-/* ── Alasan Summary ── */
-.als-header {
+/* Legend modul di history */
+.vdi-history-legend {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.06) 0%, rgba(var(--v-theme-info), 0.04) 100%);
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  flex-wrap: wrap;
+  gap: 8px;
 }
-
-.als-header__left {
-  display: flex;
+.vdi-legend-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--qc-text-2, #64748b);
 }
-
-.als-header__icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: rgb(var(--v-theme-primary));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.als-header__title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.87);
-  margin: 0 0 2px;
-}
-
-.als-header__sub {
-  font-size: 0.72rem;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  margin: 0;
-}
-
-.als-body {
-  padding: 8px 0;
-}
-
-.als-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 18px;
-  cursor: pointer;
-  transition: background 0.12s;
-  border-radius: 0;
-}
-
-.als-row:hover { background: rgba(var(--v-theme-primary), 0.04); }
-
-.als-row--active {
-  background: rgba(var(--v-theme-primary), 0.07) !important;
-}
-
-.als-row--dim {
-  opacity: 0.45;
-}
-
-.als-rank {
-  flex-shrink: 0;
-  width: 20px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.3);
-  text-align: center;
-}
-
-.als-label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 160px;
-  flex-shrink: 0;
-}
-
-.als-label__dot {
-  width: 8px;
-  height: 8px;
+.vdi-legend-dot {
+  width: 8px; height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.als-dot--primary   { background: rgb(var(--v-theme-primary)); }
-.als-dot--warning   { background: rgb(var(--v-theme-warning)); }
-.als-dot--info      { background: rgb(var(--v-theme-info)); }
-.als-dot--success   { background: rgb(var(--v-theme-success)); }
-.als-dot--secondary { background: rgba(var(--v-theme-on-surface), 0.3); }
-
-.als-label__text {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.82);
-  white-space: nowrap;
+@media (max-width: 700px) {
+  .vdi-history-legend { display: none; }
 }
 
-.als-track {
-  flex: 1;
-  height: 8px;
-  background: rgba(var(--v-theme-on-surface), 0.07);
-  border-radius: 99px;
-  overflow: hidden;
+/* ── History Pasien ── */
+.vdi-history-patient {
+  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,0.07));
+}
+.vdi-history-patient:last-child { border-bottom: none; }
+
+.vdi-hp-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  background: rgba(109, 40, 217, 0.03);
+  border-bottom: 1px solid rgba(109, 40, 217, 0.08);
 }
 
-.als-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+.vdi-hp-timeline {
+  padding: 0 16px 10px 52px;
 }
 
-.als-fill--primary   { background: rgb(var(--v-theme-primary)); }
-.als-fill--warning   { background: rgb(var(--v-theme-warning)); }
-.als-fill--info      { background: rgb(var(--v-theme-info)); }
-.als-fill--success   { background: rgb(var(--v-theme-success)); }
-.als-fill--secondary { background: rgba(var(--v-theme-on-surface), 0.25); }
+/* Timeline row */
+.vdi-tl-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px 8px 0;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.vdi-tl-row:hover {
+  background: var(--tl-bg, rgba(0,0,0,0.04));
+}
 
-.als-stats {
+/* Dot + vertical line */
+.vdi-tl-dot-wrap {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   flex-shrink: 0;
-  min-width: 52px;
+  width: 22px;
+  padding-top: 2px;
 }
-
-.als-stats__count {
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.87);
-  line-height: 1;
-}
-
-.als-stats__pct {
-  font-size: 0.68rem;
-  color: rgba(var(--v-theme-on-surface), 0.4);
-  margin-top: 2px;
-}
-
-.als-jaminan {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.vdi-tl-dot {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  min-width: 140px;
-  justify-content: flex-end;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.vdi-tl-line {
+  width: 2px;
+  flex: 1;
+  min-height: 12px;
+  background: rgba(0,0,0,0.1);
+  margin-top: 3px;
 }
 
-.als-jam-chip {
-  font-size: 0.65rem;
-  padding: 2px 7px;
-  border-radius: 99px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  white-space: nowrap;
-}
-
-.als-jam-chip strong {
-  color: rgba(var(--v-theme-on-surface), 0.8);
-  font-weight: 700;
-}
-
-@media (max-width: 700px) {
-  .als-jaminan { display: none; }
-  .als-label   { min-width: 110px; }
+.vdi-tl-content {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
 }
 </style>
