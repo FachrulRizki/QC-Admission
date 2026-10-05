@@ -357,6 +357,26 @@ function fmtDate(d) {
                     <span class="vdd-lbl">Durasi Tunggu</span>
                     <span class="vdd-val">{{ ev.durasi_tunggu || '—' }}</span>
                   </div>
+                  <div v-if="ev._module === 'edukasi-awal'" class="vdd-tl-field">
+                    <span class="vdd-lbl">Tgl. Daftar</span>
+                    <span class="vdd-val">{{ ev.tgl_daftar || '—' }}</span>
+                  </div>
+                  <div v-if="ev._module === 'edukasi-awal'" class="vdd-tl-field">
+                    <span class="vdd-lbl">Jam Daftar</span>
+                    <span class="vdd-val">{{ ev.jam_daftar || '—' }}</span>
+                  </div>
+                  <div v-if="ev._module === 'edukasi-awal' && ev.status_ket" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Status Pasien</span>
+                    <span class="vdd-val">{{ ev.status_ket }}</span>
+                  </div>
+                  <div v-if="ev._module === 'edukasi-awal' && ev.edukasi_kamar" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Edukasi Kamar / Ruangan</span>
+                    <span class="vdd-val" style="white-space:pre-wrap">{{ ev.edukasi_kamar }}</span>
+                  </div>
+                  <div v-if="ev._module === 'edukasi-awal' && ev.keluarga_pasien" class="vdd-tl-field vdd-tl-field--full">
+                    <span class="vdd-lbl">Keluarga Pasien</span>
+                    <span class="vdd-val">{{ ev.keluarga_pasien }}</span>
+                  </div>
                   <div v-if="ev._module === 'edukasi-awal' && ev.ketersediaan_kamar" class="vdd-tl-field vdd-tl-field--full">
                     <span class="vdd-lbl">Ketersediaan Kamar</span>
                     <span class="vdd-val">{{ ev.ketersediaan_kamar }}</span>

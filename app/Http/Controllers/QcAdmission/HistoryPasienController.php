@@ -31,7 +31,7 @@ class HistoryPasienController extends Controller
             ->get([
                 'id','no_mr','no_reg','nama_pasien','jaminan',
                 'tanggal','jam_input','tgl_daftar','jam_daftar',
-                'petugas','status','status_ranap',
+                'petugas','status','status_ket','status_ranap',
                 'edukasi_kamar','note','keluarga_pasien',
                 'ttd_keluarga_pasien','durasi_tunggu',
                 'ketersediaan_kamar','diagnosa',
