@@ -78,6 +78,14 @@ class EdukasiLanjutanService
     }
 
     /**
+     * Public wrapper untuk dipakai oleh HistoryPasienController.
+     */
+    public function enrichPublic($collection): void
+    {
+        $this->enrichWithTransferInfo($collection);
+    }
+
+    /**
      * Menggunakan single batch query
      */
     private function enrichWithTransferInfo($collection): void

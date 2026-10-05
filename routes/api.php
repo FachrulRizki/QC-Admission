@@ -13,6 +13,7 @@ use App\Http\Controllers\QcAdmission\PasienController;
 use App\Http\Controllers\QcAdmission\MasterDataController;
 use App\Http\Controllers\QcAdmission\ActivityLogController;
 use App\Http\Controllers\QcAdmission\AlasanController;
+use App\Http\Controllers\QcAdmission\HistoryPasienController;
 
 Route::middleware(['keycloak.auth'])->group(function () {
 
@@ -155,6 +156,13 @@ Route::middleware(['keycloak.auth'])->group(function () {
 
     // Alasan — data pendaftaran aktif (read-only, semua authenticated)
     Route::get('alasan/pendaftaran-aktif', [AlasanController::class, 'pendaftaranAktif']);
+
+    // History Pasien — semua data lintas modul per no_mr, tanpa filter tanggal
+    Route::middleware(['keycloak.role:quality-control:view'])->group(function () {
+        Route::get('history-pasien/search',          [HistoryPasienController::class, 'search']);
+        Route::get('history-pasien/{no_mr}',         [HistoryPasienController::class, 'byNoMr'])
+            ->where('no_mr', '[^/]+');  // izinkan spesial char kecuali slash
+    });
 
     // Butuh permission alasan:view
     Route::middleware(['keycloak.role:alasan:view'])->group(function () {

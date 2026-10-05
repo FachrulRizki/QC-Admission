@@ -1,4 +1,5 @@
 <script setup>
+import axios from 'axios'
 /**
  * VdiDetailDialog — modal detail universal untuk semua tab di View Data Input
  */
@@ -12,20 +13,60 @@ function close() { emit('update:modelValue', false) }
 
 // ── Inner tab untuk history-pasien & edukasi mode ────────────────────────────
 const innerTab = ref('semua')
-watch(() => props.modelValue, (v) => {
-  if (v) innerTab.value = props.type === 'history-pasien' ? 'semua' : 'riwayat'
+
+// ── State untuk history-pasien fetch dari API ─────────────────────────────────
+const loadingHistory  = ref(false)
+const historyEvents   = ref([])  // data dari API /history-pasien/{no_mr}
+const historyPasien   = ref(null) // info pasien dari API
+
+// Saat dialog dibuka, fetch data lengkap jika tipe history-pasien
+watch(() => props.modelValue, async (v) => {
+  if (!v) return
+  innerTab.value = props.type === 'history-pasien' ? 'semua' : 'riwayat'
+
+  if (props.type === 'history-pasien' && props.item) {
+    await fetchHistoryPasien(props.item.no_mr || props.item.no_reg)
+  }
 })
+
+async function fetchHistoryPasien(noMr) {
+  if (!noMr) return
+  loadingHistory.value = true
+  historyEvents.value  = []
+  try {
+    const { data } = await axios.get(`/api/history-pasien/${encodeURIComponent(noMr)}`)
+    // API mengembalikan events terurut terlama → terbaru
+    // Kita balik untuk tampilan terbaru di atas
+    historyEvents.value = [...(data.events ?? [])].reverse()
+    historyPasien.value = data.pasien ?? null
+  } catch (e) {
+    // Fallback ke data lokal jika API gagal
+    historyEvents.value = props.item?._events ? [...props.item._events] : []
+  } finally {
+    loadingHistory.value = false
+  }
+}
 
 // ── Helper tanggal untuk sort ─────────────────────────────────────────────────
 function parseTgl(r) {
   return r.tanggal || r.tgl_daftar || r.created_at || ''
 }
 
-// ── History Pasien: semua events terurut waktu terbaru ────────────────────────
+// ── allEvents: gunakan data dari API jika sudah ada, fallback ke props._events
 const allEvents = computed(() => {
+  if (props.type === 'history-pasien') {
+    return historyEvents.value.length ? historyEvents.value : (props.item?._events ?? [])
+  }
   if (!props.item?._events) return []
   return [...props.item._events].sort((a, b) => parseTgl(b).localeCompare(parseTgl(a)))
 })
+
+// Info pasien — gabungan dari API dan props
+const pasienInfo = computed(() => ({
+  no_mr:       historyPasien.value?.no_mr       ?? props.item?.no_mr       ?? props.item?.no_reg ?? '—',
+  jaminan:     historyPasien.value?.jaminan      ?? props.item?.jaminan     ?? '—',
+  nama_pasien: historyPasien.value?.nama_pasien  ?? props.item?.nama_pasien ?? '—',
+}))
 
 const evEdukasiAwal = computed(() =>
   allEvents.value.filter(e => e._module === 'edukasi-awal')
@@ -42,11 +83,11 @@ const evUpSelling = computed(() =>
 
 // Tab counts untuk badge
 const tabCounts = computed(() => ({
-  semua:             allEvents.value.length,
-  'edukasi-awal':    evEdukasiAwal.value.length,
+  semua:              allEvents.value.length,
+  'edukasi-awal':     evEdukasiAwal.value.length,
   'edukasi-lanjutan': evEdukasiLanjutan.value.length,
-  'batal-ranap':     evBatalRanap.value.length,
-  'up-selling':      evUpSelling.value.length,
+  'batal-ranap':      evBatalRanap.value.length,
+  'up-selling':       evUpSelling.value.length,
 }))
 
 // Data yang tampil sesuai inner tab
@@ -177,19 +218,22 @@ function fmtDate(d) {
 
         <!-- ══════════════ HISTORY PASIEN — inner tabs per modul ════════════ -->
         <template v-if="type === 'history-pasien'">
-          <!-- Info pasien singkat -->
+          <!-- Info pasien singkat — pakai data dari API (lebih lengkap) -->
           <div class="vdd-patient-meta mb-3">
             <div class="vdd-pm-item">
               <span class="vdd-lbl">No. MR</span>
-              <span class="vdd-val mono">{{ item.no_mr || item.no_reg || '—' }}</span>
+              <span class="vdd-val mono">{{ pasienInfo.no_mr }}</span>
             </div>
             <div class="vdd-pm-item">
               <span class="vdd-lbl">Jaminan</span>
-              <span class="vdd-val">{{ item.jaminan || '—' }}</span>
+              <span class="vdd-val">{{ pasienInfo.jaminan }}</span>
             </div>
             <div class="vdd-pm-item">
               <span class="vdd-lbl">Total Aktivitas</span>
-              <span class="vdd-val font-weight-bold">{{ allEvents.length }}×</span>
+              <span class="vdd-val font-weight-bold">
+                <VProgressCircular v-if="loadingHistory" size="14" width="2" indeterminate color="deep-purple" class="me-1" />
+                <template v-else>{{ allEvents.length }}×</template>
+              </span>
             </div>
           </div>
 
@@ -244,7 +288,11 @@ function fmtDate(d) {
           </div><!-- /vdd-tab-bar-wrap -->
 
           <!-- Timeline events -->
-          <div v-if="!activeEvents.length" class="vdd-empty">
+          <div v-if="loadingHistory" class="text-center py-8">
+            <VProgressCircular indeterminate color="deep-purple" size="28" />
+            <p class="text-caption mt-2" style="color:var(--qc-text-2)">Memuat semua riwayat dari database...</p>
+          </div>
+          <div v-else-if="!activeEvents.length" class="vdd-empty">
             <VIcon icon="ri-inbox-line" size="36" class="mb-2 opacity-30" />
             <p class="text-caption">Belum ada aktivitas</p>
           </div>

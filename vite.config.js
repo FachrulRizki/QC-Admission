@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
         styles: {
           configFile: 'resources/js/src/assets/styles/variables/_vuetify.scss',
         },
+        sassVariables: false,
       }),
       Components({
         dirs: ['resources/js/src/@core/components', 'resources/js/src/components'],
@@ -56,8 +57,9 @@ export default defineConfig(({ mode }) => {
     css: {
       preprocessorOptions: {
         scss: {
-          // Suppress Sass deprecation warnings dari Vuetify template dan library pihak ketiga.
-          // Warning ini tidak berasal dari kode kita — akan hilang saat library update ke Sass modern API.
+          // Gunakan modern compiler API — menghilangkan legacy-js-api warning
+          api: 'modern-compiler',
+          // Suppress sisa deprecation warnings dari Vuetify dan library lain
           silenceDeprecations: [
             'legacy-js-api',
             'if-function',
