@@ -26,7 +26,7 @@ class BatalRanapService
         if (! empty($filters['date_from']))       $query->whereDate('created_at', '>=', $filters['date_from']);
         if (! empty($filters['date_to']))         $query->whereDate('created_at', '<=', $filters['date_to']);
 
-        $perPage = min((int) ($filters['per_page'] ?? 100), 500);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 9999);
         return $query->paginate($perPage);
     }
 

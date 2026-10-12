@@ -65,7 +65,7 @@ class EdukasiLanjutanService
         if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
         if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
 
-        $perPage = min((int) ($filters['per_page'] ?? 300), 1000);
+        $perPage = min((int) ($filters['per_page'] ?? 300), 9999);
         $collection = $query->limit($perPage)->get();
 
         // Satu kali enrich RSUS untuk kedua set

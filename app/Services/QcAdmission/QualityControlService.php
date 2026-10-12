@@ -33,13 +33,17 @@ class QualityControlService
         if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
 
         // Sembunyikan QC yang sudah pindah ke Edukasi Lanjutan
-        $query->whereNotExists(function ($sub) {
-            $sub->selectRaw('1')
-                ->from('qcw_edukasi_lanjutans')
-                ->whereColumn('qcw_edukasi_lanjutans.quality_control_id', 'qcw_quality_controls.id');
-        });
+        // KECUALI kalau include_all=true (untuk keperluan History Pasien)
+        $includeAll = filter_var($filters['include_all'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if (! $includeAll) {
+            $query->whereNotExists(function ($sub) {
+                $sub->selectRaw('1')
+                    ->from('qcw_edukasi_lanjutans')
+                    ->whereColumn('qcw_edukasi_lanjutans.quality_control_id', 'qcw_quality_controls.id');
+            });
+        }
 
-        $perPage = min((int) ($filters['per_page'] ?? 100), 500);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 9999);
         return $query->paginate($perPage);
     }
 

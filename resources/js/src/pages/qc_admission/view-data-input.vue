@@ -27,6 +27,40 @@ const dateTo = ref(todayStr())
 const filterAlasan = ref('')
 const activeTab = ref('summary')
 
+// ── Search khusus History Pasien (by no MR / nama, tanpa batasan tanggal) ────
+const historySearch      = ref('')
+const historySearchLoading = ref(false)
+const historySearchResult  = ref(null)   // { pasien, events } dari API
+const historySearchError   = ref('')
+
+async function searchHistoryByMr() {
+  const q = historySearch.value.trim()
+  if (!q) return
+  historySearchLoading.value = true
+  historySearchResult.value  = null
+  historySearchError.value   = ''
+  try {
+    const { data } = await axios.get(`/api/history-pasien/${encodeURIComponent(q)}`)
+    if (!data.events?.length) {
+      historySearchError.value = `Tidak ada riwayat untuk No. MR / Reg "${q}"`
+    } else {
+      historySearchResult.value = data
+      // Langsung buka dialog detail
+      openDetail({
+        no_mr:       data.pasien?.no_mr ?? q,
+        no_reg:      data.pasien?.no_reg,
+        nama_pasien: data.pasien?.nama_pasien ?? '—',
+        jaminan:     data.pasien?.jaminan ?? '—',
+        _events:     [...(data.events ?? [])].reverse(),
+      }, 'history-pasien')
+    }
+  } catch {
+    historySearchError.value = `Pasien dengan No. MR / Reg "${q}" tidak ditemukan`
+  } finally {
+    historySearchLoading.value = false
+  }
+}
+
 const isKasir = computed(() => !auth.hasPermission('quality-control:view'))
 
 // ── Hanya 3 tab sekarang ──────────────────────────────────────────────────────
@@ -45,6 +79,13 @@ const edukasiTransferData = ref([])
 const upData = ref([])
 const alasanData = ref([])
 
+// Data tanpa filter tanggal — khusus untuk tab History Pasien
+const qcAllData              = ref([])
+const batalAllData           = ref([])
+const edukasiAllData         = ref([])
+const edukasiTransferAllData = ref([])
+const upAllData              = ref([])
+
 async function safeGet(url, params = {}) {
   try {
     const { data } = await axios.get(url, { params })
@@ -59,6 +100,8 @@ async function loadAll() {
       date_from: dateFrom.value || undefined,
       date_to:   dateTo.value   || undefined,
     }
+    // History Pasien butuh semua data tanpa batasan tanggal agar list pasien lengkap
+    const noDateParams = { per_page: 2000, include_all: true }
 
     if (isKasir.value) {
       batalData.value = await safeGet('/api/batal-ranap', { per_page: 300, ...dateParams })
@@ -69,17 +112,29 @@ async function loadAll() {
         axios.get('/api/edukasi-lanjutan/split', { params: { per_page: 300, ...dateParams } })
           .then(r => r.data).catch(() => ({ active: [], transferred: [] })),
         safeGet('/api/up-selling', { per_page: 300, ...dateParams }),
+        // Data tanpa filter tanggal untuk history pasien
+        safeGet('/api/quality-control', noDateParams),
+        safeGet('/api/batal-ranap',     noDateParams),
+        axios.get('/api/edukasi-lanjutan/split', { params: noDateParams })
+          .then(r => r.data).catch(() => ({ active: [], transferred: [] })),
+        safeGet('/api/up-selling', noDateParams),
       ]
       if (auth.hasPermission('alasan:view')) {
         promises.push(safeGet('/api/alasan', { per_page: 300, ...dateParams }))
       }
 
-      const [qc, batal, eduSplit, up, alasan] = await Promise.all(promises)
+      const [qc, batal, eduSplit, up, qcAll, batalAll, eduSplitAll, upAll, alasan] = await Promise.all(promises)
       qcData.value              = qc
       batalData.value           = batal
       edukasiData.value         = eduSplit.active      ?? []
       edukasiTransferData.value = eduSplit.transferred ?? []
       upData.value              = up
+      // Data lengkap untuk history-pasien (tanpa batasan tanggal)
+      qcAllData.value              = qcAll
+      batalAllData.value           = batalAll
+      edukasiAllData.value         = eduSplitAll.active      ?? []
+      edukasiTransferAllData.value = eduSplitAll.transferred ?? []
+      upAllData.value              = upAll
       alasanData.value          = alasan ?? []
     }
   } finally { loading.value = false }
@@ -102,7 +157,7 @@ const summaryData = computed(() => {
   return Object.values(map)
 })
 
-// ── History Pasien: gabungkan SEMUA modul per no_mr ───────────────────────────
+// ── History Pasien: gabungkan SEMUA modul per no_mr (tanpa filter tanggal) ────
 // Setiap pasien punya entry + array _events (seluruh aktivitas lintas modul)
 const historyPasienData = computed(() => {
   const map = {}
@@ -122,36 +177,37 @@ const historyPasienData = computed(() => {
     return key
   }
 
+  // Gunakan data ALL (tanpa batasan tanggal)
   // QC / Edukasi Awal
-  for (const r of qcData.value) {
+  for (const r of qcAllData.value) {
     const key = ensurePatient(r)
     map[key]._events.push({ _module: 'edukasi-awal', _label: 'Edukasi Awal', ...r })
     if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
   }
 
   // Edukasi Lanjutan (active = belum dapat bed)
-  for (const r of edukasiData.value) {
+  for (const r of edukasiAllData.value) {
     const key = ensurePatient(r)
     map[key]._events.push({ _module: 'edukasi-lanjutan', _label: 'Edukasi Lanjutan', ...r })
     if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
   }
 
   // Edukasi Lanjutan transferred (sudah dapat bed)
-  for (const r of edukasiTransferData.value) {
+  for (const r of edukasiTransferAllData.value) {
     const key = ensurePatient(r)
     map[key]._events.push({ _module: 'sudah-dapat-bed', _label: 'Sudah Dapat Bed', ...r })
     if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
   }
 
   // Batal Ranap
-  for (const r of batalData.value) {
+  for (const r of batalAllData.value) {
     const key = ensurePatient(r, 'tanggal')
     map[key]._events.push({ _module: 'batal-ranap', _label: 'Batal Ranap', ...r })
     if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
   }
 
   // Up Selling
-  for (const r of upData.value) {
+  for (const r of upAllData.value) {
     const key = ensurePatient(r, 'tgl_daftar')
     map[key]._events.push({ _module: 'up-selling', _label: 'Up Selling', ...r })
     const tgl = r.tgl_daftar || r.tanggal
@@ -178,7 +234,7 @@ const grandStats = computed(() => ({
   edukasiTransfer: edukasiTransferData.value.length,
   up:             upData.value.length,
   alasan:         alasanData.value.length,
-  historyPasien:  historyPasienData.value.length,
+  historyPasien:  historyPasienData.value.length,  // pakai data all (tanpa filter tgl)
 }))
 
 // Daftar unik alasan untuk dropdown filter
@@ -225,7 +281,9 @@ const filteredData = computed(() => {
       return flatMatch
     })
   }
-  if (dateFrom.value || dateTo.value) {
+  // Filter tanggal TIDAK berlaku untuk history-pasien
+  // (history pasien diakses by no MR — semua tanggal harus muncul)
+  if (activeTab.value !== 'history-pasien' && (dateFrom.value || dateTo.value)) {
     const from = dateFrom.value ? new Date(dateFrom.value + 'T00:00:00') : null
     const to   = dateTo.value   ? new Date(dateTo.value   + 'T23:59:59') : null
     d = d.filter(r => {
@@ -415,19 +473,53 @@ watch(activeTab, () => { vdiPage.value = 1 })
       <!-- Filter row -->
       <VCardText class="pa-3">
         <VRow dense align="center" class="g-2">
-          <VCol cols="12" sm="4" md="4">
+          <!-- Cari nama/no MR untuk semua tab, tapi di history-pasien lebih kecil karena ada search MR -->
+          <VCol cols="12" :sm="activeTab === 'history-pasien' ? 4 : 4" :md="activeTab === 'history-pasien' ? 3 : 4">
             <VTextField
-              v-model="search" label="Cari..."
+              v-model="search" label="Cari nama / No. MR..."
               prepend-inner-icon="ri-search-line" variant="outlined"
               density="compact" hide-details clearable rounded="lg"
             />
           </VCol>
-          <VCol cols="6" sm="3" md="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
-          </VCol>
-          <VCol cols="6" sm="3" md="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
-          </VCol>
+
+          <!-- ── Filter tanggal: HANYA tampil kalau BUKAN tab history-pasien ── -->
+          <template v-if="activeTab !== 'history-pasien'">
+            <VCol cols="6" sm="3" md="2">
+              <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            </VCol>
+            <VCol cols="6" sm="3" md="2">
+              <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+            </VCol>
+          </template>
+
+          <!-- ── Search by No. MR (khusus history-pasien, langsung hit API) ── -->
+          <template v-else>
+            <VCol cols="12" sm="5" md="5">
+              <div class="d-flex gap-2">
+                <VTextField
+                  v-model="historySearch"
+                  label="Cari by No. MR / No. Reg (semua tanggal)"
+                  prepend-inner-icon="ri-id-card-line"
+                  variant="outlined" density="compact" hide-details clearable rounded="lg"
+                  style="flex:1"
+                  @keyup.enter="searchHistoryByMr"
+                />
+                <VBtn
+                  :loading="historySearchLoading"
+                  color="deep-purple" variant="elevated" size="small" rounded="pill"
+                  icon="ri-search-line"
+                  @click="searchHistoryByMr"
+                />
+              </div>
+              <p v-if="historySearchError" class="text-caption text-error mt-1 mb-0">
+                <VIcon icon="ri-error-warning-line" size="12" class="me-1" />{{ historySearchError }}
+              </p>
+              <p v-else class="text-caption mt-1 mb-0" style="color:var(--qc-text-2)">
+                <VIcon icon="ri-information-line" size="12" class="me-1" />List di bawah dari semua tanggal · Ketik No. MR untuk cari langsung
+              </p>
+            </VCol>
+          </template>
+
           <!-- Filter alasan (hanya tab alasan) -->
           <VCol v-if="activeTab === 'alasan'" cols="12" sm="auto" md="3">
             <VSelect
@@ -438,7 +530,7 @@ watch(activeTab, () => { vdiPage.value = 1 })
           </VCol>
           <VCol cols="auto">
             <VBtn size="small" variant="text" color="secondary"
-              @click="search = ''; dateFrom = todayStr(); dateTo = todayStr(); filterAlasan = ''">
+              @click="search = ''; dateFrom = todayStr(); dateTo = todayStr(); filterAlasan = ''; historySearch = ''; historySearchResult = null; historySearchError = ''">
               Reset
             </VBtn>
           </VCol>
