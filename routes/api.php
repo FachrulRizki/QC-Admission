@@ -14,6 +14,8 @@ use App\Http\Controllers\QcAdmission\MasterDataController;
 use App\Http\Controllers\QcAdmission\ActivityLogController;
 use App\Http\Controllers\QcAdmission\AlasanController;
 use App\Http\Controllers\QcAdmission\HistoryPasienController;
+use App\Http\Controllers\QcAdmission\BooklistAdmissionController;
+use App\Http\Controllers\QcAdmission\DokterController;
 
 Route::middleware(['keycloak.auth'])->group(function () {
 
@@ -23,6 +25,7 @@ Route::middleware(['keycloak.auth'])->group(function () {
     Route::get('/pegawai/semua',   [PegawaiController::class,    'semua']);   // Semua pegawai (field Rekomendasi Karyawan)
     Route::get('/pegawai/search',  [PegawaiController::class,    'search']);  // Search semua pegawai
     Route::get('/pasien',          [PasienController::class,     'index']);
+    Route::get('/dokter/search',   [DokterController::class,     'search']);  // Search dokter DPJP dari tbl DOKTER
 
     // Batal Ranap view — kasir, qc_admission, admin
     Route::get('batal-ranap',      [BatalRanapController::class, 'index']);
@@ -179,5 +182,22 @@ Route::middleware(['keycloak.auth'])->group(function () {
     // Butuh permission alasan:delete
     Route::middleware(['keycloak.role:alasan:delete'])->group(function () {
         Route::delete('alasan/{id}', [AlasanController::class, 'destroy']);
+    });
+
+    // Booklist Admission — view
+    Route::middleware(['keycloak.role:booklist:view'])->group(function () {
+        Route::get('booklist-admission',       [BooklistAdmissionController::class, 'index']);
+        Route::get('booklist-admission/{id}',  [BooklistAdmissionController::class, 'show']);
+    });
+
+    // Booklist Admission — write
+    Route::middleware(['keycloak.role:booklist:write'])->group(function () {
+        Route::post('booklist-admission',       [BooklistAdmissionController::class, 'store']);
+        Route::put ('booklist-admission/{id}',  [BooklistAdmissionController::class, 'update']);
+    });
+
+    // Booklist Admission — delete
+    Route::middleware(['keycloak.role:booklist:delete'])->group(function () {
+        Route::delete('booklist-admission/{id}', [BooklistAdmissionController::class, 'destroy']);
     });
 });

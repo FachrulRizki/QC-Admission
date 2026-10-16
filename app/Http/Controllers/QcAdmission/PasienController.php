@@ -39,6 +39,7 @@ class PasienController extends Controller
         $innerSql = "
             SELECT
                 P.No_Reg, P.No_MR, R.Nama_Pasien, CB.KET_BAYAR,
+                R.No_Telp2,
                 P.Tanggal AS Tgl_Daftar,
                 CONVERT(varchar, P.Jam, 108) AS Jam_Daftar_Str,
                 { fn CONCAT({ fn CONCAT(CONVERT(varchar, P.Tanggal, 23), ' ') }, CONVERT(varchar, P.Jam, 108)) } AS Time_Daftar,
@@ -120,6 +121,7 @@ class PasienController extends Controller
             'no_mr'        => $r['No_MR']        ?? '',
             'nama_pasien'  => trim($r['Nama_Pasien'] ?? ''),
             'ket_bayar'    => trim($r['KET_BAYAR']   ?? ''),
+            'no_telp'      => trim($r['No_Telp2']    ?? ''),
             'nama_ruang'   => $r['Nama_Ruang']   ?? '',
             'nama_bangsal' => $r['Nama_Bangsal'] ?? '',
             'nama_kelas'   => $r['Nama_Kelas']   ?? '',
@@ -135,14 +137,14 @@ class PasienController extends Controller
     private function mockPasien(string $search = ''): array
     {
         $data = [
-            ['no_reg'=>'14-00041470','no_mr'=>'353245','nama_pasien'=>'LE WI BY',        'ket_bayar'=>'PRIBADI/MANDIRI',               'nama_ruang'=>'PERINA 02',   'nama_bangsal'=>'PERINA',        'nama_kelas'=>'NEONATUS', 'tgl_daftar'=>'2026-04-26','jam_daftar'=>'18:02:00','keterangan'=>'Observasi',         'kode_bed'=>null,   'bed_status'=>null],
-            ['no_reg'=>'16-00018027','no_mr'=>'129451','nama_pasien'=>'KM ID TN',        'ket_bayar'=>'TANGGUNGAN INSTANSI/PERUSAHAAN','nama_ruang'=>'IGD',         'nama_bangsal'=>'IGD',           'nama_kelas'=>'',         'tgl_daftar'=>'2026-02-12','jam_daftar'=>'10:25:00','keterangan'=>'Observasi',         'kode_bed'=>'ED001','bed_status'=>'TERISI'],
-            ['no_reg'=>'17-00104854','no_mr'=>'200123','nama_pasien'=>'AGUS SALIM, TN',  'ket_bayar'=>'BPJS',                          'nama_ruang'=>'IGD',         'nama_bangsal'=>'IGD',           'nama_kelas'=>'',         'tgl_daftar'=>'2026-04-22','jam_daftar'=>'08:30:00','keterangan'=>'Observasi',         'kode_bed'=>'ED002','bed_status'=>'TERISI'],
-            ['no_reg'=>'21-00017029','no_mr'=>'588414','nama_pasien'=>'HA TN',           'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DELIMA A18 D','nama_bangsal'=>'DELIMA ATAS',   'nama_kelas'=>'KELAS III','tgl_daftar'=>'2026-02-25','jam_daftar'=>'09:00:00','keterangan'=>'Sudah Masuk Kamar',  'kode_bed'=>null,   'bed_status'=>null],
-            ['no_reg'=>'569142',     'no_mr'=>'569142','nama_pasien'=>'ONGKI SAPUTRA, TN','ket_bayar'=>'BPJS',                         'nama_ruang'=>'PS ATAS 01',  'nama_bangsal'=>'PAHLAWAN ATAS', 'nama_kelas'=>'KELAS VIP','tgl_daftar'=>'2026-06-28','jam_daftar'=>'19:56:40','keterangan'=>'Antri Admisi',       'kode_bed'=>null,   'bed_status'=>null],
-            ['no_reg'=>'REG001',     'no_mr'=>'813500','nama_pasien'=>'ELLY MAYA, NY',   'ket_bayar'=>'BPJS',                          'nama_ruang'=>'DAHLIA 2',    'nama_bangsal'=>'DAHLIA',        'nama_kelas'=>'Kelas 1',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'08:00:00','keterangan'=>'Belum Dapat Kamar',  'kode_bed'=>null,   'bed_status'=>null],
-            ['no_reg'=>'REG002',     'no_mr'=>'575360','nama_pasien'=>'IDH SUBINGSEN, NY','ket_bayar'=>'BPJS',                         'nama_ruang'=>'MAWAR 3',     'nama_bangsal'=>'MAWAR',         'nama_kelas'=>'Kelas 2',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'10:30:00','keterangan'=>'Antri Admisi',       'kode_bed'=>null,   'bed_status'=>null],
-            ['no_reg'=>'REG003',     'no_mr'=>'087220','nama_pasien'=>'RUSMINI, NY',     'ket_bayar'=>'Umum',                          'nama_ruang'=>'ANGGREK 1',   'nama_bangsal'=>'ANGGREK',       'nama_kelas'=>'Kelas 3',  'tgl_daftar'=>'2026-06-28','jam_daftar'=>'14:15:00','keterangan'=>'Sudah Masuk Kamar',  'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'14-00041470','no_mr'=>'353245','nama_pasien'=>'LE WI BY',        'ket_bayar'=>'PRIBADI/MANDIRI',               'no_telp'=>'','nama_ruang'=>'PERINA 02',   'nama_bangsal'=>'PERINA',        'nama_kelas'=>'NEONATUS', 'tgl_daftar'=>'2026-04-26','jam_daftar'=>'18:02:00','keterangan'=>'Observasi',         'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'16-00018027','no_mr'=>'129451','nama_pasien'=>'KM ID TN',        'ket_bayar'=>'TANGGUNGAN INSTANSI/PERUSAHAAN','no_telp'=>'','nama_ruang'=>'IGD',         'nama_bangsal'=>'IGD',           'nama_kelas'=>'',         'tgl_daftar'=>'2026-02-12','jam_daftar'=>'10:25:00','keterangan'=>'Observasi',         'kode_bed'=>'ED001','bed_status'=>'TERISI'],
+            ['no_reg'=>'17-00104854','no_mr'=>'200123','nama_pasien'=>'AGUS SALIM, TN',  'ket_bayar'=>'BPJS',                          'no_telp'=>'081234567890','nama_ruang'=>'IGD',         'nama_bangsal'=>'IGD',           'nama_kelas'=>'',         'tgl_daftar'=>'2026-04-22','jam_daftar'=>'08:30:00','keterangan'=>'Observasi',         'kode_bed'=>'ED002','bed_status'=>'TERISI'],
+            ['no_reg'=>'21-00017029','no_mr'=>'588414','nama_pasien'=>'HA TN',           'ket_bayar'=>'BPJS',                          'no_telp'=>'','nama_ruang'=>'DELIMA A18 D','nama_bangsal'=>'DELIMA ATAS',   'nama_kelas'=>'KELAS III','tgl_daftar'=>'2026-02-25','jam_daftar'=>'09:00:00','keterangan'=>'Sudah Masuk Kamar',  'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'569142',     'no_mr'=>'569142','nama_pasien'=>'ONGKI SAPUTRA, TN','ket_bayar'=>'BPJS',                         'no_telp'=>'089876543210','nama_ruang'=>'PS ATAS 01',  'nama_bangsal'=>'PAHLAWAN ATAS', 'nama_kelas'=>'KELAS VIP','tgl_daftar'=>'2026-06-28','jam_daftar'=>'19:56:40','keterangan'=>'Antri Admisi',       'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'REG001',     'no_mr'=>'813500','nama_pasien'=>'ELLY MAYA, NY',   'ket_bayar'=>'BPJS',                          'no_telp'=>'','nama_ruang'=>'DAHLIA 2',    'nama_bangsal'=>'DAHLIA',        'nama_kelas'=>'Kelas 1',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'08:00:00','keterangan'=>'Belum Dapat Kamar',  'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'REG002',     'no_mr'=>'575360','nama_pasien'=>'IDH SUBINGSEN, NY','ket_bayar'=>'BPJS',                         'no_telp'=>'','nama_ruang'=>'MAWAR 3',     'nama_bangsal'=>'MAWAR',         'nama_kelas'=>'Kelas 2',  'tgl_daftar'=>'2026-06-29','jam_daftar'=>'10:30:00','keterangan'=>'Antri Admisi',       'kode_bed'=>null,   'bed_status'=>null],
+            ['no_reg'=>'REG003',     'no_mr'=>'087220','nama_pasien'=>'RUSMINI, NY',     'ket_bayar'=>'Umum',                          'no_telp'=>'','nama_ruang'=>'ANGGREK 1',   'nama_bangsal'=>'ANGGREK',       'nama_kelas'=>'Kelas 3',  'tgl_daftar'=>'2026-06-28','jam_daftar'=>'14:15:00','keterangan'=>'Sudah Masuk Kamar',  'kode_bed'=>null,   'bed_status'=>null],
         ];
 
         $data = array_map(fn($d) => array_merge($d, [

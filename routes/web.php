@@ -95,6 +95,11 @@ Route::middleware(['keycloak.auth'])->group(function () {
         Route::get('/alasan', fn () => Inertia::render('qc_admission/alasan'))->name('alasan');
     });
 
+    // Butuh permission booklist:view
+    Route::middleware(['keycloak.role:booklist:view'])->group(function () {
+        Route::get('/booklist-admission', fn () => Inertia::render('qc_admission/booklist-admission'))->name('booklist-admission');
+    });
+
 });
 
 // Catch-all 404

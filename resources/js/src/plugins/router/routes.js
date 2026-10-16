@@ -49,6 +49,13 @@ export const routes = [
     meta: { roles: ['up-selling:view'] },
   },
 
+  // Booklist Admission
+  {
+    path: '/booklist-admission',
+    component: () => import('@/pages/qc_admission/booklist-admission.vue'),
+    meta: { roles: ['booklist:view'] },
+  },
+
   // View Data Input — semua user terautentikasi
   {
     path: '/view-data-input',

@@ -50,6 +50,16 @@ const upSellingStore = useUpSellingStore()
     }"
   />
 
+  <!-- Booklist Admission -->
+  <VerticalNavLink
+    v-if="auth.hasPermission('booklist:view')"
+    :item="{
+      title: 'Booklist Admission',
+      icon: 'ri-book-mark-line',
+      to: '/booklist-admission',
+    }"
+  />
+
   <!-- View Data Input — semua yang sudah login -->
   <VerticalNavLink
     v-if="auth.isLoggedIn"
