@@ -101,14 +101,15 @@ class DokterController extends Controller
         });
     }
 
-    /** Fallback: GET /pegawai lalu filter lokal by jabatan mengandung 'dokter'. */
+    /** Fallback: GET /pegawai/semua lalu filter lokal by nama atau jabatan mengandung keyword. */
     private function tryKpiPegawaiDokter(string $token, string $search): array
     {
-        $cacheKey = 'kpi_pegawai_dokter_' . md5(strtolower($search));
+        $cacheKey = 'kpi_pegawai_semua_dokter';
         $cacheTtl = (int) config('services.kpi_api.cache_ttl', 300);
 
-        return Cache::remember($cacheKey, $cacheTtl, function () use ($token, $search) {
-            $response = Http::timeout(15)
+        // Cache semua data dokter dari KPI (tidak per-keyword agar hemat request)
+        $allItems = Cache::remember($cacheKey, $cacheTtl, function () use ($token) {
+            $response = Http::timeout(20)
                 ->withToken($token)
                 ->acceptJson()
                 ->get(config('services.kpi_api.base_url') . '/pegawai', [
@@ -124,26 +125,49 @@ class DokterController extends Controller
             $body  = $response->json();
             $items = $body['data'] ?? $body['pegawai'] ?? $body['items'] ?? (isset($body[0]) ? $body : []);
 
-            $lower = strtolower($search);
-
+            // Filter hanya yang jabatannya mengandung 'dr' / 'dokter' / 'Sp.'
             return collect($items)
-                ->filter(fn($p) =>
-                    // Hanya yang jabatannya mengandung kata 'dokter'
-                    str_contains(strtolower($p['jabatan'] ?? $p['posisi'] ?? ''), 'dokter') &&
-                    // Cocok dengan keyword search
-                    (str_contains(strtolower($p['nama'] ?? $p['name'] ?? ''), $lower) ||
-                     str_contains(strtolower($p['jabatan'] ?? $p['posisi'] ?? ''), $lower))
-                )
+                ->filter(fn($p) => $this->isDokter($p))
                 ->map(fn($p) => [
                     'kode'      => $p['nip'] ?? $p['id'] ?? null,
-                    'nama'      => trim($p['nama'] ?? $p['name'] ?? $p['nama_pegawai'] ?? '—'),
-                    'spesialis' => trim($p['jabatan'] ?? $p['posisi'] ?? ''),
-                    'label'     => trim(($p['nama'] ?? $p['name'] ?? '') . ($p['jabatan'] ? ' — ' . $p['jabatan'] : '')),
+                    'nama'      => trim($p['nama'] ?? $p['name'] ?? $p['nama_pegawai'] ?? ''),
+                    'spesialis' => trim($p['jabatan'] ?? $p['posisi'] ?? $p['spesialis'] ?? ''),
+                    'label'     => $this->buildLabel($p),
                 ])
                 ->values()
-                ->take(30)
                 ->toArray();
         });
+
+        // Filter client-side berdasarkan keyword
+        $lower = strtolower($search);
+        return collect($allItems)
+            ->filter(fn($d) =>
+                str_contains(strtolower($d['nama'] ?? ''), $lower) ||
+                str_contains(strtolower($d['spesialis'] ?? ''), $lower)
+            )
+            ->take(30)
+            ->values()
+            ->toArray();
+    }
+
+    private function isDokter(array $p): bool
+    {
+        $jabatan = strtolower($p['jabatan'] ?? $p['posisi'] ?? $p['spesialis'] ?? '');
+        $nama    = strtolower($p['nama']    ?? $p['name']   ?? '');
+
+        return str_contains($jabatan, 'dokter')
+            || str_contains($jabatan, 'dr.')
+            || str_contains($jabatan, 'sp.')
+            || str_contains($jabatan, 'spesiali')
+            || str_contains($nama, 'dr.')
+            || str_contains($nama, ' sp.');
+    }
+
+    private function buildLabel(array $p): string
+    {
+        $nama      = trim($p['nama'] ?? $p['name'] ?? '');
+        $spesialis = trim($p['jabatan'] ?? $p['posisi'] ?? $p['spesialis'] ?? '');
+        return $nama . ($spesialis ? ' — ' . $spesialis : '');
     }
 
     private function mapKpiDokter(array $items, string $search): array
@@ -209,6 +233,7 @@ class DokterController extends Controller
     {
         $like = "%{$search}%";
 
+        // Tidak semua DB RSUS punya kolom Status_Aktif — query tanpa filter itu
         $rows = DB::connection('rsus')
             ->select("
                 SELECT TOP 30
@@ -216,8 +241,8 @@ class DokterController extends Controller
                     Nama_Dokter,
                     Spesialis
                 FROM dbo.DOKTER
-                WHERE Status_Aktif = '1'
-                  AND (Nama_Dokter LIKE ? OR Spesialis LIKE ?)
+                WHERE Nama_Dokter LIKE ?
+                   OR Spesialis   LIKE ?
                 ORDER BY Nama_Dokter
             ", [$like, $like]);
 

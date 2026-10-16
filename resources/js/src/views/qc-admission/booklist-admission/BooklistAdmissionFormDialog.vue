@@ -37,6 +37,14 @@ let searchTimer     = null
 watch(pasienSearch, (val) => {
   clearTimeout(searchTimer)
   if (!val || val.trim().length < 2) { pasienStore.clear(); return }
+
+  // Guard: jika val sama persis dengan no_reg yang sudah terpilih → skip
+  // (mencegah Vuetify mengirim ulang label lengkap saat item dipilih)
+  if (form.value.no_reg && val === form.value.no_reg) return
+
+  // Guard: jika val adalah label lengkap "no_reg — no_mr — nama" → skip
+  if (val.includes(' — ')) return
+
   pasienLoading.value = true
   searchTimer = setTimeout(async () => {
     await pasienStore.search(val.trim())
@@ -51,6 +59,12 @@ let dokterTimer     = null
 watch(dokterSearch, (val) => {
   clearTimeout(dokterTimer)
   if (!val || val.trim().length < 2) { dokterStore.clear(); return }
+
+  // Guard: skip jika val adalah label lengkap "nama — spesialis"
+  if (val.includes(' — ')) return
+  // Guard: skip jika sudah terpilih (val === value yang tersimpan)
+  if (form.value.dpjp && val === form.value.dpjp) return
+
   dokterTimer = setTimeout(() => dokterStore.search(val.trim()), 300)
 })
 
@@ -76,7 +90,7 @@ watch(() => props.modelValue, (open) => {
     pasienSearch.value = ''
     dokterStore.clear()
     dokterSearch.value = ''
-    pegawaiStore.fetch()
+    pegawaiStore.fetchSemua()  // Tampilkan semua pegawai untuk field Petugas booklist
     tickClock()
     clockTimer = setInterval(tickClock, 1000)
   } else {
@@ -363,14 +377,14 @@ const statusOpts = [
             <div class="bl-sec-body">
               <VAutocomplete
                 v-model="form.petugas"
-                :items="pegawaiStore.namaList"
+                :items="pegawaiStore.semuaItems.map(p => p.nama)"
                 label="Nama Petugas"
                 variant="outlined"
                 density="compact"
                 prepend-inner-icon="ri-nurse-line"
                 clearable
                 hide-details="auto"
-                :loading="pegawaiStore.loading"
+                :loading="pegawaiStore.semuaLoading"
                 no-data-text="Memuat petugas..."
               />
             </div>

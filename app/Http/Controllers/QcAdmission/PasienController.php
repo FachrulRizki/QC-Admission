@@ -39,7 +39,6 @@ class PasienController extends Controller
         $innerSql = "
             SELECT
                 P.No_Reg, P.No_MR, R.Nama_Pasien, CB.KET_BAYAR,
-                R.No_Telp2,
                 P.Tanggal AS Tgl_Daftar,
                 CONVERT(varchar, P.Jam, 108) AS Jam_Daftar_Str,
                 { fn CONCAT({ fn CONCAT(CONVERT(varchar, P.Tanggal, 23), ' ') }, CONVERT(varchar, P.Jam, 108)) } AS Time_Daftar,
@@ -79,7 +78,36 @@ class PasienController extends Controller
 
         $rows = DB::connection('rsus')->select($sql, $params);
 
-        return collect($rows)->map(fn($r) => $this->mapRow((array) $r))->toArray();
+        $mapped = collect($rows)->map(fn($r) => $this->mapRow((array) $r))->toArray();
+
+        if (! empty($mapped)) {
+            try {
+                $mapped = $this->enrichWithNoTelp($mapped);
+            } catch (\Exception) {
+                // Kolom No_Telp2 tidak ada di versi DB ini — skip
+            }
+        }
+
+        return $mapped;
+    }
+
+    private function enrichWithNoTelp(array $rows): array
+    {
+        $noMrList = array_values(array_unique(array_filter(array_column($rows, 'no_mr'))));
+        if (empty($noMrList)) return $rows;
+
+        $placeholders = implode(',', array_fill(0, count($noMrList), '?'));
+        $telpRows     = DB::connection('rsus')->select(
+            "SELECT No_MR, No_Telp FROM dbo.REGISTER_PASIEN WHERE No_MR IN ({$placeholders})",
+            $noMrList
+        );
+
+        $telpMap = collect($telpRows)->keyBy('No_MR')->map(fn($r) => trim($r->No_Telp ?? ''))->toArray();
+
+        return array_map(function ($row) use ($telpMap) {
+            $row['no_telp'] = $telpMap[$row['no_mr']] ?? '';
+            return $row;
+        }, $rows);
     }
 
     private function buildCondition(string $search, string $noReg): array
@@ -121,7 +149,7 @@ class PasienController extends Controller
             'no_mr'        => $r['No_MR']        ?? '',
             'nama_pasien'  => trim($r['Nama_Pasien'] ?? ''),
             'ket_bayar'    => trim($r['KET_BAYAR']   ?? ''),
-            'no_telp'      => trim($r['No_Telp2']    ?? ''),
+            'no_telp'      => '', 
             'nama_ruang'   => $r['Nama_Ruang']   ?? '',
             'nama_bangsal' => $r['Nama_Bangsal'] ?? '',
             'nama_kelas'   => $r['Nama_Kelas']   ?? '',
