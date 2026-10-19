@@ -4,6 +4,7 @@ import { usePegawaiStore } from '@/stores/usePegawaiStore'
 import { usePasienStore } from '@/stores/usePasienStore'
 import { useDokterStore } from '@/stores/useDokterStore'
 import { ref, computed, watch } from 'vue'
+import axios from 'axios'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -37,12 +38,7 @@ let searchTimer     = null
 watch(pasienSearch, (val) => {
   clearTimeout(searchTimer)
   if (!val || val.trim().length < 2) { pasienStore.clear(); return }
-
-  // Guard: jika val sama persis dengan no_reg yang sudah terpilih → skip
-  // (mencegah Vuetify mengirim ulang label lengkap saat item dipilih)
   if (form.value.no_reg && val === form.value.no_reg) return
-
-  // Guard: jika val adalah label lengkap "no_reg — no_mr — nama" → skip
   if (val.includes(' — ')) return
 
   pasienLoading.value = true
@@ -59,26 +55,48 @@ let dokterTimer     = null
 watch(dokterSearch, (val) => {
   clearTimeout(dokterTimer)
   if (!val || val.trim().length < 2) { dokterStore.clear(); return }
-
-  // Guard: skip jika val adalah label lengkap "nama — spesialis"
   if (val.includes(' — ')) return
-  // Guard: skip jika sudah terpilih (val === value yang tersimpan)
   if (form.value.dpjp && val === form.value.dpjp) return
-
   dokterTimer = setTimeout(() => dokterStore.search(val.trim()), 300)
 })
 
+// ── Kelas search dari M_KELAS ─────────────────────────────────────────────────
+const kelasSearch  = ref('')
+const kelasItems   = ref([])
+const kelasLoading = ref(false)
+let kelasTimer     = null
+
+watch(kelasSearch, (val) => {
+  clearTimeout(kelasTimer)
+  if (!val || val.trim().length < 1) { kelasItems.value = []; return }
+  if (form.value.kelas && val === form.value.kelas) return
+
+  kelasLoading.value = true
+  kelasTimer = setTimeout(async () => {
+    try {
+      const res = await axios.get('/api/kelas/search', { params: { search: val.trim() } })
+      kelasItems.value = (res.data?.data ?? []).map(k => k.nama_kelas)
+    } catch {
+      kelasItems.value = []
+    } finally {
+      kelasLoading.value = false
+    }
+  }, 300)
+})
+
+// ── Autofill dari pilihan pasien (bisa di-override manual) ───────────────────
 watch(() => form.value.no_reg, async (val) => {
   if (!val) return
   const hit = pasienStore.results.find(p => p.no_reg === val)
     ?? await pasienStore.lookup(val)
   if (hit) {
-    form.value.no_mr        = hit.no_mr        ?? ''
-    form.value.nama_pasien  = hit.nama_pasien  ?? ''
-    form.value.jaminan      = hit.ket_bayar    ?? ''
-    form.value.diagnosa     = hit.diagnosa     ?? ''
-    form.value.kelas        = hit.nama_kelas   ?? ''
-    form.value.no_hp        = hit.no_telp      ?? ''
+    form.value.no_mr       = hit.no_mr       ?? ''
+    form.value.nama_pasien = hit.nama_pasien ?? ''
+    form.value.jaminan     = hit.ket_bayar   ?? ''
+    // Ketiga field ini diisi dari autofill, tapi tetap bisa di-edit manual
+    form.value.diagnosa    = hit.diagnosa    ?? form.value.diagnosa
+    form.value.kelas       = hit.nama_kelas  ?? form.value.kelas
+    form.value.no_hp       = hit.no_telp     ?? form.value.no_hp
   }
 })
 
@@ -90,7 +108,9 @@ watch(() => props.modelValue, (open) => {
     pasienSearch.value = ''
     dokterStore.clear()
     dokterSearch.value = ''
-    pegawaiStore.fetchSemua()  // Tampilkan semua pegawai untuk field Petugas booklist
+    kelasItems.value   = []
+    kelasSearch.value  = ''
+    pegawaiStore.fetchSemua()
     tickClock()
     clockTimer = setInterval(tickClock, 1000)
   } else {
@@ -100,18 +120,18 @@ watch(() => props.modelValue, (open) => {
 
 function initialForm() {
   return {
-    no_reg:           null,
-    no_mr:            '',
-    nama_pasien:      '',
-    no_hp:            '',
-    jaminan:          '',
-    kelas:            '',
-    dpjp:             '',
-    diagnosa:         '',
-    tanggal_op:       '',
-    status_pasien:    null,
-    catatan:          '',
-    petugas:          null,
+    no_reg:        null,
+    no_mr:         '',
+    nama_pasien:   '',
+    no_hp:         '',
+    jaminan:       '',
+    kelas:         '',
+    dpjp:          '',
+    diagnosa:      '',
+    tanggal_op:    '',
+    status_pasien: null,
+    catatan:       '',
+    petugas:       null,
   }
 }
 
@@ -129,10 +149,7 @@ async function handleSave() {
   }
 
   saving.value = true
-  const payload = {
-    ...form.value,
-    tanggal_booklist: fmtTanggal(),
-  }
+  const payload = { ...form.value, tanggal_booklist: fmtTanggal() }
 
   const result = props.editItem
     ? await store.update(props.editItem.id, payload)
@@ -165,7 +182,7 @@ const statusOpts = [
   <VDialog :model-value="modelValue" max-width="600" persistent @update:model-value="close">
     <VCard rounded="xl" class="bl-dlg-card overflow-hidden">
 
-      <!-- ── Banner Header ───────────────────────────────────────────────── -->
+      <!-- ── Banner Header ─────────────────────────────────────────────── -->
       <div class="bl-banner">
         <div class="bl-blob bl-blob--1" />
         <div class="bl-blob bl-blob--2" />
@@ -187,7 +204,7 @@ const statusOpts = [
         </div>
       </div>
 
-      <!-- ── Body ──────────────────────────────────────────────────────── -->
+      <!-- ── Body ─────────────────────────────────────────────────────── -->
       <div class="bl-body">
         <div v-if="errorMsg" class="px-5 pt-4">
           <VAlert type="error" variant="tonal" density="compact" closable @click:close="errorMsg = ''">
@@ -197,14 +214,14 @@ const statusOpts = [
 
         <div class="px-5 py-4 d-flex flex-column gap-4">
 
-          <!-- ── SECTION: Data Pasien ──────────────────────────────────── -->
+          <!-- ── SECTION: Data Pasien ────────────────────────────────── -->
           <div class="bl-section bl-section--primary">
             <div class="bl-sec-hd bl-sec-hd--primary">
               <VIcon icon="ri-user-heart-line" size="14" />
               <span>Data Pasien</span>
               <span class="bl-sec-req">Wajib Diisi</span>
             </div>
-            <div class="bl-sec-body">
+            <div class="bl-sec-body d-flex flex-column gap-3">
 
               <!-- Search pasien -->
               <VAutocomplete
@@ -221,7 +238,6 @@ const statusOpts = [
                 no-filter
                 :loading="pasienLoading || pasienStore.loading"
                 no-data-text="Ketik min. 2 karakter..."
-                class="mb-3"
                 hide-details="auto"
               >
                 <template #item="{ item, props: iProps }">
@@ -245,48 +261,76 @@ const statusOpts = [
                 </template>
               </VAutocomplete>
 
-              <!-- Autofill info grid -->
+              <!-- Info autofill (No. MR + Jaminan — read-only) -->
               <Transition name="slide-down">
-                <div v-if="hasPasien" class="bl-info-grid">
-                  <div class="bl-ig-cell bl-ig-cell--span2">
-                    <span class="bl-ig-lbl"><VIcon icon="ri-user-3-line" size="10" class="me-1" />Nama Pasien</span>
-                    <span class="bl-ig-val bl-ig-val--accent">{{ form.nama_pasien || '—' }}</span>
+                <div v-if="hasPasien" class="bl-info-readonly">
+                  <div class="bl-ir-cell">
+                    <span class="bl-ir-lbl"><VIcon icon="ri-id-card-line" size="10" class="me-1" />No. MR</span>
+                    <span class="bl-ir-val bl-ir-val--mono">{{ form.no_mr || '—' }}</span>
                   </div>
-                  <div class="bl-ig-cell">
-                    <span class="bl-ig-lbl"><VIcon icon="ri-id-card-line" size="10" class="me-1" />No. MR</span>
-                    <span class="bl-ig-val bl-ig-val--mono">{{ form.no_mr || '—' }}</span>
+                  <div class="bl-ir-cell">
+                    <span class="bl-ir-lbl"><VIcon icon="ri-user-3-line" size="10" class="me-1" />Nama Pasien</span>
+                    <span class="bl-ir-val">{{ form.nama_pasien || '—' }}</span>
                   </div>
-                  <div class="bl-ig-cell">
-                    <span class="bl-ig-lbl"><VIcon icon="ri-shield-user-line" size="10" class="me-1" />Jaminan</span>
-                    <span class="bl-ig-val">{{ form.jaminan || '—' }}</span>
-                  </div>
-                  <div class="bl-ig-cell">
-                    <span class="bl-ig-lbl"><VIcon icon="ri-hotel-bed-line" size="10" class="me-1" />Kelas</span>
-                    <span class="bl-ig-val">{{ form.kelas || '—' }}</span>
-                  </div>
-                  <div class="bl-ig-cell bl-ig-cell--span2">
-                    <span class="bl-ig-lbl"><VIcon icon="ri-stethoscope-line" size="10" class="me-1" />Diagnosa</span>
-                    <span class="bl-ig-val">{{ form.diagnosa || '—' }}</span>
-                  </div>
-                  <div class="bl-ig-cell">
-                    <span class="bl-ig-lbl"><VIcon icon="ri-phone-line" size="10" class="me-1" />No. HP</span>
-                    <span class="bl-ig-val bl-ig-val--mono">{{ form.no_hp || '—' }}</span>
-                  </div>
-                  <div class="bl-ig-cell">
-                    <span class="bl-ig-lbl"><VIcon icon="ri-map-pin-line" size="10" class="me-1" />Ruang / Bangsal</span>
-                    <span class="bl-ig-val">{{ form.kelas || '—' }}</span>
+                  <div class="bl-ir-cell">
+                    <span class="bl-ir-lbl"><VIcon icon="ri-shield-user-line" size="10" class="me-1" />Jaminan</span>
+                    <span class="bl-ir-val">{{ form.jaminan || '—' }}</span>
                   </div>
                 </div>
               </Transition>
 
               <div v-if="!hasPasien" class="bl-empty-pasien">
                 <VIcon icon="ri-user-search-line" size="28" class="mb-1 opacity-30" />
-                <p class="text-caption text-disabled mb-0">Cari pasien untuk mengisi data otomatis</p>
+                <p class="text-caption text-disabled mb-0">Cari pasien untuk autofill, atau isi manual di bawah</p>
               </div>
+
+              <!-- Divider -->
+              <div class="bl-divider">
+                <span>Data dapat diisi / diubah manual</span>
+              </div>
+
+              <!-- No. HP — editable, bisa autofill atau manual -->
+              <VTextField
+                v-model="form.no_hp"
+                label="No. Telepon / HP"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="ri-phone-line"
+                hide-details="auto"
+              />
+
+              <!-- Kelas — autocomplete M_KELAS, bisa autofill atau manual -->
+              <VAutocomplete
+                v-model="form.kelas"
+                v-model:search="kelasSearch"
+                :items="kelasItems"
+                label="Nama Kelas"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="ri-hotel-bed-line"
+                clearable
+                no-filter
+                :loading="kelasLoading"
+                no-data-text="Ketik untuk mencari kelas..."
+                hide-details="auto"
+              />
+
+              <!-- Diagnosa — textarea, bisa autofill atau manual -->
+              <VTextarea
+                v-model="form.diagnosa"
+                label="Diagnosa"
+                variant="outlined"
+                density="compact"
+                rows="2"
+                auto-grow
+                prepend-inner-icon="ri-stethoscope-line"
+                hide-details="auto"
+              />
+
             </div>
           </div>
 
-          <!-- ── SECTION: Rencana Masuk & Status ──────────────────────── -->
+          <!-- ── SECTION: Rencana Masuk & Status ────────────────────── -->
           <div class="bl-section bl-section--warning">
             <div class="bl-sec-hd bl-sec-hd--warning">
               <VIcon icon="ri-calendar-event-line" size="14" />
@@ -349,7 +393,7 @@ const statusOpts = [
                 hide-details="auto"
                 :prepend-inner-icon="
                   form.status_pasien === 'Bedah'     ? 'ri-surgical-mask-line' :
-                  form.status_pasien === 'Non Bedah' ? 'ri-hospital-line'       :
+                  form.status_pasien === 'Non Bedah' ? 'ri-hospital-line'      :
                   'ri-question-line'
                 "
               />
@@ -368,7 +412,7 @@ const statusOpts = [
             </div>
           </div>
 
-          <!-- ── SECTION: Petugas ──────────────────────────────────────── -->
+          <!-- ── SECTION: Petugas ────────────────────────────────────── -->
           <div class="bl-section bl-section--secondary">
             <div class="bl-sec-hd bl-sec-hd--secondary">
               <VIcon icon="ri-nurse-line" size="14" />
@@ -393,7 +437,7 @@ const statusOpts = [
         </div>
       </div>
 
-      <!-- ── Footer ─────────────────────────────────────────────────────── -->
+      <!-- ── Footer ───────────────────────────────────────────────────── -->
       <div class="bl-footer">
         <VBtn variant="outlined" rounded="lg" size="small" @click="close">Batal</VBtn>
         <VBtn
@@ -419,7 +463,6 @@ const statusOpts = [
   flex-direction: column;
   max-height: 92dvh;
 }
-
 .bl-body {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -434,49 +477,28 @@ const statusOpts = [
   background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #60a5fa 100%);
   padding: 16px 18px 14px;
 }
-
-.bl-blob {
-  position: absolute;
-  border-radius: 50%;
-  background: #fff;
-}
+.bl-blob { position: absolute; border-radius: 50%; background: #fff; }
 .bl-blob--1 { width: 180px; height: 180px; opacity: .08; top: -60px; right: -40px; }
 .bl-blob--2 { width: 80px;  height: 80px;  opacity: .06; bottom: -30px; right: 90px; }
-
 .bl-inner {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  position: relative; z-index: 2;
+  display: flex; align-items: center; gap: 12px;
 }
-
 .bl-icon {
-  width: 40px; height: 40px; flex-shrink: 0;
-  border-radius: 12px;
-  background: rgba(255,255,255,.22);
-  border: 1.5px solid rgba(255,255,255,.35);
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+  background: rgba(255,255,255,.22); border: 1.5px solid rgba(255,255,255,.35);
   display: flex; align-items: center; justify-content: center;
 }
-
 .bl-text { flex: 1; min-width: 0; }
-.bl-sub  { font-size: .6rem; color: rgba(255,255,255,.72); margin: 0 0 1px; letter-spacing: .05em; text-transform: uppercase; }
+.bl-sub   { font-size: .6rem; color: rgba(255,255,255,.72); margin: 0 0 1px; letter-spacing: .05em; text-transform: uppercase; }
 .bl-title { font-size: .95rem; font-weight: 800; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
 .bl-clock {
-  font-size: .58rem;
-  color: rgba(255,255,255,.75);
-  flex-shrink: 0;
-  background: rgba(0,0,0,.15);
-  border-radius: 20px;
-  padding: 3px 8px;
+  font-size: .58rem; color: rgba(255,255,255,.75); flex-shrink: 0;
+  background: rgba(0,0,0,.15); border-radius: 20px; padding: 3px 8px;
   display: flex; align-items: center; white-space: nowrap;
 }
-
 .bl-close {
-  flex-shrink: 0;
-  background: rgba(255,255,255,.2);
-  border: none; cursor: pointer;
+  flex-shrink: 0; background: rgba(255,255,255,.2); border: none; cursor: pointer;
   width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   color: #fff; transition: background .15s;
@@ -489,71 +511,73 @@ const statusOpts = [
   border: 1.5px solid rgba(var(--v-border-color), var(--v-border-opacity));
   overflow: hidden;
 }
-.bl-section:focus-within {
-  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), .07);
-}
-.bl-section--primary:focus-within  { border-color: rgba(var(--v-theme-primary), .35); box-shadow: 0 0 0 3px rgba(var(--v-theme-primary),.08); }
-.bl-section--info:focus-within     { border-color: rgba(var(--v-theme-info), .35);    box-shadow: 0 0 0 3px rgba(var(--v-theme-info),.08); }
-.bl-section--warning:focus-within  { border-color: rgba(var(--v-theme-warning), .35); box-shadow: 0 0 0 3px rgba(var(--v-theme-warning),.08); }
-.bl-section--secondary:focus-within{ border-color: rgba(var(--v-theme-secondary),.35);box-shadow: 0 0 0 3px rgba(var(--v-theme-secondary),.08); }
+.bl-section--primary:focus-within   { border-color: rgba(var(--v-theme-primary), .35);    box-shadow: 0 0 0 3px rgba(var(--v-theme-primary),.08); }
+.bl-section--warning:focus-within   { border-color: rgba(var(--v-theme-warning), .35);    box-shadow: 0 0 0 3px rgba(var(--v-theme-warning),.08); }
+.bl-section--secondary:focus-within { border-color: rgba(var(--v-theme-secondary), .35);  box-shadow: 0 0 0 3px rgba(var(--v-theme-secondary),.08); }
 
 .bl-sec-hd {
   display: flex; align-items: center; gap: 7px;
-  padding: 9px 14px;
-  font-size: .68rem; font-weight: 700;
+  padding: 9px 14px; font-size: .68rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .07em;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .bl-sec-hd--primary   { background: rgba(var(--v-theme-primary), .07);   color: rgb(var(--v-theme-primary)); }
-.bl-sec-hd--info      { background: rgba(var(--v-theme-info), .07);      color: rgb(var(--v-theme-info)); }
 .bl-sec-hd--warning   { background: rgba(var(--v-theme-warning), .07);   color: rgb(var(--v-theme-warning)); }
 .bl-sec-hd--secondary { background: rgba(var(--v-theme-secondary), .07); color: rgb(var(--v-theme-secondary)); }
 
 .bl-sec-req {
-  margin-left: auto;
-  font-size: .55rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  margin-left: auto; font-size: .55rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
   padding: 1px 6px; border-radius: 10px;
-  background: rgba(var(--v-theme-primary), .12);
-  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), .12); color: rgb(var(--v-theme-primary));
 }
-
 .bl-sec-body { padding: 14px; }
 
-/* ── Info grid ── */
-.bl-info-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 1px;
+/* ── Info readonly strip (No. MR, Nama, Jaminan) ── */
+.bl-info-readonly {
+  display: flex; flex-wrap: wrap; gap: 1px;
   background: rgba(var(--v-border-color), var(--v-border-opacity));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 10px; overflow: hidden; margin-top: 2px;
+  border-radius: 10px; overflow: hidden;
 }
-.bl-ig-cell {
+.bl-ir-cell {
+  flex: 1 1 120px;
   display: flex; flex-direction: column; gap: 2px;
-  padding: 9px 11px;
+  padding: 8px 11px;
   background: rgba(var(--v-theme-surface), 1);
 }
-.bl-ig-cell--span2 { grid-column: span 2; }
-.bl-ig-lbl {
-  font-size: .58rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .07em; color: rgba(var(--v-theme-on-surface), .38);
-  display: flex; align-items: center;
+.bl-ir-lbl {
+  font-size: .58rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
+  color: rgba(var(--v-theme-on-surface), .38); display: flex; align-items: center;
 }
-.bl-ig-val { font-size: .82rem; font-weight: 600; color: rgba(var(--v-theme-on-surface), .85); word-break: break-word; }
-.bl-ig-val--accent { font-weight: 700; color: rgba(var(--v-theme-on-surface), .92); }
-.bl-ig-val--mono   { font-family: monospace; font-size: .78rem; letter-spacing: .03em; }
+.bl-ir-val      { font-size: .82rem; font-weight: 600; color: rgba(var(--v-theme-on-surface), .85); word-break: break-word; }
+.bl-ir-val--mono { font-family: monospace; font-size: .78rem; }
+
+/* ── Divider ── */
+.bl-divider {
+  display: flex; align-items: center; gap: 8px; margin: 2px 0;
+}
+.bl-divider::before,
+.bl-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.bl-divider span {
+  font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: rgba(var(--v-theme-on-surface), .35); white-space: nowrap; padding: 0 4px;
+}
 
 /* ── Empty pasien ── */
 .bl-empty-pasien {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 20px 10px; gap: 4px;
+  padding: 16px 10px; gap: 4px;
   border: 1.5px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 10px; margin-top: 2px;
+  border-radius: 10px;
 }
 
 /* ── Footer ── */
 .bl-footer {
-  flex-shrink: 0;
-  display: flex; gap: 10px;
+  flex-shrink: 0; display: flex; gap: 10px;
   padding: 14px 20px;
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgba(var(--v-theme-surface-variant), .25);

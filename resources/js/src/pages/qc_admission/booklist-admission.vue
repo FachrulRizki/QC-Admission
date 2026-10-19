@@ -24,16 +24,22 @@ const filterStatus  = ref(null)  // null | 'Bedah' | 'Non Bedah'
 const records = computed(() => store.records ?? [])
 
 const stats = computed(() => ({
-  total:    records.value.length,
-  bedah:    records.value.filter(r => r.status_pasien === 'Bedah').length,
-  nonBedah: records.value.filter(r => r.status_pasien === 'Non Bedah').length,
-  belumStatus: records.value.filter(r => !r.status_pasien).length,
+  total:        records.value.length,
+  bedah:        records.value.filter(r => r.status_pasien === 'Bedah').length,
+  nonBedah:     records.value.filter(r => r.status_pasien === 'Non Bedah').length,
+  belumStatus:  records.value.filter(r => !r.status_pasien).length,
+  dihubungi:    records.value.filter(r => r.sudah_dihubungi).length,
+  belumDihubungi: records.value.filter(r => !r.sudah_dihubungi).length,
 }))
 
 const filtered = computed(() => {
   let d = records.value
 
-  if (filterStatus.value) {
+  if (filterStatus.value === 'dihubungi') {
+    d = d.filter(r => r.sudah_dihubungi)
+  } else if (filterStatus.value === 'belum_dihubungi') {
+    d = d.filter(r => !r.sudah_dihubungi)
+  } else if (filterStatus.value) {
     d = d.filter(r => r.status_pasien === filterStatus.value)
   }
 
@@ -76,6 +82,42 @@ function openAdd()       { editItem.value = null; showForm.value = true }
 function openEdit(item)  { editItem.value = { ...item }; showDetail.value = false; showForm.value = true }
 
 function toast(msg, color = 'success') { snackbar.value = { show: true, msg, color } }
+
+// ── "Sudah Dihubungi" ─────────────────────────────────────────────────────────
+const showDihubungiDialog  = ref(false)
+const dihubungiTarget      = ref(null)
+const catatanDihubungi     = ref('')
+const savingDihubungi      = ref(false)
+
+function openDihubungiDialog(item) {
+  dihubungiTarget.value  = item
+  catatanDihubungi.value = item.catatan_dihubungi ?? ''
+  showDihubungiDialog.value = true
+}
+
+async function doMarkDihubungi(sudahDihubungi) {
+  if (!dihubungiTarget.value) return
+  savingDihubungi.value = true
+  const result = await store.markDihubungi(dihubungiTarget.value.id, {
+    sudah_dihubungi:   sudahDihubungi,
+    catatan_dihubungi: catatanDihubungi.value,
+  })
+  savingDihubungi.value = false
+
+  if (result?.success !== false) {
+    // Sync detailItem supaya dialog langsung update
+    if (detailItem.value?.id === dihubungiTarget.value.id) {
+      detailItem.value = { ...detailItem.value, ...result.data }
+    }
+    showDihubungiDialog.value = false
+    dihubungiTarget.value     = null
+    const label = sudahDihubungi ? 'Pasien ditandai sudah dihubungi.' : 'Status dihubungi dibatalkan.'
+    toast(label)
+    await load()
+  } else {
+    toast(result.message ?? 'Gagal memperbarui status.', 'error')
+  }
+}
 
 async function onSaved() {
   showForm.value = false
@@ -126,6 +168,7 @@ onMounted(load)
         { icon: 'ri-database-line',           text: `${stats.total} total` },
         { icon: 'ri-surgical-mask-line',      text: `${stats.bedah} Bedah` },
         { icon: 'ri-hospital-line',           text: `${stats.nonBedah} Non Bedah` },
+        { icon: 'ri-phone-line',              text: `${stats.dihubungi} Dihubungi` },
       ]"
     >
       <template #actions>
@@ -143,10 +186,11 @@ onMounted(load)
     <SummaryCards
       v-model="filterStatus"
       :cards="[
-        { value: stats.total,       label: 'Total Booklist',  color: 'primary', icon: 'ri-book-mark-line' },
-        { value: stats.bedah,       label: 'Bedah',           color: 'error',   icon: 'ri-surgical-mask-line', filterValue: 'Bedah' },
-        { value: stats.nonBedah,    label: 'Non Bedah',       color: 'success', icon: 'ri-hospital-line',      filterValue: 'Non Bedah' },
-        { value: stats.belumStatus, label: 'Belum ada Status',color: 'warning', icon: 'ri-question-line' },
+        { value: stats.total,           label: 'Total Booklist',    color: 'primary', icon: 'ri-book-mark-line' },
+        { value: stats.bedah,           label: 'Bedah',             color: 'error',   icon: 'ri-surgical-mask-line', filterValue: 'Bedah' },
+        { value: stats.nonBedah,        label: 'Non Bedah',         color: 'success', icon: 'ri-hospital-line',      filterValue: 'Non Bedah' },
+        { value: stats.dihubungi,       label: 'Sudah Dihubungi',   color: 'info',    icon: 'ri-phone-line',         filterValue: 'dihubungi' },
+        { value: stats.belumDihubungi,  label: 'Belum Dihubungi',   color: 'warning', icon: 'ri-phone-off-line',     filterValue: 'belum_dihubungi' },
       ]"
     />
 
@@ -242,6 +286,15 @@ onMounted(load)
                 <VIcon :icon="statusIcon(item.status_pasien)" size="10" class="me-1" />
                 {{ item.status_pasien }}
               </VChip>
+              <VChip
+                v-if="item.sudah_dihubungi"
+                color="info"
+                size="x-small"
+                variant="tonal"
+              >
+                <VIcon icon="ri-phone-line" size="10" class="me-1" />
+                Dihubungi
+              </VChip>
             </div>
             <div class="bl-row__meta">
               <span v-if="item.no_mr">No.RM: {{ item.no_mr }}</span>
@@ -314,6 +367,9 @@ onMounted(load)
             <span v-if="detailItem.kelas" class="bl-pill bl-pill--neutral">
               <VIcon icon="ri-hotel-bed-line" size="12" class="me-1" />{{ detailItem.kelas }}
             </span>
+            <span v-if="detailItem.sudah_dihubungi" class="bl-pill bl-pill--dihubungi">
+              <VIcon icon="ri-phone-line" size="12" class="me-1" />Sudah Dihubungi
+            </span>
           </div>
         </div>
 
@@ -378,12 +434,52 @@ onMounted(load)
               <span class="bl-dc-lbl">Petugas</span>
               <span class="bl-dc-val">{{ detailItem.petugas || '—' }}</span>
             </div>
+
+            <!-- ── Status Dihubungi ── -->
+            <div class="bl-dc bl-dc--full bl-dc--divider">
+              <span class="bl-dc-section-label">
+                <VIcon icon="ri-phone-line" size="11" class="me-1" />Status Dihubungi
+              </span>
+            </div>
+            <div class="bl-dc">
+              <span class="bl-dc-lbl">Status</span>
+              <span class="bl-dc-val">
+                <VChip
+                  :color="detailItem.sudah_dihubungi ? 'info' : 'warning'"
+                  size="x-small"
+                  variant="tonal"
+                >
+                  <VIcon :icon="detailItem.sudah_dihubungi ? 'ri-phone-line' : 'ri-phone-off-line'" size="10" class="me-1" />
+                  {{ detailItem.sudah_dihubungi ? 'Sudah Dihubungi' : 'Belum Dihubungi' }}
+                </VChip>
+              </span>
+            </div>
+            <div v-if="detailItem.waktu_dihubungi" class="bl-dc">
+              <span class="bl-dc-lbl">Waktu Dihubungi</span>
+              <span class="bl-dc-val">{{ detailItem.waktu_dihubungi }}</span>
+            </div>
+            <div v-if="detailItem.catatan_dihubungi" class="bl-dc bl-dc--full">
+              <span class="bl-dc-lbl">Catatan Dihubungi</span>
+              <span class="bl-dc-val" style="white-space:pre-wrap">{{ detailItem.catatan_dihubungi }}</span>
+            </div>
+
           </div>
         </div>
 
         <!-- Actions -->
         <div class="bl-detail-actions">
           <VBtn variant="outlined" rounded="lg" class="bl-act-btn" @click="showDetail = false">Tutup</VBtn>
+          <!-- Tombol Sudah Dihubungi -->
+          <VBtn
+            :color="detailItem.sudah_dihubungi ? 'warning' : 'info'"
+            variant="tonal"
+            rounded="lg"
+            class="bl-act-btn"
+            @click="openDihubungiDialog(detailItem)"
+          >
+            <VIcon :icon="detailItem.sudah_dihubungi ? 'ri-phone-off-line' : 'ri-phone-line'" size="15" class="me-1" />
+            {{ detailItem.sudah_dihubungi ? 'Batalkan' : 'Dihubungi' }}
+          </VBtn>
           <VBtn color="primary" variant="tonal" rounded="lg" class="bl-act-btn bl-act-btn--grow"
             @click="openEdit(detailItem)">
             <VIcon icon="ri-pencil-line" size="15" class="me-1" />Edit
@@ -391,6 +487,68 @@ onMounted(load)
           <VBtn color="error" variant="tonal" rounded="lg" class="bl-act-btn"
             @click="delTarget = detailItem; showDel = true">
             <VIcon icon="ri-delete-bin-line" size="15" />
+          </VBtn>
+        </div>
+      </VCard>
+    </VDialog>
+
+    <!-- ── Dialog Sudah Dihubungi ──────────────────────────────────────── -->
+    <VDialog v-model="showDihubungiDialog" max-width="400" persistent>
+      <VCard v-if="dihubungiTarget" rounded="xl" class="overflow-hidden">
+
+        <!-- Header -->
+        <div class="bl-dh-header" :class="dihubungiTarget.sudah_dihubungi ? 'bl-dh-header--warning' : 'bl-dh-header--info'">
+          <VAvatar
+            :color="dihubungiTarget.sudah_dihubungi ? 'warning' : 'info'"
+            variant="tonal"
+            size="48"
+            rounded="lg"
+            class="mb-3"
+          >
+            <VIcon :icon="dihubungiTarget.sudah_dihubungi ? 'ri-phone-off-line' : 'ri-phone-line'" size="24" />
+          </VAvatar>
+          <p class="text-h6 font-weight-bold mb-1">
+            {{ dihubungiTarget.sudah_dihubungi ? 'Batalkan Status Dihubungi?' : 'Tandai Sudah Dihubungi' }}
+          </p>
+          <p class="text-body-2 text-medium-emphasis mb-0">
+            {{ dihubungiTarget.nama_pasien }}
+          </p>
+        </div>
+
+        <!-- Note input -->
+        <div class="pa-5">
+          <VTextarea
+            v-model="catatanDihubungi"
+            :label="dihubungiTarget.sudah_dihubungi ? 'Catatan (opsional)' : 'Catatan setelah dihubungi'"
+            variant="outlined"
+            density="compact"
+            rows="3"
+            auto-grow
+            prepend-inner-icon="ri-chat-3-line"
+            hide-details="auto"
+          />
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 px-5 pb-5">
+          <VBtn
+            variant="outlined"
+            rounded="lg"
+            class="flex-grow-1"
+            :disabled="savingDihubungi"
+            @click="showDihubungiDialog = false"
+          >
+            Batal
+          </VBtn>
+          <VBtn
+            :color="dihubungiTarget.sudah_dihubungi ? 'warning' : 'info'"
+            rounded="lg"
+            class="flex-grow-1"
+            :loading="savingDihubungi"
+            @click="doMarkDihubungi(!dihubungiTarget.sudah_dihubungi)"
+          >
+            <VIcon :icon="dihubungiTarget.sudah_dihubungi ? 'ri-phone-off-line' : 'ri-phone-line'" size="15" class="me-1" />
+            {{ dihubungiTarget.sudah_dihubungi ? 'Ya, Batalkan' : 'Konfirmasi Dihubungi' }}
           </VBtn>
         </div>
       </VCard>
@@ -587,6 +745,7 @@ onMounted(load)
 .bl-pill--bedah    { background: rgba(239,68,68,.28);  color: #fecaca; }
 .bl-pill--nonbedah { background: rgba(34,197,94,.28);  color: #bbf7d0; }
 .bl-pill--neutral  { background: rgba(255,255,255,.18); color: rgba(255,255,255,.9); }
+.bl-pill--dihubungi { background: rgba(14,165,233,.3);  color: #bae6fd; }
 
 /* ── Info grid detail ── */
 .bl-info-grid-detail {
@@ -601,6 +760,28 @@ onMounted(load)
 }
 .bl-dc:nth-child(even) { border-right: none; }
 .bl-dc--full { grid-column: span 2; border-right: none; }
+
+/* Divider row antar section di detail grid */
+.bl-dc--divider {
+  background: rgba(var(--v-theme-surface-variant), .4);
+  border-bottom: 1px solid var(--qc-border, rgba(0,0,0,.07));
+  padding: 7px 20px;
+}
+.bl-dc-section-label {
+  font-size: .64rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: rgba(var(--v-theme-on-surface), .45);
+  display: flex; align-items: center;
+}
+
+/* ── Dialog Dihubungi header ── */
+.bl-dh-header {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 24px 16px;
+  text-align: center;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.bl-dh-header--info    { background: rgba(var(--v-theme-info), .05); }
+.bl-dh-header--warning { background: rgba(var(--v-theme-warning), .05); }
 
 .bl-dc-lbl {
   font-size: .63rem; text-transform: uppercase; letter-spacing: .07em;

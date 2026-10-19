@@ -25,5 +25,14 @@ class BooklistAdmission extends Model
         'status_pasien',
         'catatan',
         'petugas',
+        // Status tindak lanjut
+        'sudah_dihubungi',
+        'waktu_dihubungi',
+        'catatan_dihubungi',
+    ];
+
+    protected $casts = [
+        'sudah_dihubungi' => 'boolean',
+        'waktu_dihubungi' => 'datetime:d/m/Y H:i',
     ];
 }

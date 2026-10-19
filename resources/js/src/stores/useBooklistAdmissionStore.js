@@ -71,5 +71,20 @@ export const useBooklistAdmissionStore = defineStore('booklistAdmission', {
         return { success: false, message: err.response?.data?.message ?? 'Gagal hapus data' }
       }
     },
+
+    async markDihubungi(id, { sudah_dihubungi, catatan_dihubungi }) {
+      try {
+        const response = await axios.patch(`/api/booklist-admission/${id}/mark-dihubungi`, {
+          sudah_dihubungi,
+          catatan_dihubungi,
+        })
+        const updated = response.data.data
+        const idx = this.records.findIndex(r => r.id === id)
+        if (idx !== -1) this.records.splice(idx, 1, updated)
+        return { success: true, data: updated }
+      } catch (err) {
+        return { success: false, message: err.response?.data?.message ?? 'Gagal memperbarui status dihubungi' }
+      }
+    },
   },
 })

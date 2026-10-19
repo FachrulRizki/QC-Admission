@@ -26,19 +26,19 @@ class BooklistAdmissionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'tanggal_booklist' => 'required|string|max:30',
-            'no_reg'           => 'nullable|string|max:30',
-            'no_mr'            => 'nullable|string|max:30',
-            'nama_pasien'      => 'nullable|string|max:150',
-            'no_hp'            => 'nullable|string|max:50',
-            'jaminan'          => 'nullable|string|max:100',
-            'kelas'            => 'nullable|string|max:100',
-            'dpjp'             => 'nullable|string|max:150',
-            'diagnosa'         => 'nullable|string',
-            'tanggal_op'       => 'nullable|string|max:30',
-            'status_pasien'    => 'nullable|in:Bedah,Non Bedah',
-            'catatan'          => 'nullable|string',
-            'petugas'          => 'nullable|string|max:150',
+            'tanggal_booklist'  => 'required|string|max:30',
+            'no_reg'            => 'nullable|string|max:30',
+            'no_mr'             => 'nullable|string|max:30',
+            'nama_pasien'       => 'nullable|string|max:150',
+            'no_hp'             => 'nullable|string|max:50',
+            'jaminan'           => 'nullable|string|max:100',
+            'kelas'             => 'nullable|string|max:100',
+            'dpjp'              => 'nullable|string|max:150',
+            'diagnosa'          => 'nullable|string',
+            'tanggal_op'        => 'nullable|string|max:30',
+            'status_pasien'     => 'nullable|in:Bedah,Non Bedah',
+            'catatan'           => 'nullable|string',
+            'petugas'           => 'nullable|string|max:150',
         ]);
 
         $record = $this->service->create($validated);
@@ -63,19 +63,19 @@ class BooklistAdmissionController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'tanggal_booklist' => 'sometimes|string|max:30',
-            'no_reg'           => 'nullable|string|max:30',
-            'no_mr'            => 'nullable|string|max:30',
-            'nama_pasien'      => 'nullable|string|max:150',
-            'no_hp'            => 'nullable|string|max:50',
-            'jaminan'          => 'nullable|string|max:100',
-            'kelas'            => 'nullable|string|max:100',
-            'dpjp'             => 'nullable|string|max:150',
-            'diagnosa'         => 'nullable|string',
-            'tanggal_op'       => 'nullable|string|max:30',
-            'status_pasien'    => 'nullable|in:Bedah,Non Bedah',
-            'catatan'          => 'nullable|string',
-            'petugas'          => 'nullable|string|max:150',
+            'tanggal_booklist'  => 'sometimes|string|max:30',
+            'no_reg'            => 'nullable|string|max:30',
+            'no_mr'             => 'nullable|string|max:30',
+            'nama_pasien'       => 'nullable|string|max:150',
+            'no_hp'             => 'nullable|string|max:50',
+            'jaminan'           => 'nullable|string|max:100',
+            'kelas'             => 'nullable|string|max:100',
+            'dpjp'              => 'nullable|string|max:150',
+            'diagnosa'          => 'nullable|string',
+            'tanggal_op'        => 'nullable|string|max:30',
+            'status_pasien'     => 'nullable|in:Bedah,Non Bedah',
+            'catatan'           => 'nullable|string',
+            'petugas'           => 'nullable|string|max:150',
         ]);
 
         $record = $this->service->update($id, $validated);
@@ -105,5 +105,32 @@ class BooklistAdmissionController extends Controller
         $this->service->delete($id);
 
         return response()->json(['message' => 'Data berhasil dihapus.']);
+    }
+
+    /**
+     * PATCH /api/booklist-admission/{id}/mark-dihubungi
+     * Tandai pasien sudah/belum dihubungi dan simpan catatan tindak lanjut.
+     */
+    public function markDihubungi(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'sudah_dihubungi'   => 'required|boolean',
+            'catatan_dihubungi' => 'nullable|string',
+        ]);
+
+        $record = $this->service->markDihubungi($id, $validated);
+
+        $aksi = $validated['sudah_dihubungi'] ? 'ditandai sudah dihubungi' : 'dibatalkan status dihubungi';
+
+        ActivityLog::record(
+            'booklist-admission',
+            'mark-dihubungi',
+            "Booklist Admission {$aksi} — {$record->nama_pasien} ({$record->no_reg})",
+            null,
+            null,
+            $request->header('X-Petugas') ?? null,
+        );
+
+        return response()->json(['data' => $record, 'message' => 'Status dihubungi berhasil diperbarui.']);
     }
 }

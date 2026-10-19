@@ -61,4 +61,24 @@ class BooklistAdmissionService
     {
         $this->findOrFail($id)->delete();
     }
+
+    /**
+     * Tandai pasien sudah/belum dihubungi.
+     * Jika sudah_dihubungi = true → waktu_dihubungi diisi sekarang.
+     * Jika false → waktu_dihubungi dikosongkan.
+     */
+    public function markDihubungi(int $id, array $data): BooklistAdmission
+    {
+        $record = $this->findOrFail($id);
+
+        $record->update([
+            'sudah_dihubungi'   => $data['sudah_dihubungi'],
+            'waktu_dihubungi'   => $data['sudah_dihubungi'] ? now() : null,
+            'catatan_dihubungi' => array_key_exists('catatan_dihubungi', $data)
+                ? $data['catatan_dihubungi']
+                : $record->catatan_dihubungi,
+        ]);
+
+        return $record->fresh();
+    }
 }

@@ -27,6 +27,43 @@ Route::middleware(['keycloak.auth'])->group(function () {
     Route::get('/pasien',          [PasienController::class,     'index']);
     Route::get('/dokter/search',   [DokterController::class,     'search']);  // Search dokter DPJP dari tbl DOKTER
 
+    // Search kelas dari M_KELAS (untuk booklist admission input manual)
+    Route::get('/kelas/search', function (Request $request) {
+        $search = trim($request->query('search', ''));
+
+        if (! config('services.rsus_db_enabled', false)) {
+            // Fallback mock jika koneksi RSUS tidak aktif
+            $mock = [
+                'Kelas I', 'Kelas II', 'Kelas III',
+                'VIP', 'VVIP', 'Kelas Utama',
+                'ICU', 'NICU', 'PICU',
+                'Neonatus', 'Isolasi',
+            ];
+            if ($search !== '') {
+                $mock = array_values(array_filter($mock, fn($k) =>
+                    str_contains(strtolower($k), strtolower($search))
+                ));
+            }
+            return response()->json(['data' => array_map(fn($k) => ['nama_kelas' => $k], $mock), 'source' => 'mock']);
+        }
+
+        try {
+            $like = $search !== '' ? "%{$search}%" : '%';
+            $rows = \Illuminate\Support\Facades\DB::connection('rsus')
+                ->select(
+                    "SELECT DISTINCT Nama_Kelas FROM dbo.M_KELAS
+                      WHERE Nama_Kelas LIKE ?
+                      ORDER BY Nama_Kelas",
+                    [$like]
+                );
+            $data = collect($rows)->map(fn($r) => ['nama_kelas' => trim($r->Nama_Kelas)])->values();
+            return response()->json(['data' => $data, 'source' => 'rsus_db']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Search kelas gagal.', ['error' => $e->getMessage()]);
+            return response()->json(['data' => [], 'source' => 'error', 'message' => 'Gagal mengambil data kelas.'], 200);
+        }
+    });
+
     // Batal Ranap view — kasir, qc_admission, admin
     Route::get('batal-ranap',      [BatalRanapController::class, 'index']);
     Route::get('batal-ranap/{id}', [BatalRanapController::class, 'show']);
@@ -192,8 +229,9 @@ Route::middleware(['keycloak.auth'])->group(function () {
 
     // Booklist Admission — write
     Route::middleware(['keycloak.role:booklist:write'])->group(function () {
-        Route::post('booklist-admission',       [BooklistAdmissionController::class, 'store']);
-        Route::put ('booklist-admission/{id}',  [BooklistAdmissionController::class, 'update']);
+        Route::post ('booklist-admission',                         [BooklistAdmissionController::class, 'store']);
+        Route::put  ('booklist-admission/{id}',                    [BooklistAdmissionController::class, 'update']);
+        Route::patch('booklist-admission/{id}/mark-dihubungi',     [BooklistAdmissionController::class, 'markDihubungi']);
     });
 
     // Booklist Admission — delete
