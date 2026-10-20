@@ -1,7 +1,7 @@
 <script setup>
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useDisplay } from 'vuetify'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, Link } from '@inertiajs/vue3'
 import logo from '@images/logo.svg?raw'
 
 const props = defineProps({
@@ -48,13 +48,13 @@ const handleNavScroll = evt => {
     <!-- 👉 Header -->
     <div class="nav-header">
       <slot name="nav-header">
-        <RouterLink to="/" class="app-logo app-title-wrapper">
+        <Link href="/" class="app-logo app-title-wrapper">
           <div class="d-flex" v-html="logo" />
 
           <h1 class="font-weight-medium leading-normal text-xl text-uppercase">
             Materio
           </h1>
-        </RouterLink>
+        </Link>
       </slot>
     </div>
     <slot name="before-nav-items">

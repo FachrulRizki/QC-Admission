@@ -129,7 +129,17 @@ class DashboardService
             ->get([
                 'tanggal', 'no_mr', 'no_reg', 'nama_pasien', 'status', 'jam_input',
                 'petugas', 'note', 'edukasi_kamar', 'durasi_tunggu',
-            ]);
+            ])
+            ->map(fn($r) => (array) $r);
+
+        // Hasil di-cache → wajib array biasa. config cache.serializable_classes=false
+        // membuat objek (Collection/stdClass) jadi __PHP_Incomplete_Class saat dibaca ulang.
+        $avgPerPetugas     = $avgPerPetugas->all();
+        $matrix            = $matrix->all();
+        $edukasiPerPetugas = $edukasiPerPetugas->all();
+        $perStatus         = $perStatus->all();
+        $perKamar          = $perKamar->all();
+        $recentQC          = $recentQC->all();
 
         return [
             'date_from' => $from->toDateString(),

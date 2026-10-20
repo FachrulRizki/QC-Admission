@@ -34,13 +34,16 @@ export const useDashboardStore = defineStore('dashboard', {
 
         const { data } = await axios.get('/api/dashboard', { params })
 
-        this.stats             = data.stats             ?? this.stats
-        this.avgPerPetugas     = data.avg_per_petugas   ?? []
-        this.matrix            = data.matrix            ?? []
-        this.edukasiPerPetugas = data.edukasi_per_petugas ?? []
-        this.perStatus         = data.per_status        ?? []
-        this.perKamar          = data.per_kamar         ?? []
-        this.recentQC          = data.recent_qc         ?? []
+        // Pastikan selalu array — respons tak terduga tidak boleh membuat render crash
+        const list = v => (Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : []))
+
+        this.stats             = data.stats ?? this.stats
+        this.avgPerPetugas     = list(data.avg_per_petugas)
+        this.matrix            = list(data.matrix)
+        this.edukasiPerPetugas = list(data.edukasi_per_petugas)
+        this.perStatus         = list(data.per_status)
+        this.perKamar          = list(data.per_kamar)
+        this.recentQC          = list(data.recent_qc)
         this.dateFrom          = data.date_from         ?? dateFrom
         this.dateTo            = data.date_to           ?? dateTo
       } catch (err) {
