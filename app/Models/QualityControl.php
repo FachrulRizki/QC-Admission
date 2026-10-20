@@ -19,7 +19,7 @@ class QualityControl extends Model
         'keluarga_pasien', 'ttd_keluarga_pasien',
     ];
 
-    protected $casts = ['ranap_at' => 'datetime'];
+    protected $casts = ['ranap_at' => 'datetime', 'has_ttd' => 'boolean'];
 
     public function edukasiLanjutans()
     {

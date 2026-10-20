@@ -1,6 +1,5 @@
 ﻿<script setup>
 import { useDashboardStore } from '@/stores/useDashboardStore'
-import { usePegawaiStore } from '@/stores/usePegawaiStore'
 
 import DashboardAvgTable from '@/views/qc-admission/dashboard/DashboardAvgTable.vue'
 import DashboardMatrixTable from '@/views/qc-admission/dashboard/DashboardMatrixTable.vue'
@@ -10,7 +9,6 @@ import DashboardBarChart from '@/views/qc-admission/dashboard/DashboardBarChart.
 import DashboardRecentQCTable from '@/views/qc-admission/dashboard/DashboardRecentQCTable.vue'
 
 const store = useDashboardStore()
-const pegawaiStore = usePegawaiStore()
 
 // ── Date filter ───────────────────────────────────────────────────────────────
 function localDateStr(d = new Date()) {
@@ -216,7 +214,6 @@ let clockTimer
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
   doFetch()
-  pegawaiStore.fetch()
 })
 onUnmounted(() => clearInterval(clockTimer))
 

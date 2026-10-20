@@ -3,7 +3,6 @@ import { createInertiaApp }     from '@inertiajs/vue3'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import { registerPlugins }      from '@core/utils/plugins'
 import { setupAxiosDefaults }   from '@/stores/useAuthStore'
-import VueApexCharts            from 'vue3-apexcharts'
 import DefaultLayout            from '@/layouts/default.vue'
 import BlankLayout              from '@/layouts/blank.vue'
 import RootApp                  from '@/App.vue'
@@ -35,7 +34,6 @@ createInertiaApp({
 
     vueApp.use(plugin)
     registerPlugins(vueApp)
-    vueApp.component('VueApexCharts', VueApexCharts)
 
     vueApp.directive('click-outside', {
       beforeMount(el, binding) {

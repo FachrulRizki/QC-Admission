@@ -4,11 +4,16 @@ namespace App\Services\QcAdmission;
 
 use App\Models\EdukasiLanjutan;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class EdukasiLanjutanService
 {
+    // Cache status kamar RSUS per No_Reg (detik)
+    private const KET_CACHE_PREFIX = 'edukasi_ket:';
+    private const KET_CACHE_TTL    = 60;
+
     public function paginate(array $filters = []): LengthAwarePaginator
     {
         $query = EdukasiLanjutan::query()
@@ -65,7 +70,7 @@ class EdukasiLanjutanService
         if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
         if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
 
-        $perPage = min((int) ($filters['per_page'] ?? 300), 9999);
+        $perPage = min((int) ($filters['per_page'] ?? 300), 2000);
         $collection = $query->limit($perPage)->get();
 
         // Satu kali enrich RSUS untuk kedua set
@@ -107,38 +112,49 @@ class EdukasiLanjutanService
         }
 
         try {
-            $placeholders = implode(',', array_fill(0, count($noRegs), '?'));
+            // Status No_Reg ini dicek ulang di setiap load list → cache singkat per No_Reg.
+            // Hanya No_Reg yang belum ada di cache yang di-query ke RSUS.
+            $map     = [];
+            $missing = [];
+            foreach ($noRegs as $noReg) {
+                $cached = Cache::get(self::KET_CACHE_PREFIX . $noReg);
+                $cached !== null ? $map[$noReg] = $cached : $missing[] = $noReg;
+            }
 
-            // Single query dengan LEFT JOIN — jauh lebih cepat dari correlated subqueries
-            $rows = DB::connection('rsus')->select("
-                SELECT
-                    P.No_Reg,
-                    CASE
-                        WHEN T.No_Reg IS NOT NULL AND T.NamaPetugasMenerima <> '' THEN 'Sudah Masuk Kamar'
-                        WHEN K.No_Reg IS NOT NULL THEN 'Belum Diantar'
-                        ELSE 'Belum Dapat Kamar'
-                    END AS Keterangan
-                FROM dbo.PENDAFTARAN AS P
-                LEFT JOIN (
-                    SELECT No_Reg, MAX(NamaPetugasMenerima) AS NamaPetugasMenerima
-                    FROM dbo.ASESMEN_TRANSFER_PASIEN
-                    WHERE No_Reg IN ({$placeholders})
-                    GROUP BY No_Reg
-                ) AS T ON T.No_Reg = P.No_Reg
-                LEFT JOIN (
-                    SELECT No_Reg, MIN(Tgl_Mulai) AS Tgl_Mulai
-                    FROM dbo.TR_KAMAR
-                    WHERE No_Reg IN ({$placeholders})
-                    GROUP BY No_Reg
-                ) AS K ON K.No_Reg = P.No_Reg
-                WHERE P.No_Reg IN ({$placeholders})
-            ", array_merge($noRegs, $noRegs, $noRegs));
+            // Parameter IN hanya 1x (bukan 3x) + chunk 1000 → aman dari limit 2100 parameter SQL Server
+            foreach (array_chunk($missing, 1000) as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
 
-            $map = collect($rows)->keyBy('No_Reg');
+                $rows = DB::connection('rsus')->select("
+                    SELECT
+                        P.No_Reg,
+                        CASE
+                            WHEN T.NamaPetugasMenerima <> '' THEN 'Sudah Masuk Kamar'
+                            WHEN K.Ada IS NOT NULL THEN 'Belum Diantar'
+                            ELSE 'Belum Dapat Kamar'
+                        END AS Keterangan
+                    FROM dbo.PENDAFTARAN AS P
+                    OUTER APPLY (
+                        SELECT MAX(NamaPetugasMenerima) AS NamaPetugasMenerima
+                        FROM dbo.ASESMEN_TRANSFER_PASIEN
+                        WHERE No_Reg = P.No_Reg
+                    ) AS T
+                    OUTER APPLY (
+                        SELECT TOP 1 1 AS Ada
+                        FROM dbo.TR_KAMAR
+                        WHERE No_Reg = P.No_Reg
+                    ) AS K
+                    WHERE P.No_Reg IN ({$placeholders})
+                ", $chunk);
+
+                foreach ($rows as $row) {
+                    $map[$row->No_Reg] = $row->Keterangan;
+                    Cache::put(self::KET_CACHE_PREFIX . $row->No_Reg, $row->Keterangan, self::KET_CACHE_TTL);
+                }
+            }
 
             $collection->each(function ($r) use ($map) {
-                $info = $map->get($r->no_reg);
-                $ket  = $info?->Keterangan ?? null;
+                $ket = $map[$r->no_reg] ?? null;
                 $r->has_transfer = ($ket === 'Sudah Masuk Kamar');
                 $r->keterangan   = $ket;
             });

@@ -18,7 +18,7 @@ class ActivityLogController extends Controller
                 $q->where('user_name', 'like', "%{$s}%")
                   ->orWhere('subject',   'like', "%{$s}%")
                   ->orWhere('module',    'like', "%{$s}%")
-                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload, '$.petugas')) LIKE ?", ["%{$s}%"]);
+                  ->orWhere('payload',   'like', "%{$s}%");
             });
         }
 
@@ -29,7 +29,7 @@ class ActivityLogController extends Controller
         if ($v = $request->query('date_to'))   $query->whereDate('created_at', '<=', $v);
 
         return response()->json(
-            $query->paginate((int) $request->query('per_page', 30))
+            $query->paginate(min((int) $request->query('per_page', 30), 200))
         );
     }
 }

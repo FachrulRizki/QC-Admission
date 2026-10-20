@@ -112,7 +112,7 @@ class UpSellingService
         if (! empty($filters['date_to']))   $query->whereDate('created_at', '<=', $filters['date_to']);
         if (! empty($filters['status']))    $query->where('status', $filters['status']);
 
-        $perPage = min((int) ($filters['per_page'] ?? 100), 9999);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 2000);
         return $query->paginate($perPage);
     }
 

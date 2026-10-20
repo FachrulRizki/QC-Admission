@@ -34,7 +34,7 @@ class BooklistAdmissionService
             $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
-        $perPage = min((int) ($filters['per_page'] ?? 100), 9999);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 2000);
 
         return $query->paginate($perPage);
     }

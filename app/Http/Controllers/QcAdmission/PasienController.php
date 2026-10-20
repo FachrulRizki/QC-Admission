@@ -36,6 +36,8 @@ class PasienController extends Controller
 
     private function queryRsus(string $search, string $noReg): array
     {
+        [$innerCond, $innerParams, $cond, $params] = $this->buildCondition($search, $noReg);
+
         $innerSql = "
             SELECT
                 P.No_Reg, P.No_MR, R.Nama_Pasien, CB.KET_BAYAR,
@@ -69,14 +71,14 @@ class PasienController extends Controller
             LEFT OUTER JOIN dbo.BI_Bed_Igd AS BED ON P.No_Reg=BED.No_Reg AND BED.Status='TERISI'
             WHERE (P.Kode_Masuk IN ('1','2','3'))
               AND (P.No_MR <> '000000')
+              {$innerCond}
         ";
 
-        [$cond, $params] = $this->buildCondition($search, $noReg);
         $top     = $noReg !== '' ? 'TOP 1' : 'TOP 150';
         $orderBy = 'ORDER BY L.Tgl_Daftar DESC';
         $sql     = "SELECT {$top} * FROM ({$innerSql}) AS L {$cond} {$orderBy}";
 
-        $rows = DB::connection('rsus')->select($sql, $params);
+        $rows = DB::connection('rsus')->select($sql, array_merge($innerParams, $params));
 
         $mapped = collect($rows)->map(fn($r) => $this->mapRow((array) $r))->toArray();
 
@@ -112,23 +114,22 @@ class PasienController extends Controller
 
     private function buildCondition(string $search, string $noReg): array
     {
+        // Return: [innerCond, innerParams, outerCond, outerParams]
         if ($noReg !== '') {
-            return ['WHERE L.No_Reg = ?', [$noReg]];
+            return ['AND P.No_Reg = ?', [$noReg], '', []];
         }
         if ($search !== '') {
             $like = "%{$search}%";
             // Batasi 7 hari terakhir agar tidak menarik seluruh histori pasien
             return [
-                'WHERE (L.No_Reg LIKE ? OR L.No_MR LIKE ? OR L.Nama_Pasien LIKE ?)
-                   AND CAST(L.Tgl_Daftar AS DATE) >= DATEADD(DAY, -7, GETDATE())',
+                'AND P.Tanggal >= CAST(DATEADD(DAY, -7, GETDATE()) AS DATE)',
+                [],
+                'WHERE (L.No_Reg LIKE ? OR L.No_MR LIKE ? OR L.Nama_Pasien LIKE ?)',
                 [$like, $like, $like],
             ];
         }
         // Tanpa search: hanya 3 hari terakhir agar tidak berat
-        return [
-            "WHERE CAST(L.Tgl_Daftar AS DATE) >= DATEADD(DAY, -3, GETDATE())",
-            [],
-        ];
+        return ['AND P.Tanggal >= CAST(DATEADD(DAY, -3, GETDATE()) AS DATE)', [], '', []];
     }
 
     private function mapRow(array $r): array

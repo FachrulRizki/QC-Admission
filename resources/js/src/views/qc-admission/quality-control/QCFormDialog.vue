@@ -106,6 +106,9 @@ jam_input: fmtTime(now),
 status: 'Edukasi',
 }
 
+// ttd belum termuat dari server (list tanpa ttd) → jangan timpa ttd yang tersimpan
+if (props.editItem?.has_ttd && !payload.ttd_keluarga_pasien) delete payload.ttd_keluarga_pasien
+
 const result = props.editItem
 ? await store.update(props.editItem.id, payload)
 : await store.store(payload)

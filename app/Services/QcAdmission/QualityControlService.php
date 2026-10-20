@@ -13,8 +13,10 @@ class QualityControlService
             ->select(['id','no_mr','no_reg','nama_pasien','jaminan','tanggal','jam_input',
                       'tgl_daftar','jam_daftar','status_ket',
                       'petugas','status','status_ranap','edukasi_kamar','note',
-                      'keluarga_pasien','ttd_keluarga_pasien',
+                      'keluarga_pasien',
                       'durasi_tunggu','created_at','updated_at'])
+            // ttd (base64 PNG) tidak ikut di list — terlalu besar; diambil via show()
+            ->selectRaw("CASE WHEN ttd_keluarga_pasien IS NOT NULL AND ttd_keluarga_pasien <> '' THEN 1 ELSE 0 END AS has_ttd")
             ->latest();
 
         if (! empty($filters['search'])) {
@@ -43,7 +45,7 @@ class QualityControlService
             });
         }
 
-        $perPage = min((int) ($filters['per_page'] ?? 100), 9999);
+        $perPage = min((int) ($filters['per_page'] ?? 100), 2000);
         return $query->paginate($perPage);
     }
 

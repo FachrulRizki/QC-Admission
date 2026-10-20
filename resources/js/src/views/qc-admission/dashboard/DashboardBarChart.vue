@@ -1,6 +1,8 @@
 ﻿<script setup>
-import VueApexCharts from 'vue3-apexcharts'
+import { defineAsyncComponent } from 'vue'
 import { useTheme }  from 'vuetify'
+// ApexCharts (~500KB) dimuat hanya saat chart dirender, tidak ikut bundle utama/login
+const VueApexCharts = defineAsyncComponent(() => import('vue3-apexcharts'))
 
 const props = defineProps({
   items: { type: Array, default: () => [] },

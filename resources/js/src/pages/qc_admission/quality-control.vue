@@ -142,7 +142,17 @@ function getDurasiColor(item) {
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 function openAdd() { editItem.value = null; showForm.value = true }
-function openRow(item) { detailItem.value = item; showDetail.value = true }
+async function openRow(item) {
+  detailItem.value = item
+  showDetail.value = true
+  // List tidak membawa ttd (base64) — ambil record lengkap saat detail dibuka
+  if (item.has_ttd && !item.ttd_keluarga_pasien) {
+    try {
+      const { data } = await axios.get(`/api/quality-control/${item.id}`)
+      if (detailItem.value?.id === item.id) detailItem.value = { ...item, ...data.data }
+    } catch { /* detail tetap tampil tanpa ttd */ }
+  }
+}
 function toast(msg, color = 'success') { snackbar.value = { show: true, msg, color } }
 function resetFilter() { search.value = ''; filterStatus.value = 'all'; dateFrom.value = todayStr(); dateTo.value = todayStr() }
 

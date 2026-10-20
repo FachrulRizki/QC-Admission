@@ -56,13 +56,39 @@ class KeycloakService
         $cacheKey = 'kc_token:' . hash('sha256', $accessToken);
 
         return Cache::remember($cacheKey, $this->cacheTtl, function () use ($accessToken) {
-            $response = Http::timeout($this->timeout)
+            $response = Http::connectTimeout(min(3, $this->timeout))->timeout($this->timeout)
                 ->asForm()
                 ->withBasicAuth($this->clientId, $this->clientSecret)
                 ->post($this->introspectUrl(), ['token' => $accessToken]);
 
             return $response->json() ?? [];
         });
+    }
+    public function decodeToken(string $accessToken): array
+    {
+        $parts = explode('.', $accessToken);
+        if (count($parts) !== 3) {
+            return [];
+        }
+
+        $json = base64_decode(strtr($parts[1], '-_', '+/'), true);
+
+        return $json ? (json_decode($json, true) ?: []) : [];
+    }
+
+    /**
+     * Claims token: pakai payload JWT jika memuat role, fallback ke introspect.
+     */
+    public function tokenClaims(string $accessToken): array
+    {
+        $claims = $this->decodeToken($accessToken);
+
+        if (isset($claims['resource_access']) || isset($claims['realm_access'])) {
+            $claims['active'] = ($claims['exp'] ?? 0) > time();
+            return $claims;
+        }
+
+        return $this->introspect($accessToken);
     }
 
     public function forgetTokenCache(string $accessToken): void
@@ -159,7 +185,7 @@ class KeycloakService
     // Token ops
     public function refreshToken(string $refreshToken): array
     {
-        $response = Http::timeout($this->timeout)
+        $response = Http::connectTimeout(min(3, $this->timeout))->timeout($this->timeout)
             ->asForm()
             ->post($this->tokenUrl(), [
                 'grant_type'    => 'refresh_token',
@@ -173,7 +199,7 @@ class KeycloakService
 
     public function logout(string $refreshToken): void
     {
-        Http::timeout($this->timeout)
+        Http::connectTimeout(min(3, $this->timeout))->timeout($this->timeout)
             ->asForm()
             ->post($this->logoutUrl(), [
                 'client_id'     => $this->clientId,
@@ -185,7 +211,7 @@ class KeycloakService
     public function userinfo(string $accessToken): array
     {
         try {
-            $response = Http::timeout($this->timeout)
+            $response = Http::connectTimeout(min(3, $this->timeout))->timeout($this->timeout)
                 ->withToken($accessToken)
                 ->acceptJson()
                 ->get($this->userinfoUrl());

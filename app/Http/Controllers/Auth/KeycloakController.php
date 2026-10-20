@@ -40,10 +40,8 @@ class KeycloakController extends Controller
 
         $accessToken  = $socialUser->token;
         $refreshToken = $socialUser->refreshToken ?? '';
-
-        // Introspect token
         try {
-            $introspected = $this->keycloak->introspect($accessToken);
+            $introspected = $this->keycloak->tokenClaims($accessToken);
         } catch (\Throwable $e) {
             Log::error('Keycloak introspect error.', ['error' => $e->getMessage()]);
             return redirect('/login')->with('error', 'Tidak dapat memvalidasi token SSO.');
@@ -85,7 +83,7 @@ class KeycloakController extends Controller
             return redirect('/akses-ditolak');
         }
 
-        $permissions = $this->keycloak->getPermissions($accessToken);
+        $permissions = $this->keycloak->extractPermissions($introspected);
 
         $session = [
             'id'          => $socialUser->getId(),
@@ -95,12 +93,14 @@ class KeycloakController extends Controller
             'roles'       => $roles,
             'permissions' => $permissions,
             'login_type'  => 'sso',
+            'permissions_refreshed_at' => now()->timestamp,
         ];
 
         $request->session()->regenerate();
         $request->session()->put('auth_user', $session);
         $request->session()->put('keycloak_access_token',  $accessToken);
         $request->session()->put('keycloak_refresh_token', $refreshToken);
+        $request->session()->put('keycloak_token_exp',     $introspected['exp'] ?? null);
 
         ActivityLog::record('auth', 'login',
             "SSO login — {$session['name']}",
