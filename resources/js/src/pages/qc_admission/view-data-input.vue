@@ -79,65 +79,64 @@ const edukasiTransferData = ref([])
 const upData = ref([])
 const alasanData = ref([])
 
-// Data tanpa filter tanggal — khusus untuk tab History Pasien
-const qcAllData              = ref([])
-const batalAllData           = ref([])
-const edukasiAllData         = ref([])
-const edukasiTransferAllData = ref([])
-const upAllData              = ref([])
+// ── History Pasien: list dipaginasi di server (GET /api/history-pasien) ──────
+// Dulu: 4 request "semua data" (per_page 2000) + gabung di browser → >1 menit.
+// Sekarang: hanya 10 pasien per halaman, dimuat saat tab History dibuka.
+const HISTORY_PER_PAGE = 10
+const historyList     = ref([])
+const historyTotal    = ref(0)
+const historyPage     = ref(1)
+const historyLoading  = ref(false)
+let historyReqId      = 0
 
-async function safeGet(url, params = {}) {
+async function loadHistory(page = historyPage.value) {
+  const reqId = ++historyReqId
+  historyLoading.value = true
   try {
-    const { data } = await axios.get(url, { params })
-    return data.data ?? []
-  } catch { return [] }
+    const { data } = await axios.get('/api/history-pasien', {
+      params: { page, per_page: HISTORY_PER_PAGE, search: search.value.trim() || undefined },
+    })
+    if (reqId !== historyReqId) return  // respons lama (user sudah ganti halaman/search)
+    historyList.value  = data.data ?? []
+    historyTotal.value = data.total ?? 0
+    historyPage.value  = data.current_page ?? page
+  } catch {
+    if (reqId === historyReqId) { historyList.value = []; historyTotal.value = 0 }
+  } finally {
+    if (reqId === historyReqId) historyLoading.value = false
+  }
 }
 
-async function loadAll() {
+// Satu request untuk semua modul (GET /api/view-data-input) — dulu 5 request paralel.
+// lastLoadKey mencegah request ganda saat mount (onMounted + watcher permissions).
+let loadReqId   = 0
+let lastLoadKey = ''
+
+async function loadAll(force = false) {
+  const params = {
+    date_from: dateFrom.value || undefined,
+    date_to:   dateTo.value   || undefined,
+  }
+  const key = JSON.stringify(params)
+  if (!force && key === lastLoadKey) return
+  lastLoadKey = key
+
+  const reqId = ++loadReqId
   loading.value = true
   try {
-    const dateParams = {
-      date_from: dateFrom.value || undefined,
-      date_to:   dateTo.value   || undefined,
-    }
-    // History Pasien butuh semua data tanpa batasan tanggal agar list pasien lengkap
-    const noDateParams = { per_page: 2000, include_all: true }
-
-    if (isKasir.value) {
-      batalData.value = await safeGet('/api/batal-ranap', { per_page: 300, ...dateParams })
-    } else {
-      const promises = [
-        safeGet('/api/quality-control', { per_page: 300, ...dateParams }),
-        safeGet('/api/batal-ranap',     { per_page: 300, ...dateParams }),
-        axios.get('/api/edukasi-lanjutan/split', { params: { per_page: 300, ...dateParams } })
-          .then(r => r.data).catch(() => ({ active: [], transferred: [] })),
-        safeGet('/api/up-selling', { per_page: 300, ...dateParams }),
-        // Data tanpa filter tanggal untuk history pasien
-        safeGet('/api/quality-control', noDateParams),
-        safeGet('/api/batal-ranap',     noDateParams),
-        axios.get('/api/edukasi-lanjutan/split', { params: noDateParams })
-          .then(r => r.data).catch(() => ({ active: [], transferred: [] })),
-        safeGet('/api/up-selling', noDateParams),
-      ]
-      if (auth.hasPermission('alasan:view')) {
-        promises.push(safeGet('/api/alasan', { per_page: 300, ...dateParams }))
-      }
-
-      const [qc, batal, eduSplit, up, qcAll, batalAll, eduSplitAll, upAll, alasan] = await Promise.all(promises)
-      qcData.value              = qc
-      batalData.value           = batal
-      edukasiData.value         = eduSplit.active      ?? []
-      edukasiTransferData.value = eduSplit.transferred ?? []
-      upData.value              = up
-      // Data lengkap untuk history-pasien (tanpa batasan tanggal)
-      qcAllData.value              = qcAll
-      batalAllData.value           = batalAll
-      edukasiAllData.value         = eduSplitAll.active      ?? []
-      edukasiTransferAllData.value = eduSplitAll.transferred ?? []
-      upAllData.value              = upAll
-      alasanData.value          = alasan ?? []
-    }
-  } finally { loading.value = false }
+    const { data } = await axios.get('/api/view-data-input', { params })
+    if (reqId !== loadReqId) return   // respons lama (tanggal sudah diganti)
+    qcData.value              = data.qc                  ?? []
+    batalData.value           = data.batal               ?? []
+    edukasiData.value         = data.edukasi?.active      ?? []
+    edukasiTransferData.value = data.edukasi?.transferred ?? []
+    upData.value              = data.up                  ?? []
+    alasanData.value          = data.alasan              ?? []
+  } catch {
+    if (reqId === loadReqId) lastLoadKey = ''   // izinkan coba lagi
+  } finally {
+    if (reqId === loadReqId) loading.value = false
+  }
 }
 
 // ── Summary per pasien (gabungan semua modul) ─────────────────────────────────
@@ -157,76 +156,6 @@ const summaryData = computed(() => {
   return Object.values(map)
 })
 
-// ── History Pasien: gabungkan SEMUA modul per no_mr (tanpa filter tanggal) ────
-// Setiap pasien punya entry + array _events (seluruh aktivitas lintas modul)
-const historyPasienData = computed(() => {
-  const map = {}
-
-  function ensurePatient(r, tglKey = 'tanggal') {
-    const key = r.no_mr || r.no_reg || r.id
-    if (!map[key]) {
-      map[key] = {
-        no_mr: r.no_mr || r.no_reg,
-        no_reg: r.no_reg,
-        nama_pasien: r.nama_pasien,
-        jaminan: r.jaminan,
-        tanggal: r[tglKey],
-        _events: [],
-      }
-    }
-    return key
-  }
-
-  // Gunakan data ALL (tanpa batasan tanggal)
-  // QC / Edukasi Awal
-  for (const r of qcAllData.value) {
-    const key = ensurePatient(r)
-    map[key]._events.push({ _module: 'edukasi-awal', _label: 'Edukasi Awal', ...r })
-    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
-  }
-
-  // Edukasi Lanjutan (active = belum dapat bed)
-  for (const r of edukasiAllData.value) {
-    const key = ensurePatient(r)
-    map[key]._events.push({ _module: 'edukasi-lanjutan', _label: 'Edukasi Lanjutan', ...r })
-    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
-  }
-
-  // Edukasi Lanjutan transferred (sudah dapat bed)
-  for (const r of edukasiTransferAllData.value) {
-    const key = ensurePatient(r)
-    map[key]._events.push({ _module: 'sudah-dapat-bed', _label: 'Sudah Dapat Bed', ...r })
-    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
-  }
-
-  // Batal Ranap
-  for (const r of batalAllData.value) {
-    const key = ensurePatient(r, 'tanggal')
-    map[key]._events.push({ _module: 'batal-ranap', _label: 'Batal Ranap', ...r })
-    if (r.tanggal > (map[key].tanggal || '')) map[key].tanggal = r.tanggal
-  }
-
-  // Up Selling
-  for (const r of upAllData.value) {
-    const key = ensurePatient(r, 'tgl_daftar')
-    map[key]._events.push({ _module: 'up-selling', _label: 'Up Selling', ...r })
-    const tgl = r.tgl_daftar || r.tanggal
-    if (tgl > (map[key].tanggal || '')) map[key].tanggal = tgl
-  }
-
-  // Urutkan events per pasien: terbaru dulu
-  for (const p of Object.values(map)) {
-    p._events.sort((a, b) => {
-      const da = a.tanggal || a.tgl_daftar || ''
-      const db = b.tanggal || b.tgl_daftar || ''
-      return db.localeCompare(da)
-    })
-  }
-
-  // Urutkan pasien: terbaru aktivitas dulu
-  return Object.values(map).sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''))
-})
-
 const grandStats = computed(() => ({
   qc:             qcData.value.length,
   batal:          batalData.value.length,
@@ -234,7 +163,7 @@ const grandStats = computed(() => ({
   edukasiTransfer: edukasiTransferData.value.length,
   up:             upData.value.length,
   alasan:         alasanData.value.length,
-  historyPasien:  historyPasienData.value.length,  // pakai data all (tanpa filter tgl)
+  historyPasien:  historyTotal.value,
 }))
 
 // Daftar unik alasan untuk dropdown filter
@@ -247,7 +176,7 @@ const activeData = computed(() => {
   const map = {
     summary:        summaryData.value,
     alasan:         alasanData.value,
-    'history-pasien': historyPasienData.value,
+    'history-pasien': historyList.value,
   }
   return map[activeTab.value] ?? []
 })
@@ -262,6 +191,7 @@ function parseTanggal(str) {
 
 const filteredData = computed(() => {
   let d = activeData.value
+  if (activeTab.value === 'history-pasien') return d  // search & paging di server
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     d = d.filter(r => {
@@ -330,6 +260,7 @@ const MODULE_META = {
   'sudah-dapat-bed':  { color: 'success',   icon: 'ri-home-heart-line',      bg: 'rgba(34,197,94,0.10)',  border: '#22c55e' },
   'batal-ranap':      { color: 'error',     icon: 'ri-close-circle-line',    bg: 'rgba(239,68,68,0.10)',  border: '#ef4444' },
   'up-selling':       { color: 'orange',    icon: 'ri-arrow-up-circle-line', bg: 'rgba(249,115,22,0.10)', border: '#f97316' },
+  'booklist':         { color: 'info',      icon: 'ri-book-mark-line',       bg: 'rgba(14,165,233,0.10)', border: '#0ea5e9' },
 }
 
 function moduleMeta(mod) {
@@ -357,9 +288,16 @@ const historyHeaders = [
 ]
 const activeHeaders = computed(() => ({ summary: summaryHeaders, alasan: alasanHeaders, 'history-pasien': historyHeaders })[activeTab.value] ?? [])
 
-function exportCSV() {
+async function exportCSV() {
   const cols = activeHeaders.value
-  const csv = [cols.map(h => h.title).join(','), ...filteredData.value.map(r => cols.map(h => `"${r[h.key] ?? ''}"`).join(','))].join('\n')
+  let rows = filteredData.value
+  if (activeTab.value === 'history-pasien') {
+    const { data } = await axios.get('/api/history-pasien', {
+      params: { page: 1, per_page: 5000, search: search.value.trim() || undefined },
+    })
+    rows = data.data ?? []
+  }
+  const csv = [cols.map(h => h.title).join(','), ...rows.map(r => cols.map(h => `"${r[h.key] ?? ''}"`).join(','))].join('\n')
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv' }))
   a.download = `view-${activeTab.value}-${new Date().toISOString().slice(0, 10)}.csv`; a.click()
 }
@@ -371,6 +309,7 @@ onMounted(() => {
     tabInitialized = true
   }
   loadAll()
+  if (activeTab.value === 'history-pasien') loadHistory(1)
 })
 
 watch([dateFrom, dateTo], () => loadAll())
@@ -400,7 +339,25 @@ function openDetail(item, type = activeTab.value) {
 const { page: vdiPage, pageCount: vdiPageCount, paginated: vdiPaginated, setPage: vdiSetPage }
   = usePagination(filteredData, 10)
 
-watch(activeTab, () => { vdiPage.value = 1 })
+watch(activeTab, (tab) => {
+  vdiPage.value = 1
+  if (tab === 'history-pasien') loadHistory(1)  // ringan: list di-cache server 60 detik
+})
+
+let historySearchTimer = null
+watch(search, () => {
+  if (activeTab.value !== 'history-pasien') return
+  clearTimeout(historySearchTimer)
+  historySearchTimer = setTimeout(() => loadHistory(1), 350)
+})
+
+// Jumlah data yang ditampilkan di chip/pill
+const displayCount = computed(() =>
+  activeTab.value === 'history-pasien' ? historyTotal.value : filteredData.value.length
+)
+const listLoading = computed(() =>
+  activeTab.value === 'history-pasien' ? historyLoading.value : loading.value
+)
 </script>
 
 <template>
@@ -415,7 +372,7 @@ watch(activeTab, () => { vdiPage.value = 1 })
       color-to="#0369A1"
       :pills="[
         { icon: 'ri-calendar-line', text: todayFormatted },
-        { icon: 'ri-database-line', text: `${filteredData.length} data` },
+        { icon: 'ri-database-line', text: `${displayCount} data` },
       ]"
     >
       <template #actions>
@@ -466,7 +423,7 @@ watch(activeTab, () => { vdiPage.value = 1 })
       <div class="vdi-page-banner" :class="`vdi-page-banner--${activeTab}`">
         <VIcon :icon="tabs.find(t => t.key === activeTab)?.icon ?? 'ri-table-line'" size="14" class="me-1" />
         <span>Anda sedang melihat: <strong>{{ tabs.find(t => t.key === activeTab)?.label ?? activeTab }}</strong></span>
-        <VChip size="x-small" variant="tonal" :color="pageBannerColor" class="ms-2">{{ filteredData.length }} data</VChip>
+        <VChip size="x-small" variant="tonal" :color="pageBannerColor" class="ms-2">{{ displayCount }} data</VChip>
       </div>
       <VDivider />
 
@@ -540,15 +497,15 @@ watch(activeTab, () => { vdiPage.value = 1 })
 
     <!-- Count bar -->
     <div class="d-flex align-center gap-3 mb-3">
-      <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ filteredData.length }} data</VChip>
-      <VProgressCircular v-if="loading" size="16" width="2" indeterminate color="primary" />
+      <VChip size="small" color="primary" variant="tonal" rounded="pill">{{ displayCount }} data</VChip>
+      <VProgressCircular v-if="listLoading" size="16" width="2" indeterminate color="primary" />
     </div>
 
     <!-- ── List View ─────────────────────────────────────────────────────────── -->
     <VCard elevation="0" border rounded="lg" class="overflow-hidden">
 
       <!-- Loading -->
-      <div v-if="loading" class="text-center py-12">
+      <div v-if="listLoading" class="text-center py-12">
         <VProgressCircular indeterminate color="primary" size="32" />
       </div>
 
@@ -564,10 +521,10 @@ watch(activeTab, () => { vdiPage.value = 1 })
         <!-- ══ HISTORY PASIEN — list pasien sederhana, klik untuk detail ══ -->
         <template v-if="activeTab === 'history-pasien'">
           <div
-            v-for="(item, idx) in vdiPaginated"
+            v-for="(item, idx) in historyList"
             :key="item.no_mr ?? idx"
             class="vdi-row cursor-pointer"
-            @click="openDetail(item, 'history-pasien')"
+            @click="openDetail({ ...item, _events: [] }, 'history-pasien')"
           >
             <VAvatar color="deep-purple" variant="tonal" size="38" rounded="md" class="flex-shrink-0">
               <span style="font-size:12px;font-weight:700">{{ item.nama_pasien?.charAt(0) ?? '?' }}</span>
@@ -580,22 +537,22 @@ watch(activeTab, () => { vdiPage.value = 1 })
                 </span>
                 <VChip size="x-small" color="secondary" variant="tonal">{{ item.jaminan || '—' }}</VChip>
                 <!-- Badge ringkas per modul yang ada -->
-                <template v-for="mod in ['edukasi-awal','edukasi-lanjutan','sudah-dapat-bed','batal-ranap','up-selling']" :key="mod">
+                <template v-for="mod in ['edukasi-awal','edukasi-lanjutan','sudah-dapat-bed','batal-ranap','up-selling','booklist']" :key="mod">
                   <VChip
-                    v-if="item._events.some(e => e._module === mod)"
+                    v-if="item.counts?.[mod]"
                     :color="moduleMeta(mod).color"
                     size="x-small" variant="tonal"
                   >
                     <VIcon :icon="moduleMeta(mod).icon" size="10" class="me-1" />
-                    {{ { 'edukasi-awal': 'Edu Awal', 'edukasi-lanjutan': 'Edu Lanjut', 'sudah-dapat-bed': 'Dpt Bed', 'batal-ranap': 'Batal', 'up-selling': 'Up Sell' }[mod] }}
-                    {{ item._events.filter(e => e._module === mod).length > 1 ? item._events.filter(e => e._module === mod).length + 'x' : '' }}
+                    {{ { 'edukasi-awal': 'Edu Awal', 'edukasi-lanjutan': 'Edu Lanjut', 'sudah-dapat-bed': 'Dpt Bed', 'batal-ranap': 'Batal', 'up-selling': 'Up Sell', 'booklist': 'Booklist' }[mod] }}
+                    {{ item.counts[mod] > 1 ? item.counts[mod] + 'x' : '' }}
                   </VChip>
                 </template>
               </div>
               <div class="d-flex align-center gap-2">
                 <span class="text-caption" style="color:var(--qc-text-2)">{{ item.no_mr || item.no_reg || '—' }}</span>
                 <span class="text-caption" style="color:var(--qc-text-2)">
-                  <VIcon icon="ri-history-line" size="10" class="me-1" />{{ item._events.length }} aktivitas
+                  <VIcon icon="ri-history-line" size="10" class="me-1" />{{ item.total }} aktivitas
                 </span>
               </div>
             </div>
@@ -674,6 +631,13 @@ watch(activeTab, () => { vdiPage.value = 1 })
         </template>
 
         <PaginationBar
+          v-if="activeTab === 'history-pasien'"
+          :page="historyPage" :page-count="Math.max(1, Math.ceil(historyTotal / HISTORY_PER_PAGE))"
+          :total="historyTotal" :per-page="HISTORY_PER_PAGE"
+          @update:page="loadHistory"
+        />
+        <PaginationBar
+          v-else
           :page="vdiPage" :page-count="vdiPageCount"
           :total="filteredData.length" :per-page="10"
           @update:page="vdiSetPage"

@@ -29,10 +29,23 @@ class BooklistAdmission extends Model
         'sudah_dihubungi',
         'waktu_dihubungi',
         'catatan_dihubungi',
+        // Trigger: pasien sudah dapat kamar (dari RSUS) → keluar dari list booklist
+        'waktu_dapat_kamar',
+        'nama_bangsal',
+        'nama_ruang',
     ];
 
     protected $casts = [
+        'waktu_dapat_kamar' => 'datetime:d/m/Y H:i',
         'sudah_dihubungi' => 'boolean',
         'waktu_dihubungi' => 'datetime:d/m/Y H:i',
     ];
+
+    protected $appends = ['sudah_dapat_kamar'];
+
+    /** Sudah dapat kamar = waktu_dapat_kamar terisi (tidak ada kolom flag terpisah). */
+    public function getSudahDapatKamarAttribute(): bool
+    {
+        return ! empty($this->attributes['waktu_dapat_kamar']);
+    }
 }

@@ -80,6 +80,9 @@ const evBatalRanap = computed(() =>
 const evUpSelling = computed(() =>
   allEvents.value.filter(e => e._module === 'up-selling')
 )
+const evBooklist = computed(() =>
+  allEvents.value.filter(e => e._module === 'booklist')
+)
 
 // Tab counts untuk badge
 const tabCounts = computed(() => ({
@@ -88,6 +91,7 @@ const tabCounts = computed(() => ({
   'edukasi-lanjutan': evEdukasiLanjutan.value.length,
   'batal-ranap':      evBatalRanap.value.length,
   'up-selling':       evUpSelling.value.length,
+  booklist:           evBooklist.value.length,
 }))
 
 // Data yang tampil sesuai inner tab
@@ -97,6 +101,7 @@ const activeEvents = computed(() => ({
   'edukasi-lanjutan': evEdukasiLanjutan.value,
   'batal-ranap':      evBatalRanap.value,
   'up-selling':       evUpSelling.value,
+  booklist:           evBooklist.value,
 })[innerTab.value] ?? allEvents.value)
 
 // ── Edukasi mode (tipe lama, masih dipakai dari tab summary/alasan) ───────────
@@ -132,6 +137,7 @@ const MODULE_META = {
   'sudah-dapat-bed':  { color: 'success',  icon: 'ri-home-heart-line',      border: '#22c55e', label: 'Sudah Dapat Bed' },
   'batal-ranap':      { color: 'error',    icon: 'ri-close-circle-line',    border: '#ef4444', label: 'Batal Ranap' },
   'up-selling':       { color: 'orange',   icon: 'ri-arrow-up-circle-line', border: '#f97316', label: 'Up Selling' },
+  'booklist':         { color: 'info',     icon: 'ri-book-mark-line',       border: '#0ea5e9', label: 'Booklist Admission' },
 }
 function modMeta(mod) {
   return MODULE_META[mod] ?? { color: 'secondary', icon: 'ri-file-list-line', border: '#94a3b8', label: mod }
@@ -284,6 +290,15 @@ function fmtDate(d) {
               <VIcon icon="ri-arrow-up-circle-line" size="13" class="me-1" />Up Selling
               <span class="vdd-tab-badge vdd-tab-badge--orange">{{ tabCounts['up-selling'] }}</span>
             </button>
+            <button
+              v-if="tabCounts.booklist"
+              class="vdd-tab-btn"
+              :class="{ 'vdd-tab-btn--active': innerTab === 'booklist' }"
+              @click="innerTab = 'booklist'"
+            >
+              <VIcon icon="ri-book-mark-line" size="13" class="me-1" />Booklist
+              <span class="vdd-tab-badge">{{ tabCounts.booklist }}</span>
+            </button>
           </div>
           </div><!-- /vdd-tab-bar-wrap -->
 
@@ -343,6 +358,12 @@ function fmtDate(d) {
                   <template v-else-if="ev._module === 'up-selling'">
                     <VChip v-if="ev.alasan" :color="ev.alasan === 'Naik Kelas' ? 'success' : 'info'" size="x-small" variant="tonal">{{ ev.alasan }}</VChip>
                   </template>
+                  <template v-else-if="ev._module === 'booklist'">
+                    <VChip v-if="ev.status_pasien" :color="ev.status_pasien === 'Bedah' ? 'error' : 'success'" size="x-small" variant="tonal">{{ ev.status_pasien }}</VChip>
+                    <VChip v-if="ev.sudah_dapat_kamar" color="success" size="x-small" variant="tonal">
+                      <VIcon icon="ri-hotel-bed-line" size="10" class="me-1" />Sudah Dapat Kamar
+                    </VChip>
+                  </template>
 
                   <span class="vdd-tl-date">{{ ev.tanggal || ev.tgl_daftar || '—' }}</span>
                 </div>
@@ -393,6 +414,30 @@ function fmtDate(d) {
                     <span class="vdd-lbl">Notes</span>
                     <span class="vdd-val" style="white-space:pre-wrap">{{ ev.note }}</span>
                   </div>
+                  <template v-if="ev._module === 'booklist'">
+                    <div class="vdd-tl-field">
+                      <span class="vdd-lbl">Tgl. OP / Masuk</span>
+                      <span class="vdd-val">{{ ev.tanggal_op || '—' }}</span>
+                    </div>
+                    <div class="vdd-tl-field">
+                      <span class="vdd-lbl">DPJP</span>
+                      <span class="vdd-val">{{ ev.dpjp || '—' }}</span>
+                    </div>
+                    <div v-if="ev.kelas" class="vdd-tl-field">
+                      <span class="vdd-lbl">Kelas</span>
+                      <span class="vdd-val">{{ ev.kelas }}</span>
+                    </div>
+                    <div v-if="ev.sudah_dapat_kamar" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">Dapat Kamar</span>
+                      <span class="vdd-val">
+                        {{ ev.nama_bangsal || '—' }} / {{ ev.nama_ruang || '—' }} · {{ ev.waktu_dapat_kamar || '—' }}
+                      </span>
+                    </div>
+                    <div v-if="ev.catatan" class="vdd-tl-field vdd-tl-field--full">
+                      <span class="vdd-lbl">Catatan</span>
+                      <span class="vdd-val" style="white-space:pre-wrap">{{ ev.catatan }}</span>
+                    </div>
+                  </template>
                   <div v-if="ev.diagnosa" class="vdd-tl-field vdd-tl-field--full">
                     <span class="vdd-lbl">Diagnosa</span>
                     <span class="vdd-val">{{ ev.diagnosa }}</span>
@@ -860,32 +905,29 @@ function fmtDate(d) {
 .vdd-sesi-pill small { font-size: 0.58rem; opacity: 0.82; font-weight: 500; }
 
 /* ── Custom tab bar — scrollable, no horizontal overflow ── */
+/* Tab dibungkus ke baris berikutnya (bukan scroll tersembunyi) — semua tab selalu terlihat */
 .vdd-tab-bar-wrap {
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  border-bottom: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding-bottom: 10px;
   margin: 0 0 16px;
 }
-.vdd-tab-bar-wrap::-webkit-scrollbar { display: none; }
 
 .vdd-tab-bar {
-  display: inline-flex;
-  min-width: 100%;
-  padding: 0 0 0 0;
-  gap: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .vdd-tab-btn {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 9px 12px;
+  padding: 5px 10px;
   font-size: 0.78rem; font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  background: none; border: none; cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.15s, border-color 0.15s;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 99px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -896,7 +938,8 @@ function fmtDate(d) {
 
 .vdd-tab-btn--active {
   color: rgb(var(--v-theme-primary));
-  border-bottom-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.5);
 }
 
 .vdd-tab-badge {

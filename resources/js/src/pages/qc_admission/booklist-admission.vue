@@ -20,6 +20,33 @@ const snackbar   = ref({ show: false, msg: '', color: 'success' })
 const search        = ref('')
 const filterStatus  = ref(null)  // null | 'Bedah' | 'Non Bedah'
 
+// ── Filter tanggal (format input: YYYY-MM-DD) ────────────────────────────────
+const opFrom       = ref('')   // Tgl. OP / Masuk
+const opTo         = ref('')
+const booklistFrom = ref('')   // Tgl. Booklist
+const booklistTo   = ref('')
+
+const hasDateFilter = computed(() => !!(opFrom.value || opTo.value || booklistFrom.value || booklistTo.value))
+
+function resetDateFilter() {
+  opFrom.value = ''; opTo.value = ''; booklistFrom.value = ''; booklistTo.value = ''
+}
+
+// Normalisasi tanggal tersimpan ("DD/MM/YYYY" lama atau "YYYY-MM-DD") → "YYYY-MM-DD"
+function toYmd(val) {
+  if (!val) return ''
+  const dmy = String(val).match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`
+  return String(val).slice(0, 10)
+}
+
+function inRange(val, from, to) {
+  if (!from && !to) return true
+  const d = toYmd(val)
+  if (!d) return false
+  return (!from || d >= from) && (!to || d <= to)
+}
+
 // ── Data ─────────────────────────────────────────────────────────────────────
 const records = computed(() => store.records ?? [])
 
@@ -52,6 +79,13 @@ const filtered = computed(() => {
       r.dpjp?.toLowerCase().includes(q)        ||
       r.diagnosa?.toLowerCase().includes(q)
     )
+  }
+
+  if (opFrom.value || opTo.value) {
+    d = d.filter(r => inRange(r.tanggal_op, opFrom.value, opTo.value))
+  }
+  if (booklistFrom.value || booklistTo.value) {
+    d = d.filter(r => inRange(r.tanggal_booklist, booklistFrom.value, booklistTo.value))
   }
 
   return d
@@ -231,13 +265,37 @@ onMounted(load)
       </button>
     </div>
 
+    <!-- ── Filter tanggal ─────────────────────────────────────────────────── -->
+    <VRow dense class="mb-2">
+      <VCol cols="6" sm="3">
+        <VTextField v-model="opFrom" label="Tgl. OP / Masuk — Dari" type="date"
+          variant="outlined" density="compact" hide-details rounded="lg" />
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VTextField v-model="opTo" label="Tgl. OP / Masuk — Sampai" type="date"
+          variant="outlined" density="compact" hide-details rounded="lg" />
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VTextField v-model="booklistFrom" label="Tgl. Booklist — Dari" type="date"
+          variant="outlined" density="compact" hide-details rounded="lg" />
+      </VCol>
+      <VCol cols="6" sm="3">
+        <VTextField v-model="booklistTo" label="Tgl. Booklist — Sampai" type="date"
+          variant="outlined" density="compact" hide-details rounded="lg" />
+      </VCol>
+    </VRow>
+
     <!-- Info count -->
     <div class="d-flex align-center gap-3 mb-3 flex-wrap">
       <VChip size="small" color="primary" variant="tonal" rounded="pill">
         {{ filtered.length }} data
       </VChip>
+      <VChip v-if="hasDateFilter" size="small" color="warning" variant="tonal" rounded="pill"
+        closable @click:close="resetDateFilter">
+        <VIcon icon="ri-calendar-line" size="12" class="me-1" />Filter tanggal aktif
+      </VChip>
       <span class="text-caption" style="color:var(--qc-text-2)">
-        Klik baris untuk detail &amp; edit
+        Klik baris untuk detail &amp; edit · Pasien yang sudah dapat kamar otomatis pindah ke History Pasien
       </span>
     </div>
 

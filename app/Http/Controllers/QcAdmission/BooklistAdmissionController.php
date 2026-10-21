@@ -18,7 +18,7 @@ class BooklistAdmissionController extends Controller
     {
         return response()->json(
             $this->service->paginate(
-                $request->only(['search', 'status_pasien', 'date_from', 'date_to', 'per_page', 'page'])
+                $request->only(['search', 'status_pasien', 'date_from', 'date_to', 'per_page', 'page', 'include_dapat_kamar'])
             )
         );
     }

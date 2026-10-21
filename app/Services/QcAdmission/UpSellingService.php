@@ -43,7 +43,7 @@ class UpSellingService
         try {
             $row = DB::connection('rsus')
                 ->table('JADWAL_OPERASI')
-                ->where('No_Reg', $noReg)
+                ->whereRaw('No_Reg = CAST(? AS varchar(30))', [$noReg])  // varchar → index bisa dipakai
                 ->orderByDesc('Tanggal')
                 ->first(['No_Jadwal', 'Tindakan', 'Keterangan', 'DPJP', 'Tanggal']);
 

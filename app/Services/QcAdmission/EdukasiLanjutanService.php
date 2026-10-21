@@ -112,46 +112,7 @@ class EdukasiLanjutanService
         }
 
         try {
-            // Status No_Reg ini dicek ulang di setiap load list → cache singkat per No_Reg.
-            // Hanya No_Reg yang belum ada di cache yang di-query ke RSUS.
-            $map     = [];
-            $missing = [];
-            foreach ($noRegs as $noReg) {
-                $cached = Cache::get(self::KET_CACHE_PREFIX . $noReg);
-                $cached !== null ? $map[$noReg] = $cached : $missing[] = $noReg;
-            }
-
-            // Parameter IN hanya 1x (bukan 3x) + chunk 1000 → aman dari limit 2100 parameter SQL Server
-            foreach (array_chunk($missing, 1000) as $chunk) {
-                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
-
-                $rows = DB::connection('rsus')->select("
-                    SELECT
-                        P.No_Reg,
-                        CASE
-                            WHEN T.NamaPetugasMenerima <> '' THEN 'Sudah Masuk Kamar'
-                            WHEN K.Ada IS NOT NULL THEN 'Belum Diantar'
-                            ELSE 'Belum Dapat Kamar'
-                        END AS Keterangan
-                    FROM dbo.PENDAFTARAN AS P
-                    OUTER APPLY (
-                        SELECT MAX(NamaPetugasMenerima) AS NamaPetugasMenerima
-                        FROM dbo.ASESMEN_TRANSFER_PASIEN
-                        WHERE No_Reg = P.No_Reg
-                    ) AS T
-                    OUTER APPLY (
-                        SELECT TOP 1 1 AS Ada
-                        FROM dbo.TR_KAMAR
-                        WHERE No_Reg = P.No_Reg
-                    ) AS K
-                    WHERE P.No_Reg IN ({$placeholders})
-                ", $chunk);
-
-                foreach ($rows as $row) {
-                    $map[$row->No_Reg] = $row->Keterangan;
-                    Cache::put(self::KET_CACHE_PREFIX . $row->No_Reg, $row->Keterangan, self::KET_CACHE_TTL);
-                }
-            }
+            $map = $this->keteranganMap($noRegs);
 
             $collection->each(function ($r) use ($map) {
                 $ket = $map[$r->no_reg] ?? null;
@@ -162,6 +123,53 @@ class EdukasiLanjutanService
             Log::warning('EdukasiLanjutanService: gagal enrich dari RSUS', ['error' => $e->getMessage()]);
             $collection->each(function ($r) { $r->has_transfer = false; $r->keterangan = null; });
         }
+    }
+    public function keteranganMap(array $noRegs): array
+    {
+        $map     = [];
+        $missing = [];
+        foreach (array_unique(array_filter($noRegs)) as $noReg) {
+            $cached = Cache::get(self::KET_CACHE_PREFIX . $noReg);
+            $cached !== null ? $map[$noReg] = $cached : $missing[] = $noReg;
+        }
+
+        if (empty($missing) || ! config('services.rsus_db_enabled', false)) {
+            return $map;
+        }
+
+        foreach (array_chunk($missing, 1000) as $chunk) {
+            // CAST ke varchar: PDO mengirim nvarchar → SQL Server tidak bisa pakai index varchar (scan)
+            $placeholders = implode(',', array_fill(0, count($chunk), 'CAST(? AS varchar(30))'));
+
+            $rows = DB::connection('rsus')->select("
+                SELECT
+                    P.No_Reg,
+                    CASE
+                        WHEN T.NamaPetugasMenerima <> '' THEN 'Sudah Masuk Kamar'
+                        WHEN K.Ada IS NOT NULL THEN 'Belum Diantar'
+                        ELSE 'Belum Dapat Kamar'
+                    END AS Keterangan
+                FROM dbo.PENDAFTARAN AS P
+                OUTER APPLY (
+                    SELECT MAX(NamaPetugasMenerima) AS NamaPetugasMenerima
+                    FROM dbo.ASESMEN_TRANSFER_PASIEN
+                    WHERE No_Reg = P.No_Reg
+                ) AS T
+                OUTER APPLY (
+                    SELECT TOP 1 1 AS Ada
+                    FROM dbo.TR_KAMAR
+                    WHERE No_Reg = P.No_Reg
+                ) AS K
+                WHERE P.No_Reg IN ({$placeholders})
+            ", $chunk);
+
+            foreach ($rows as $row) {
+                $map[$row->No_Reg] = $row->Keterangan;
+                Cache::put(self::KET_CACHE_PREFIX . $row->No_Reg, $row->Keterangan, self::KET_CACHE_TTL);
+            }
+        }
+
+        return $map;
     }
 
     public function create(array $data): EdukasiLanjutan

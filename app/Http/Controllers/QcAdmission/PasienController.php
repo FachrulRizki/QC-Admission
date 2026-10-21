@@ -98,7 +98,7 @@ class PasienController extends Controller
         $noMrList = array_values(array_unique(array_filter(array_column($rows, 'no_mr'))));
         if (empty($noMrList)) return $rows;
 
-        $placeholders = implode(',', array_fill(0, count($noMrList), '?'));
+        $placeholders = implode(',', array_fill(0, count($noMrList), 'CAST(? AS varchar(30))'));
         $telpRows     = DB::connection('rsus')->select(
             "SELECT No_MR, No_Telp FROM dbo.REGISTER_PASIEN WHERE No_MR IN ({$placeholders})",
             $noMrList
@@ -116,7 +116,7 @@ class PasienController extends Controller
     {
         // Return: [innerCond, innerParams, outerCond, outerParams]
         if ($noReg !== '') {
-            return ['AND P.No_Reg = ?', [$noReg], '', []];
+            return ['AND P.No_Reg = CAST(? AS varchar(30))', [$noReg], '', []];
         }
         if ($search !== '') {
             $like = "%{$search}%";

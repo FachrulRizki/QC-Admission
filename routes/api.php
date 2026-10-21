@@ -16,6 +16,7 @@ use App\Http\Controllers\QcAdmission\AlasanController;
 use App\Http\Controllers\QcAdmission\HistoryPasienController;
 use App\Http\Controllers\QcAdmission\BooklistAdmissionController;
 use App\Http\Controllers\QcAdmission\DokterController;
+use App\Http\Controllers\QcAdmission\ViewDataInputController;
 
 Route::middleware(['keycloak.auth'])->group(function () {
 
@@ -197,11 +198,15 @@ Route::middleware(['keycloak.auth'])->group(function () {
     // Alasan — data pendaftaran aktif (read-only, semua authenticated)
     Route::get('alasan/pendaftaran-aktif', [AlasanController::class, 'pendaftaranAktif']);
 
+    // View Data Input — 1 request untuk semua tab (isi data disesuaikan permission di controller)
+    Route::get('view-data-input', [ViewDataInputController::class, 'index']);
+
     // History Pasien — semua data lintas modul per no_mr, tanpa filter tanggal
     Route::middleware(['keycloak.role:quality-control:view'])->group(function () {
-        Route::get('history-pasien/search',          [HistoryPasienController::class, 'search']);
+        Route::get('history-pasien',                 [HistoryPasienController::class, 'index']);  // list pasien, paginasi server
+        Route::get('history-pasien/search',          [HistoryPasienController::class, 'index']);
         Route::get('history-pasien/{no_mr}',         [HistoryPasienController::class, 'byNoMr'])
-            ->where('no_mr', '[^/]+');  // izinkan spesial char kecuali slash
+            ->where('no_mr', '[^/]+');
     });
 
     // Butuh permission alasan:view
