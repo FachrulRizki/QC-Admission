@@ -74,7 +74,7 @@ function clear() {
         v-bind="mergeProps(menuProps, attrs)"
         :model-value="display"
         :label="label"
-        :placeholder="placeholder"
+        :placeholder="label ? undefined : placeholder"
         :variant="variant"
         :density="density"
         :rounded="rounded"
