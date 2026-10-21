@@ -289,11 +289,11 @@ const kpiCards = computed(() => [
               <div class="db-date-panel__custom">
                 <div class="db-date-field">
                   <label>Dari</label>
-                  <input v-model="dateFrom" type="date" class="db-date-input" />
+                  <DateField v-model="dateFrom" attach prepend-inner-icon="" />
                 </div>
                 <div class="db-date-field">
                   <label>Sampai</label>
-                  <input v-model="dateTo" type="date" class="db-date-input" />
+                  <DateField v-model="dateTo" attach prepend-inner-icon="" />
                 </div>
                 <button class="db-apply-btn" @click="doFetch(); showDatePicker = false">Terapkan</button>
               </div>
@@ -643,6 +643,10 @@ const kpiCards = computed(() => [
   font-size: 0.72rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   font-weight: 600;
+}
+
+.db-date-field :deep(.v-input) {
+  min-width: 140px;
 }
 
 .db-date-input {

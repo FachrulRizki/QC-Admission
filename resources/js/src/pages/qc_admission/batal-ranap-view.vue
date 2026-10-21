@@ -136,10 +136,10 @@ onMounted(() => doRefresh())
               prepend-inner-icon="ri-search-line" variant="outlined" density="compact" hide-details clearable />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details />
+            <DateField v-model="dateFrom" label="Dari" variant="outlined" density="compact" hide-details />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details />
+            <DateField v-model="dateTo" label="Sampai" variant="outlined" density="compact" hide-details />
           </VCol>
           <VCol cols="auto">
             <VBtn icon variant="text" size="small" color="secondary" @click="search = ''; dateFrom = ''; dateTo = ''">

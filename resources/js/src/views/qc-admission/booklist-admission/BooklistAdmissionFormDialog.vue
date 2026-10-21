@@ -371,10 +371,9 @@ const statusOpts = [
                 </template>
               </VAutocomplete>
 
-              <VTextField
+              <DateField
                 v-model="form.tanggal_op"
                 label="Tanggal Rencana Masuk / Operasi"
-                type="date"
                 variant="outlined"
                 density="compact"
                 prepend-inner-icon="ri-calendar-2-line"

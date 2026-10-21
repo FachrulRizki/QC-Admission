@@ -106,11 +106,11 @@ onMounted(load)
               variant="outlined" density="compact" hide-details rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details
+            <DateField v-model="dateFrom" label="Dari" variant="outlined" density="compact" hide-details
               rounded="lg" />
           </VCol>
           <VCol cols="6" sm="2">
-            <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details
+            <DateField v-model="dateTo" label="Sampai" variant="outlined" density="compact" hide-details
               rounded="lg" />
           </VCol>
           <VCol cols="auto">

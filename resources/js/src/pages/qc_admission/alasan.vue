@@ -565,9 +565,9 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
         <!-- Filter tanggal -->
         <div class="al-date-wrap">
           <VIcon icon="ri-calendar-line" size="14" style="opacity:.4" />
-          <input v-model="riwayatDateFrom" type="date" class="al-date-input" title="Dari tanggal" />
+          <DateField v-model="riwayatDateFrom" placeholder="Dari" variant="plain" prepend-inner-icon="" clearable class="al-date-field" />
           <span style="font-size:0.72rem;opacity:.4">s/d</span>
-          <input v-model="riwayatDateTo" type="date" class="al-date-input" title="Sampai tanggal" />
+          <DateField v-model="riwayatDateTo" placeholder="Sampai" variant="plain" prepend-inner-icon="" clearable class="al-date-field" />
         </div>
         <!-- Filter alasan dropdown -->
         <select v-model="filterRiwayatAlasan" class="al-select-input">
@@ -1448,6 +1448,17 @@ const { page: pageRiwayat, pageCount: pageCountRiwayat, paginated: paginatedRiwa
   border-radius: 10px;
   padding: 0 10px;
   height: 38px;
+}
+
+.al-date-field {
+  width: 120px;
+  flex: 0 0 120px;
+}
+.al-date-field :deep(.v-field__input) {
+  font-size: 0.78rem;
+  min-height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .al-date-input {

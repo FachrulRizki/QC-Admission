@@ -268,19 +268,19 @@ onMounted(load)
     <!-- ── Filter tanggal ─────────────────────────────────────────────────── -->
     <VRow dense class="mb-2">
       <VCol cols="6" sm="3">
-        <VTextField v-model="opFrom" label="Tgl. OP / Masuk — Dari" type="date"
+        <DateField v-model="opFrom" clearable label="Tgl. OP / Masuk — Dari"
           variant="outlined" density="compact" hide-details rounded="lg" />
       </VCol>
       <VCol cols="6" sm="3">
-        <VTextField v-model="opTo" label="Tgl. OP / Masuk — Sampai" type="date"
+        <DateField v-model="opTo" clearable label="Tgl. OP / Masuk — Sampai"
           variant="outlined" density="compact" hide-details rounded="lg" />
       </VCol>
       <VCol cols="6" sm="3">
-        <VTextField v-model="booklistFrom" label="Tgl. Booklist — Dari" type="date"
+        <DateField v-model="booklistFrom" clearable label="Tgl. Booklist — Dari"
           variant="outlined" density="compact" hide-details rounded="lg" />
       </VCol>
       <VCol cols="6" sm="3">
-        <VTextField v-model="booklistTo" label="Tgl. Booklist — Sampai" type="date"
+        <DateField v-model="booklistTo" clearable label="Tgl. Booklist — Sampai"
           variant="outlined" density="compact" hide-details rounded="lg" />
       </VCol>
     </VRow>

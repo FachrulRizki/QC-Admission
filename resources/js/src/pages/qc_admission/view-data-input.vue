@@ -442,10 +442,10 @@ const listLoading = computed(() =>
           <!-- ── Filter tanggal: HANYA tampil kalau BUKAN tab history-pasien ── -->
           <template v-if="activeTab !== 'history-pasien'">
             <VCol cols="6" sm="3" md="2">
-              <VTextField v-model="dateFrom" label="Dari" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+              <DateField v-model="dateFrom" label="Dari" variant="outlined" density="compact" hide-details rounded="lg" />
             </VCol>
             <VCol cols="6" sm="3" md="2">
-              <VTextField v-model="dateTo" label="Sampai" type="date" variant="outlined" density="compact" hide-details rounded="lg" />
+              <DateField v-model="dateTo" label="Sampai" variant="outlined" density="compact" hide-details rounded="lg" />
             </VCol>
           </template>
 
