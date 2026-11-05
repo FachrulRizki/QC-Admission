@@ -376,22 +376,22 @@ clearable class="mb-3" hide-details="auto"
 
 <VRow dense class="mb-1">
 <VCol cols="12" sm="6">
-<VCombobox
-v-model="form.kelas_before"
-:items="kelasOptions"
-label="Kelas Before (sesuai hak)"
+<!-- Paten: kelas sesuai hak, diambil otomatis dari kamar pasien -->
+<VTextField
+:model-value="form.kelas_before || ''"
+label="Kelas Before (Hak)"
+placeholder="Otomatis dari kamar pasien"
+persistent-placeholder
 variant="outlined" density="compact"
-prepend-inner-icon="ri-hotel-bed-line"
-:loading="kelasLoading"
-clearable hide-details="auto"
-no-data-text="Kelas tidak ditemukan — ketik manual"
+prepend-inner-icon="ri-lock-line"
+readonly hide-details="auto"
 />
 </VCol>
 <VCol cols="12" sm="6">
 <VCombobox
 v-model="form.kelas_after"
 :items="kelasOptions"
-label="Kelas After (naik kelas)"
+label="Kelas After"
 variant="outlined" density="compact"
 prepend-inner-icon="ri-checkbox-circle-line"
 :loading="kelasLoading"
@@ -400,10 +400,14 @@ no-data-text="Kelas tidak ditemukan — ketik manual"
 />
 </VCol>
 </VRow>
-<p class="mt-0 mb-3" style="font-size:0.7rem;color:rgba(var(--v-theme-on-surface),0.5)">
-<VIcon icon="ri-information-line" size="12" class="me-1" />
-Kelas Before terisi otomatis dari kelas kamar saat ini (<strong>{{ form.kelas || '—' }}</strong>), bisa diubah.
-</p>
+<div class="d-flex align-start mt-1 mb-3 text-error" style="font-size:0.85rem;font-weight:500;line-height:1.4">
+<VIcon icon="ri-error-warning-line" size="18" class="me-2 flex-shrink-0" />
+<span>
+Kelas Before terkunci sesuai hak pasien (kelas kamar saat ini:
+<strong>{{ form.kelas_before || '—' }}</strong>) dan tidak bisa diubah.
+Pilih <strong>Kelas After</strong> untuk kelas yang diambil saat naik kelas.
+</span>
+</div>
 
 <VTextarea
 v-model="form.notes"
