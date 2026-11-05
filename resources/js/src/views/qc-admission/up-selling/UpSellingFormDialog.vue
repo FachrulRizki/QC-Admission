@@ -3,6 +3,7 @@ import { useUpSellingStore } from '@/stores/useUpSellingStore'
 import { usePegawaiStore } from '@/stores/usePegawaiStore'
 import { usePasienStore } from '@/stores/usePasienStore'
 import { useMasterDataStore } from '@/stores/useMasterDataStore'
+import axios from 'axios'
 
 const props = defineProps({
 modelValue: { type: Boolean, default: false },
@@ -26,6 +27,23 @@ function tickClock() {
 const d = new Date()
 const p = n => String(n).padStart(2, '0')
 nowDisplay.value = `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}, ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`
+}
+
+// ── Master kelas (M_KELAS RSUS) untuk Rekomendasi Kelas & Kelas Diambil ──────
+const kelasOptions = ref([])
+const kelasLoading = ref(false)
+
+async function loadKelas() {
+if (kelasOptions.value.length) return
+kelasLoading.value = true
+try {
+const { data } = await axios.get('/api/kelas/search')
+kelasOptions.value = (data?.data ?? []).map(k => k.nama_kelas).filter(Boolean)
+} catch {
+kelasOptions.value = []
+} finally {
+kelasLoading.value = false
+}
 }
 
 // ── Search pasien ─────────────────────────────────────────────────────────────
@@ -59,6 +77,8 @@ form.value.ket_bayar   = hit.ket_bayar    ?? ''
 form.value.nama_ruang  = hit.nama_ruang   ?? ''
 form.value.nama_bangsal= hit.nama_bangsal ?? ''
 form.value.kelas       = hit.nama_kelas   ?? ''
+// Kelas before = kelas sesuai hak (kelas kamar saat ini); saat edit jangan timpa nilai tersimpan
+if (!props.editItem || !form.value.kelas_before) form.value.kelas_before = hit.nama_kelas ?? null
 form.value.tgl_daftar  = hit.tgl_daftar   ?? ''
 }
 
@@ -83,6 +103,7 @@ pasienStore.clear()
 noRegSearch.value = ''
 pegawaiStore.fetch()
 masterStore.fetch()
+loadKelas()
 tickClock()
 clockTimer = setInterval(tickClock, 1000)
 } else {
@@ -99,6 +120,8 @@ ket_bayar: '',
 nama_ruang: '',
 nama_bangsal: '',
 kelas: '',
+kelas_before: null,
+kelas_after: null,
 tgl_daftar: '',
 ket_up_selling: null,
 notes: '',
@@ -131,8 +154,9 @@ jaminan: form.value.ket_bayar,
 nama_ruang: form.value.nama_ruang,
 nama_bangsal: form.value.nama_bangsal,
 kelas: form.value.kelas,
-rekomendasi_kelas: form.value.kelas,
-kelas_diambil: form.value.kelas,
+// kelas_before = kelas sesuai hak (default kelas saat ini), kelas_after = kelas yang diambil saat naik kelas
+kelas_before: form.value.kelas_before || null,
+kelas_after: form.value.kelas_after || null,
 alasan: form.value.ket_up_selling,
 petugas: form.value.nama_petugas,
 note: form.value.notes,
@@ -349,6 +373,37 @@ variant="outlined" density="compact"
 prepend-inner-icon="ri-medal-line"
 clearable class="mb-3" hide-details="auto"
 />
+
+<VRow dense class="mb-1">
+<VCol cols="12" sm="6">
+<VCombobox
+v-model="form.kelas_before"
+:items="kelasOptions"
+label="Kelas Before (sesuai hak)"
+variant="outlined" density="compact"
+prepend-inner-icon="ri-hotel-bed-line"
+:loading="kelasLoading"
+clearable hide-details="auto"
+no-data-text="Kelas tidak ditemukan — ketik manual"
+/>
+</VCol>
+<VCol cols="12" sm="6">
+<VCombobox
+v-model="form.kelas_after"
+:items="kelasOptions"
+label="Kelas After (naik kelas)"
+variant="outlined" density="compact"
+prepend-inner-icon="ri-checkbox-circle-line"
+:loading="kelasLoading"
+clearable hide-details="auto"
+no-data-text="Kelas tidak ditemukan — ketik manual"
+/>
+</VCol>
+</VRow>
+<p class="mt-0 mb-3" style="font-size:0.7rem;color:rgba(var(--v-theme-on-surface),0.5)">
+<VIcon icon="ri-information-line" size="12" class="me-1" />
+Kelas Before terisi otomatis dari kelas kamar saat ini (<strong>{{ form.kelas || '—' }}</strong>), bisa diubah.
+</p>
 
 <VTextarea
 v-model="form.notes"

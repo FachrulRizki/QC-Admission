@@ -76,8 +76,8 @@ class UpSellingController extends Controller
             'nama_ruang'         => 'nullable|string|max:100',
             'nama_bangsal'       => 'nullable|string|max:100',
             'kelas'              => 'nullable|string|max:50',
-            'rekomendasi_kelas'  => 'nullable|string|max:50',
-            'kelas_diambil'      => 'nullable|string|max:50',
+            'kelas_before'  => 'nullable|string|max:50',
+            'kelas_after'      => 'nullable|string|max:50',
             'alasan'             => 'nullable|in:Naik Kelas,Perubahan Jaminan',
             'petugas'            => 'required|string|max:100',
             'status'             => 'nullable|in:Berhasil,Tidak Berhasil,Pending',
@@ -102,8 +102,8 @@ class UpSellingController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'rekomendasi_kelas' => 'nullable|string|max:50',
-            'kelas_diambil'     => 'nullable|string|max:50',
+            'kelas_before' => 'nullable|string|max:50',
+            'kelas_after'     => 'nullable|string|max:50',
             'alasan'            => 'nullable|string|max:255',
             'petugas'           => 'sometimes|string|max:100',
             'status'            => 'nullable|in:Berhasil,Tidak Berhasil,Pending',

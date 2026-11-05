@@ -367,8 +367,16 @@ onMounted(() => { load(); store.fetchAlertBedah() })
             <span class="qc-val">{{ detailItem.jaminan || '—' }}</span>
           </div>
           <div class="qc-info-cell">
-            <span class="qc-lbl">Kelas</span>
-            <span class="qc-val">{{ detailItem.kelas_diambil || detailItem.kelas || detailItem.rekomendasi_kelas || '—' }}</span>
+            <span class="qc-lbl">Kelas Saat Ini</span>
+            <span class="qc-val">{{ detailItem.kelas || '—' }}</span>
+          </div>
+          <div class="qc-info-cell">
+            <span class="qc-lbl">Kelas Before (Hak)</span>
+            <span class="qc-val">{{ detailItem.kelas_before || '—' }}</span>
+          </div>
+          <div class="qc-info-cell">
+            <span class="qc-lbl">Kelas After (Naik Kelas)</span>
+            <span class="qc-val">{{ detailItem.kelas_after || '—' }}</span>
           </div>
           <div class="qc-info-cell">
             <span class="qc-lbl">Nama Ruang</span>
